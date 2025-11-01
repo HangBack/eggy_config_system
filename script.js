@@ -6,6 +6,41 @@ const API = {
     DATA: `${API_BASE}/data`
 };
 
+// 工具函数：将纯数字字符串转换为数字键，用于对象访问
+function normalizeFieldKey(fieldName) {
+    // 检查是否为纯数字字符串
+    if (typeof fieldName === 'string' && /^\d+$/.test(fieldName)) {
+        return parseInt(fieldName, 10);
+    }
+    return fieldName;
+}
+
+// 工具函数：从对象中获取字段值，支持数字键
+function getFieldValue(obj, fieldName) {
+    if (!obj) return undefined;
+    
+    // 先尝试直接访问
+    if (obj[fieldName] !== undefined) {
+        return obj[fieldName];
+    }
+    
+    // 如果字段名是纯数字字符串，尝试用数字键访问
+    const numKey = normalizeFieldKey(fieldName);
+    if (numKey !== fieldName && obj[numKey] !== undefined) {
+        return obj[numKey];
+    }
+    
+    return undefined;
+}
+
+// 工具函数：设置对象字段值，如果字段名是纯数字则使用数字键
+function setFieldValue(obj, fieldName, value) {
+    if (!obj) return;
+    
+    const key = normalizeFieldKey(fieldName);
+    obj[key] = value;
+}
+
 // 全局状态
 let currentSchema = null;
 let currentSchemaName = '';
@@ -196,6 +231,20 @@ async function saveSchema() {
     currentSchema.exportConfig.requires = [...requireItems];
 
     try {
+        // 如果是更新模式，先加载旧的Schema用于迁移检查
+        let oldSchema = null;
+        if (isEditMode) {
+            try {
+                const schemaResponse = await fetch(`${API.SCHEMA}?action=get&name=${encodeURIComponent(name)}`);
+                const schemaResult = await schemaResponse.json();
+                if (schemaResult.success && schemaResult.data) {
+                    oldSchema = schemaResult.data;
+                }
+            } catch (error) {
+                console.error('加载旧Schema失败:', error);
+            }
+        }
+        
         const action = isEditMode ? 'update' : 'create';
         const response = await fetch(API.SCHEMA, {
             method: 'POST',
@@ -212,6 +261,14 @@ async function saveSchema() {
         const result = await response.json();
         
         if (result.success) {
+            // 如果是更新模式，检查是否需要迁移数据
+            if (isEditMode && oldSchema) {
+                const shouldMigrate = await confirmMigration(name, currentSchema, oldSchema);
+                if (shouldMigrate) {
+                    await migrateDataForSchemaChange(name, currentSchema, oldSchema);
+                }
+            }
+            
             alert(isEditMode ? 'Schema更新成功' : 'Schema创建成功');
             cancelSchemaEdit();
             loadSchemas();
@@ -221,6 +278,288 @@ async function saveSchema() {
     } catch (error) {
         console.error('保存Schema错误:', error);
         alert('保存Schema失败');
+    }
+}
+
+// 检查Schema变更并确认是否需要迁移
+async function confirmMigration(schemaName, newSchema, oldSchema) {
+    try {
+        if (!oldSchema) {
+            // 没有原始Schema，不需要迁移
+            return false;
+        }
+        
+        const oldFields = oldSchema.fields || [];
+        const newFields = newSchema.fields || [];
+        
+        const changes = {
+            added: [],
+            removed: [],
+            modified: []
+        };
+        
+        // 检查字段变化
+        const oldFieldMap = new Map(oldFields.map(f => [f.name, f]));
+        const newFieldMap = new Map(newFields.map(f => [f.name, f]));
+        
+        // 找出删除的字段
+        oldFields.forEach(oldField => {
+            if (!newFieldMap.has(oldField.name)) {
+                changes.removed.push(oldField.label || oldField.name);
+            }
+        });
+        
+        // 找出新增和修改的字段
+        newFields.forEach(newField => {
+            const oldField = oldFieldMap.get(newField.name);
+            if (!oldField) {
+                changes.added.push(newField.label || newField.name);
+            } else if (newField.type === 'entry' && oldField.type === 'entry') {
+                // 检查子字段变化
+                const oldSubfields = oldField.subfields || [];
+                const newSubfields = newField.subfields || [];
+                const oldSubMap = new Map(oldSubfields.map(s => [s.name, s]));
+                const newSubMap = new Map(newSubfields.map(s => [s.name, s]));
+                
+                const removedSubs = oldSubfields.filter(s => !newSubMap.has(s.name));
+                const addedSubs = newSubfields.filter(s => !oldSubMap.has(s.name));
+                
+                if (removedSubs.length > 0 || addedSubs.length > 0) {
+                    const subfieldChanges = [];
+                    if (addedSubs.length > 0) {
+                        subfieldChanges.push(`新增: ${addedSubs.map(s => s.label || s.name).join(', ')}`);
+                    }
+                    if (removedSubs.length > 0) {
+                        subfieldChanges.push(`删除: ${removedSubs.map(s => s.label || s.name).join(', ')}`);
+                    }
+                    changes.modified.push(`${newField.label || newField.name} (${subfieldChanges.join('; ')})`);
+                }
+            }
+        });
+        
+        // 如果有变化，显示确认对话框
+        if (changes.added.length > 0 || changes.removed.length > 0 || changes.modified.length > 0) {
+            let message = '检测到Schema字段变化，将自动同步更新配表数据：\n\n';
+            
+            if (changes.added.length > 0) {
+                message += `✅ 新增字段（将使用默认值）：\n${changes.added.map(f => '  • ' + f).join('\n')}\n\n`;
+            }
+            if (changes.removed.length > 0) {
+                message += `⚠️ 删除字段（数据将丢失）：\n${changes.removed.map(f => '  • ' + f).join('\n')}\n\n`;
+            }
+            if (changes.modified.length > 0) {
+                message += `🔄 修改字段：\n${changes.modified.map(f => '  • ' + f).join('\n')}\n\n`;
+            }
+            
+            message += '是否继续保存并更新数据？';
+            
+            return confirm(message);
+        }
+        
+        // 没有变化，直接返回true
+        return true;
+    } catch (error) {
+        console.error('检查Schema变更错误:', error);
+        // 出错时默认执行迁移
+        return true;
+    }
+}
+
+// 根据字段类型获取正确的默认值
+function getTypedDefaultValue(field) {
+    const defaultValue = field.defaultValue;
+    
+    // 如果默认值为 undefined 或 null，返回类型相关的默认值
+    if (defaultValue === undefined || defaultValue === null || defaultValue === '') {
+        switch (field.type) {
+            case 'number':
+                return 0;
+            case 'entry':
+                return [];
+            default:
+                return '';
+        }
+    }
+    
+    // 根据类型转换默认值
+    switch (field.type) {
+        case 'number':
+            const num = Number(defaultValue);
+            return isNaN(num) ? 0 : num;
+        case 'entry':
+            return Array.isArray(defaultValue) ? defaultValue : [];
+        default:
+            return String(defaultValue);
+    }
+}
+
+// 当Schema修改后，迁移对应的配表数据
+async function migrateDataForSchemaChange(schemaName, newSchema, oldSchema) {
+    try {
+        // 加载现有数据
+        const dataResponse = await fetch(`${API.DATA}?action=get&name=${encodeURIComponent(schemaName)}`);
+        const dataResult = await dataResponse.json();
+        
+        if (!dataResult.success || !dataResult.data) {
+            // 没有数据，无需迁移
+            return;
+        }
+        
+        const existingData = dataResult.data;
+        const newFields = newSchema.fields || [];
+        const oldFields = oldSchema ? (oldSchema.fields || []) : [];
+        
+        // 创建旧字段映射（包括子字段）
+        const oldFieldMap = new Map(oldFields.map(f => [f.name, f]));
+        const oldSubfieldMaps = new Map();
+        oldFields.forEach(field => {
+            if (field.type === 'entry' && field.subfields) {
+                oldSubfieldMaps.set(field.name, new Map(field.subfields.map(s => [s.name, s])));
+            }
+        });
+        
+        // 迁移条目数组中的每个条目对象
+        function migrateEntryItems(oldEntries, newSubfields, oldSubfieldMap, oldSubfields) {
+            if (!Array.isArray(oldEntries)) {
+                return [];
+            }
+            
+            // 为新字段建立与旧字段的映射（按顺序和类型匹配）
+            const fieldMapping = new Map();
+            const usedOldFields = new Set();
+            
+            // 首先处理同名字段
+            newSubfields.forEach(newSubfield => {
+                if (oldSubfieldMap && oldSubfieldMap.has(newSubfield.name)) {
+                    const oldSubfield = oldSubfieldMap.get(newSubfield.name);
+                    if (oldSubfield.type === newSubfield.type) {
+                        fieldMapping.set(newSubfield.name, newSubfield.name);
+                        usedOldFields.add(newSubfield.name);
+                    }
+                }
+            });
+            
+            // 然后按顺序匹配未映射的新字段和未使用的旧字段（类型一致）
+            const unmappedNewFields = newSubfields.filter(f => !fieldMapping.has(f.name));
+            const unmappedOldFields = oldSubfields ? oldSubfields.filter(f => !usedOldFields.has(f.name)) : [];
+            
+            let oldFieldIndex = 0;
+            unmappedNewFields.forEach(newSubfield => {
+                // 查找下一个类型匹配的旧字段
+                while (oldFieldIndex < unmappedOldFields.length) {
+                    const oldSubfield = unmappedOldFields[oldFieldIndex];
+                    if (oldSubfield.type === newSubfield.type) {
+                        fieldMapping.set(newSubfield.name, oldSubfield.name);
+                        oldFieldIndex++;
+                        break;
+                    }
+                    oldFieldIndex++;
+                }
+            });
+            
+            return oldEntries.map((oldEntry, entryIndex) => {
+                const newEntry = {};
+                newSubfields.forEach(newSubfield => {
+                    const mappedOldFieldName = fieldMapping.get(newSubfield.name);
+                    
+                    // 使用工具函数获取字段值，支持数字键
+                    const mappedValue = mappedOldFieldName ? getFieldValue(oldEntry, mappedOldFieldName) : undefined;
+                    const directValue = getFieldValue(oldEntry, newSubfield.name);
+                    
+                    if (mappedOldFieldName && mappedValue !== undefined) {
+                        // 从映射的旧字段获取值，使用数字键设置
+                        setFieldValue(newEntry, newSubfield.name, mappedValue);
+                    } else if (directValue !== undefined) {
+                        // 直接使用同名字段的值，使用数字键设置
+                        setFieldValue(newEntry, newSubfield.name, directValue);
+                    } else {
+                        // 使用默认值，使用数字键设置
+                        const defaultValue = getTypedDefaultValue(newSubfield);
+                        setFieldValue(newEntry, newSubfield.name, defaultValue);
+                    }
+                });
+                return newEntry;
+            });
+        }
+        
+        // 迁移每一行数据
+        const migratedData = existingData.map(row => {
+            // 兼容新旧格式
+            const oldData = row.data !== undefined ? row.data : row;
+            const newData = {};
+            
+            // 遍历新Schema的字段
+            newFields.forEach(field => {
+                const oldField = oldFieldMap.get(field.name);
+                
+                if (field.type === 'entry') {
+                    // 处理条目类型字段
+                    const oldEntries = oldData[field.name];
+                    const oldSubfieldMap = oldSubfieldMaps.get(field.name);
+                    const oldFieldData = oldField && oldField.type === 'entry' ? oldField : null;
+                    const oldSubfields = oldFieldData ? oldFieldData.subfields : null;
+                    
+                    if (oldEntries !== undefined && Array.isArray(oldEntries)) {
+                        // 字段存在且是数组，迁移每个条目的子字段
+                        newData[field.name] = migrateEntryItems(oldEntries, field.subfields || [], oldSubfieldMap, oldSubfields);
+                    } else {
+                        // 字段不存在或格式不对，使用空数组
+                        newData[field.name] = [];
+                    }
+                } else {
+                    // 处理普通字段
+                    if (oldData[field.name] !== undefined) {
+                        // 字段存在
+                        if (oldField && oldField.type === field.type) {
+                            // 类型一致，保留原值
+                            newData[field.name] = oldData[field.name];
+                        } else if (!oldField) {
+                            // 旧schema中不存在但数据中有，保留
+                            newData[field.name] = oldData[field.name];
+                        } else {
+                            // 类型不一致，使用默认值
+                            newData[field.name] = getTypedDefaultValue(field);
+                        }
+                    } else {
+                        // 新增字段，使用默认值
+                        newData[field.name] = getTypedDefaultValue(field);
+                    }
+                }
+            });
+            
+            // 保留元数据
+            if (row.name !== undefined && row.data !== undefined) {
+                return {
+                    name: row.name,
+                    isRaw: row.isRaw || false,
+                    data: newData
+                };
+            } else {
+                return newData;
+            }
+        });
+        
+        // 保存迁移后的数据
+        const saveResponse = await fetch(API.DATA, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action: 'update',
+                name: schemaName,
+                data: migratedData
+            })
+        });
+        
+        const saveResult = await saveResponse.json();
+        if (saveResult.success) {
+            console.log('配表数据已同步更新');
+        } else {
+            console.error('配表数据同步失败:', saveResult.error);
+        }
+    } catch (error) {
+        console.error('迁移配表数据错误:', error);
     }
 }
 
@@ -859,7 +1198,8 @@ function collectSubfields(parentIndex) {
 
 // ========== 配表管理 ==========
 async function loadSchemaSelectOptions() {
-    const select = document.getElementById('data-schema-select');
+    const inputElement = document.getElementById('data-schema-select');
+    const dropdownElement = document.getElementById('data-schema-select-dropdown');
     
     try {
         const response = await fetch(`${API.SCHEMA}?action=list`);
@@ -867,14 +1207,19 @@ async function loadSchemaSelectOptions() {
         
         if (result.success) {
             schemas = result.data || [];
-            select.innerHTML = '<option value="">-- 请选择Schema --</option>';
             
-            schemas.forEach(schema => {
-                const option = document.createElement('option');
-                option.value = schema.name;
-                option.textContent = schema.name;
-                select.appendChild(option);
-            });
+            // 格式化为 datalist 选项格式
+            const options = schemas.map(schema => ({
+                value: schema.name,
+                label: schema.description || ''
+            }));
+            
+            // 初始化自定义 datalist
+            initCustomDatalist(inputElement, dropdownElement, options);
+            
+            // 监听选择事件
+            inputElement.removeEventListener('change', loadDataForSchema);
+            inputElement.addEventListener('change', loadDataForSchema);
         }
     } catch (error) {
         console.error('加载Schema选项错误:', error);
@@ -1021,7 +1366,8 @@ async function renderDataRowEditor(index) {
 function createDataRowEditorHTML(dataRow, rowIndex) {
     const fields = currentSchema.fields || [];
     const fieldsHtml = fields.map(field => {
-        const value = dataRow.data[field.name] || field.defaultValue || '';
+        // 使用工具函数获取字段值，支持数字键
+        const value = getFieldValue(dataRow.data, field.name) ?? field.defaultValue ?? '';
         return createFieldInput(field, value, rowIndex);
     }).join('');
 
@@ -1426,7 +1772,8 @@ function createEntryInput(field, value, rowIndex) {
 function createEntryItem(field, entry, rowIndex, entryIndex) {
     const subfields = field.subfields || [];
     const subfieldsHtml = subfields.map(subfield => {
-        const value = entry[subfield.name] || subfield.defaultValue || '';
+        // 使用工具函数获取字段值，支持数字键
+        const value = getFieldValue(entry, subfield.name) ?? subfield.defaultValue ?? '';
         const subfieldId = `entry-${rowIndex}-${field.name}-${entryIndex}-${subfield.name}`;
 
         let inputHtml = '';
@@ -1544,9 +1891,9 @@ async function addEntryItem(rowIndex, fieldName) {
     const currentItemCount = container.querySelectorAll('.entry-item').length;
     const newEntry = {};
     
-    // 使用默认值初始化新条目
+    // 使用默认值初始化新条目，支持数字键
     (field.subfields || []).forEach(subfield => {
-        newEntry[subfield.name] = subfield.defaultValue || '';
+        setFieldValue(newEntry, subfield.name, subfield.defaultValue || '');
     });
 
     const itemHtml = createEntryItem(field, newEntry, rowIndex, currentItemCount);
@@ -1652,12 +1999,55 @@ async function saveData() {
         
         if (result.success) {
             alert('配表数据保存成功');
+            
+            // 保存当前编辑的数据行索引
+            const currentEditingIndex = selectedDataRowIndex;
+            
+            // 重新从服务器加载数据以确保数据同步
+            await reloadCurrentData();
+            
+            // 如果之前有选中的数据行，重新选中并渲染
+            if (currentEditingIndex >= 0 && currentEditingIndex < dataRows.length) {
+                selectedDataRowIndex = currentEditingIndex;
+                renderDataRowsList();
+                await renderDataRowEditor(currentEditingIndex);
+            }
         } else {
             alert('保存配表数据失败: ' + result.error);
         }
     } catch (error) {
         console.error('保存配表数据错误:', error);
         alert('保存配表数据失败');
+    }
+}
+
+// 重新加载当前配表数据（不改变UI状态）
+async function reloadCurrentData() {
+    try {
+        const dataResponse = await fetch(`${API.DATA}?action=get&name=${encodeURIComponent(currentSchemaName)}`);
+        const dataResult = await dataResponse.json();
+        
+        if (dataResult.success) {
+            const loadedData = dataResult.data || [];
+            dataRows = loadedData.map((row, index) => {
+                // 兼容新旧格式
+                if (row.name !== undefined && row.data !== undefined) {
+                    return {
+                        name: row.name,
+                        isRaw: row.isRaw || false,
+                        data: row.data
+                    };
+                } else {
+                    return {
+                        name: `数据行 ${index + 1}`,
+                        isRaw: false,
+                        data: row
+                    };
+                }
+            });
+        }
+    } catch (error) {
+        console.error('重新加载数据错误:', error);
     }
 }
 
@@ -1688,7 +2078,8 @@ function previewData() {
             <td class="preview-row-name">${escapeHtml(dataRow.name)}${dataRow.isRaw ? ' <span class="raw-badge">原始</span>' : ''}</td>`;
         
         fields.forEach(field => {
-            let value = rowData[field.name];
+            // 使用工具函数获取字段值，支持数字键
+            let value = getFieldValue(rowData, field.name);
             let isHtml = false;
             if (field.type === 'entry') {
                 value = `${Array.isArray(value) ? value.length : 0} 项`;
@@ -1722,16 +2113,16 @@ function collectData() {
             if (field.type === 'entry') {
                 const container = document.querySelector(`.entry-container[data-row="${rowIndex}"][data-field="${field.name}"]`);
                 if (container) {
-                    rowData[field.name] = collectEntryDataFromContainer(container, field);
+                    setFieldValue(rowData, field.name, collectEntryDataFromContainer(container, field));
                 } else {
-                    rowData[field.name] = dataRow.data[field.name] || [];
+                    setFieldValue(rowData, field.name, getFieldValue(dataRow.data, field.name) || []);
                 }
             } else {
                 const input = document.querySelector(`#field-${rowIndex}-${field.name}`);
                 if (input) {
-                    rowData[field.name] = input.value;
+                    setFieldValue(rowData, field.name, input.value);
                 } else {
-                    rowData[field.name] = dataRow.data[field.name] || '';
+                    setFieldValue(rowData, field.name, getFieldValue(dataRow.data, field.name) || '');
                 }
             }
         });
@@ -1753,7 +2144,8 @@ function collectEntryDataFromContainer(container, field) {
         subfields.forEach(subfield => {
             const input = item.querySelector(`input[id*="${subfield.name}"], select[id*="${subfield.name}"]`);
             if (input) {
-                entry[subfield.name] = input.value;
+                // 使用工具函数设置字段值，如果字段名是纯数字则使用数字键
+                setFieldValue(entry, subfield.name, input.value);
             }
         });
 
@@ -1939,7 +2331,9 @@ function generateTypeDefinition(schema, schemaName) {
             field.subfields.forEach(subfield => {
                 const subfieldType = getLuaType(subfield);
                 const comment = subfield.label || subfield.name;
-                code += `---@field ${subfield.name} ${subfieldType} ${comment}\n`;
+                // 如果字段名不是合法的 Lua 标识符（比如纯数字），使用 [fieldName] 格式
+                const fieldName = isValidLuaIdentifier(subfield.name) ? subfield.name : `[${subfield.name}]`;
+                code += `---@field ${fieldName} ${subfieldType} ${comment}\n`;
             });
             code += '\n';
         }
@@ -1950,7 +2344,9 @@ function generateTypeDefinition(schema, schemaName) {
     fields.forEach(field => {
         const fieldType = getLuaType(field, schemaName);
         const comment = field.label || field.name;
-        code += `---@field ${field.name} ${fieldType} ${comment}\n`;
+        // 如果字段名不是合法的 Lua 标识符（比如纯数字），使用 [fieldName] 格式
+        const fieldName = isValidLuaIdentifier(field.name) ? field.name : `[${field.name}]`;
+        code += `---@field ${fieldName} ${fieldType} ${comment}\n`;
     });
     
     return code;
@@ -2045,12 +2441,18 @@ function generateLuaFields(row, schema, indent) {
     const fields = schema.fields || [];
     
     fields.forEach((field, fieldIndex) => {
-        const value = row[field.name];
+        // 使用工具函数获取字段值，支持数字键
+        const value = getFieldValue(row, field.name);
         
-        // 智能选择字段名格式: 合法标识符用直接格式,否则用["xxx"]格式
+        // 智能选择字段名格式
         if (isValidLuaIdentifier(field.name)) {
+            // 合法的 Lua 标识符，直接使用
             code += `${indent}${field.name} = `;
+        } else if (/^\d+$/.test(field.name)) {
+            // 纯数字，使用 [number] 格式（不带引号）
+            code += `${indent}[${field.name}] = `;
         } else {
+            // 其他情况，使用 ["string"] 格式
             code += `${indent}["${field.name}"] = `;
         }
         
@@ -2090,13 +2492,19 @@ function formatLuaEntry(entry, field) {
     let parts = [];
     
     subfields.forEach(subfield => {
-        const value = entry[subfield.name];
+        // 使用工具函数获取字段值，支持数字键
+        const value = getFieldValue(entry, subfield.name);
         const luaValue = formatLuaValue(value, subfield.type, subfield.isRaw);
         
         // 智能选择字段名格式
         if (isValidLuaIdentifier(subfield.name)) {
+            // 合法的 Lua 标识符，直接使用
             parts.push(`${subfield.name} = ${luaValue}`);
+        } else if (/^\d+$/.test(subfield.name)) {
+            // 纯数字，使用 [number] 格式（不带引号）
+            parts.push(`[${subfield.name}] = ${luaValue}`);
         } else {
+            // 其他情况，使用 ["string"] 格式
             parts.push(`["${subfield.name}"] = ${luaValue}`);
         }
     });

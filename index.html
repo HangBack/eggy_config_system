@@ -91,9 +91,16 @@
                 <h2>配表编辑</h2>
                 <div class="schema-selector">
                     <label>选择Schema：</label>
-                    <select id="data-schema-select" class="form-control">
-                        <option value="">-- 请选择Schema --</option>
-                    </select>
+                    <div class="custom-datalist-wrapper" style="max-width: 300px;">
+                        <input type="text" 
+                               id="data-schema-select" 
+                               class="custom-datalist-input" 
+                               placeholder="请输入或选择Schema..."
+                               autocomplete="off">
+                        <div class="custom-datalist-dropdown" id="data-schema-select-dropdown">
+                            <div class="custom-datalist-empty">暂无Schema</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
