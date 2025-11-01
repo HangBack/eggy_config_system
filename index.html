@@ -104,6 +104,9 @@
                         <button class="btn btn-success" id="save-data-btn">
                             <i class="fas fa-save"></i> 保存
                         </button>
+                        <button class="btn btn-secondary" id="preview-data-btn" style="display: none;">
+                            <i class="fas fa-eye"></i> 预览
+                        </button>
                         <button class="btn btn-primary" id="export-lua-btn" style="display: none;">
                             <i class="fas fa-file-export"></i> 导出Lua
                         </button>
@@ -176,6 +179,28 @@
                     <i class="fas fa-copy"></i> 复制代码
                 </button>
                 <button class="btn btn-secondary" onclick="closeLuaExportModal()">
+                    <i class="fas fa-times"></i> 关闭
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 预览模态框 -->
+    <div id="preview-modal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>数据预览</h3>
+                <button class="btn-close" onclick="closePreviewModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="preview-container" class="preview-container">
+                    <!-- 预览内容 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closePreviewModal()">
                     <i class="fas fa-times"></i> 关闭
                 </button>
             </div>

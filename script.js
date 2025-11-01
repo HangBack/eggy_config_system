@@ -36,6 +36,7 @@ function initializeApp() {
     document.getElementById('data-schema-select').addEventListener('change', loadDataForSchema);
     document.getElementById('add-data-row-btn').addEventListener('click', addDataRow);
     document.getElementById('save-data-btn').addEventListener('click', saveData);
+    document.getElementById('preview-data-btn').addEventListener('click', previewData);
     document.getElementById('export-lua-btn').addEventListener('click', exportToLua);
 
     // 绑定导出Lua模态框事件
@@ -438,17 +439,59 @@ function bindFieldEditorEvents(index) {
 
 function renderFieldTypeSpecific(field, index) {
     if (field.type === 'option') {
+        const dataSourceType = field.dataSource?.type || 'manual';
+        const linkedSchema = field.dataSource?.schema || '';
         return `
             <div class="form-group">
-                <label>选项列表（每行一个）</label>
-                <textarea id="field-options-${index}" class="form-control" rows="4" placeholder="选项1&#10;选项2&#10;选项3">${(field.options || []).join('\n')}</textarea>
+                <label>数据源</label>
+                <select id="field-datasource-type-${index}" class="form-control" onchange="updateDataSourceType(${index}, this.value)">
+                    <option value="manual" ${dataSourceType === 'manual' ? 'selected' : ''}>手动输入</option>
+                    <option value="linked" ${dataSourceType === 'linked' ? 'selected' : ''}>关联配表</option>
+                </select>
+            </div>
+            <div id="field-datasource-config-${index}">
+                ${dataSourceType === 'manual' ? `
+                    <div class="form-group">
+                        <label>选项列表（每行一个）</label>
+                        <textarea id="field-options-${index}" class="form-control" rows="4" placeholder="选项1&#10;选项2&#10;选项3">${(field.options || []).join('\n')}</textarea>
+                    </div>
+                ` : `
+                    <div class="form-group">
+                        <label>关联的配表</label>
+                        <select id="field-linked-schema-${index}" class="form-control">
+                            <option value="">-- 请选择配表 --</option>
+                            ${schemas.map(s => `<option value="${s.name}" ${linkedSchema === s.name ? 'selected' : ''}>${s.name}</option>`).join('')}
+                        </select>
+                    </div>
+                `}
             </div>
         `;
     } else if (field.type === 'datalist') {
+        const dataSourceType = field.dataSource?.type || 'manual';
+        const linkedSchema = field.dataSource?.schema || '';
         return `
             <div class="form-group">
-                <label>数据列表配置（格式: value|label，每行一个）</label>
-                <textarea id="field-datalist-${index}" class="form-control" rows="4" placeholder="value1|标签1&#10;value2|标签2">${formatDatalist(field.options || [])}</textarea>
+                <label>数据源</label>
+                <select id="field-datasource-type-${index}" class="form-control" onchange="updateDataSourceType(${index}, this.value)">
+                    <option value="manual" ${dataSourceType === 'manual' ? 'selected' : ''}>手动输入</option>
+                    <option value="linked" ${dataSourceType === 'linked' ? 'selected' : ''}>关联配表</option>
+                </select>
+            </div>
+            <div id="field-datasource-config-${index}">
+                ${dataSourceType === 'manual' ? `
+                    <div class="form-group">
+                        <label>数据列表配置（格式: value|label，每行一个）</label>
+                        <textarea id="field-datalist-${index}" class="form-control" rows="4" placeholder="value1|标签1&#10;value2|标签2">${formatDatalist(field.options || [])}</textarea>
+                    </div>
+                ` : `
+                    <div class="form-group">
+                        <label>关联的配表</label>
+                        <select id="field-linked-schema-${index}" class="form-control">
+                            <option value="">-- 请选择配表 --</option>
+                            ${schemas.map(s => `<option value="${s.name}" ${linkedSchema === s.name ? 'selected' : ''}>${s.name}</option>`).join('')}
+                        </select>
+                    </div>
+                `}
             </div>
         `;
     } else if (field.type === 'entry') {
@@ -489,7 +532,7 @@ function renderSubfields(subfields, parentIndex) {
                 </div>
                 <div class="form-group">
                     <label>字段类型</label>
-                    <select class="form-control subfield-type">
+                    <select class="form-control subfield-type" onchange="updateSubfieldType(${parentIndex}, ${subIndex}, this.value)">
                         <option value="text" ${subfield.type === 'text' ? 'selected' : ''}>文本</option>
                         <option value="number" ${subfield.type === 'number' ? 'selected' : ''}>数字</option>
                         <option value="option" ${subfield.type === 'option' ? 'selected' : ''}>选项</option>
@@ -524,17 +567,59 @@ function renderSubfields(subfields, parentIndex) {
 
 function renderSubfieldTypeSpecific(subfield, parentIndex, subIndex) {
     if (subfield.type === 'option') {
+        const dataSourceType = subfield.dataSource?.type || 'manual';
+        const linkedSchema = subfield.dataSource?.schema || '';
         return `
             <div class="form-group">
-                <label>选项列表（每行一个）</label>
-                <textarea class="form-control subfield-options" rows="3" placeholder="选项1&#10;选项2&#10;选项3">${(subfield.options || []).join('\n')}</textarea>
+                <label>数据源</label>
+                <select class="form-control subfield-datasource-type" onchange="updateSubfieldDataSourceType(${parentIndex}, ${subIndex}, this.value)">
+                    <option value="manual" ${dataSourceType === 'manual' ? 'selected' : ''}>手动输入</option>
+                    <option value="linked" ${dataSourceType === 'linked' ? 'selected' : ''}>关联配表</option>
+                </select>
+            </div>
+            <div class="subfield-datasource-config-${parentIndex}-${subIndex}">
+                ${dataSourceType === 'manual' ? `
+                    <div class="form-group">
+                        <label>选项列表（每行一个）</label>
+                        <textarea class="form-control subfield-options" rows="3" placeholder="选项1&#10;选项2&#10;选项3">${(subfield.options || []).join('\n')}</textarea>
+                    </div>
+                ` : `
+                    <div class="form-group">
+                        <label>关联的配表</label>
+                        <select class="form-control subfield-linked-schema">
+                            <option value="">-- 请选择配表 --</option>
+                            ${schemas.map(s => `<option value="${s.name}" ${linkedSchema === s.name ? 'selected' : ''}>${s.name}</option>`).join('')}
+                        </select>
+                    </div>
+                `}
             </div>
         `;
     } else if (subfield.type === 'datalist') {
+        const dataSourceType = subfield.dataSource?.type || 'manual';
+        const linkedSchema = subfield.dataSource?.schema || '';
         return `
             <div class="form-group">
-                <label>数据列表配置（格式: value|label，每行一个）</label>
-                <textarea class="form-control subfield-datalist" rows="3" placeholder="value1|标签1&#10;value2|标签2">${formatDatalist(subfield.options || [])}</textarea>
+                <label>数据源</label>
+                <select class="form-control subfield-datasource-type" onchange="updateSubfieldDataSourceType(${parentIndex}, ${subIndex}, this.value)">
+                    <option value="manual" ${dataSourceType === 'manual' ? 'selected' : ''}>手动输入</option>
+                    <option value="linked" ${dataSourceType === 'linked' ? 'selected' : ''}>关联配表</option>
+                </select>
+            </div>
+            <div class="subfield-datasource-config-${parentIndex}-${subIndex}">
+                ${dataSourceType === 'manual' ? `
+                    <div class="form-group">
+                        <label>数据列表配置（格式: value|label，每行一个）</label>
+                        <textarea class="form-control subfield-datalist" rows="3" placeholder="value1|标签1&#10;value2|标签2">${formatDatalist(subfield.options || [])}</textarea>
+                    </div>
+                ` : `
+                    <div class="form-group">
+                        <label>关联的配表</label>
+                        <select class="form-control subfield-linked-schema">
+                            <option value="">-- 请选择配表 --</option>
+                            ${schemas.map(s => `<option value="${s.name}" ${linkedSchema === s.name ? 'selected' : ''}>${s.name}</option>`).join('')}
+                        </select>
+                    </div>
+                `}
             </div>
         `;
     }
@@ -550,9 +635,70 @@ function formatDatalist(options) {
     }).join('\n');
 }
 
+function updateDataSourceType(fieldIndex, type) {
+    const field = currentSchema.fields[fieldIndex];
+    if (!field.dataSource) {
+        field.dataSource = {};
+    }
+    field.dataSource.type = type;
+    
+    // 重新渲染字段特定区域
+    document.getElementById(`field-type-specific-${fieldIndex}`).innerHTML = 
+        renderFieldTypeSpecific(field, fieldIndex);
+}
 
+function updateSubfieldType(parentIndex, subIndex, type) {
+    const subfield = currentSchema.fields[parentIndex].subfields[subIndex];
+    subfield.type = type;
+    
+    // 重新渲染子字段类型特定区域
+    const container = document.querySelector(`.subfield-type-specific-${parentIndex}-${subIndex}`);
+    if (container) {
+        container.innerHTML = renderSubfieldTypeSpecific(subfield, parentIndex, subIndex);
+    }
+    
+    // 更新原始文本复选框的显示
+    const optionsRow = container.previousElementSibling;
+    if (optionsRow && optionsRow.classList.contains('field-options-row')) {
+        optionsRow.innerHTML = (type === 'text' || type === 'option' || type === 'datalist') ? `
+            <label>
+                <input type="checkbox" class="subfield-raw" ${subfield.isRaw ? 'checked' : ''}>
+                原始文本
+            </label>
+        ` : '';
+    }
+}
 
-
+function updateSubfieldDataSourceType(parentIndex, subIndex, type) {
+    const subfield = currentSchema.fields[parentIndex].subfields[subIndex];
+    if (!subfield.dataSource) {
+        subfield.dataSource = {};
+    }
+    subfield.dataSource.type = type;
+    
+    // 重新渲染子字段特定区域
+    document.querySelector(`.subfield-datasource-config-${parentIndex}-${subIndex}`).innerHTML = 
+        type === 'manual' ? 
+        (subfield.type === 'option' ? `
+            <div class="form-group">
+                <label>选项列表（每行一个）</label>
+                <textarea class="form-control subfield-options" rows="3" placeholder="选项1&#10;选项2&#10;选项3">${(subfield.options || []).join('\n')}</textarea>
+            </div>
+        ` : `
+            <div class="form-group">
+                <label>数据列表配置（格式: value|label，每行一个）</label>
+                <textarea class="form-control subfield-datalist" rows="3" placeholder="value1|标签1&#10;value2|标签2">${formatDatalist(subfield.options || [])}</textarea>
+            </div>
+        `) : `
+            <div class="form-group">
+                <label>关联的配表</label>
+                <select class="form-control subfield-linked-schema">
+                    <option value="">-- 请选择配表 --</option>
+                    ${schemas.map(s => `<option value="${s.name}">${s.name}</option>`).join('')}
+                </select>
+            </div>
+        `;
+}
 
 function addSubfield(parentIndex) {
     const field = currentSchema.fields[parentIndex];
@@ -604,20 +750,40 @@ function collectFields() {
     // 现在字段数据已经在currentSchema中实时更新了
     // 但我们需要收集类型特定的配置（选项、数据列表等）
     currentSchema.fields.forEach((field, index) => {
-        if (field.type === 'option') {
-            const optionsElement = document.getElementById(`field-options-${index}`);
-            if (optionsElement) {
-                const optionsText = optionsElement.value.trim();
-                field.options = optionsText ? optionsText.split('\n').filter(opt => opt.trim()) : [];
-            }
-        } else if (field.type === 'datalist') {
-            const datalistElement = document.getElementById(`field-datalist-${index}`);
-            if (datalistElement) {
-                const datalistText = datalistElement.value.trim();
-                field.options = datalistText ? datalistText.split('\n').map(line => {
-                    const parts = line.trim().split('|');
-                    return parts.length === 2 ? { value: parts[0].trim(), label: parts[1].trim() } : line.trim();
-                }).filter(opt => opt) : [];
+        if (field.type === 'option' || field.type === 'datalist') {
+            // 收集数据源配置
+            const dataSourceTypeSelect = document.getElementById(`field-datasource-type-${index}`);
+            if (dataSourceTypeSelect) {
+                if (!field.dataSource) {
+                    field.dataSource = {};
+                }
+                field.dataSource.type = dataSourceTypeSelect.value;
+                
+                if (field.dataSource.type === 'manual') {
+                    // 手动输入
+                    if (field.type === 'option') {
+                        const optionsElement = document.getElementById(`field-options-${index}`);
+                        if (optionsElement) {
+                            const optionsText = optionsElement.value.trim();
+                            field.options = optionsText ? optionsText.split('\n').filter(opt => opt.trim()) : [];
+                        }
+                    } else {
+                        const datalistElement = document.getElementById(`field-datalist-${index}`);
+                        if (datalistElement) {
+                            const datalistText = datalistElement.value.trim();
+                            field.options = datalistText ? datalistText.split('\n').map(line => {
+                                const parts = line.trim().split('|');
+                                return parts.length === 2 ? { value: parts[0].trim(), label: parts[1].trim() } : line.trim();
+                            }).filter(opt => opt) : [];
+                        }
+                    }
+                } else {
+                    // 关联配表
+                    const linkedSchemaSelect = document.getElementById(`field-linked-schema-${index}`);
+                    if (linkedSchemaSelect) {
+                        field.dataSource.schema = linkedSchemaSelect.value;
+                    }
+                }
             }
         } else if (field.type === 'entry') {
             field.subfields = collectSubfields(index);
@@ -652,20 +818,36 @@ function collectSubfields(parentIndex) {
         }
 
         // 处理类型特定配置
-        if (subfield.type === 'option') {
-            const optionsElement = element.querySelector('.subfield-options');
-            if (optionsElement) {
-                const optionsText = optionsElement.value.trim();
-                subfield.options = optionsText ? optionsText.split('\n').filter(opt => opt.trim()) : [];
-            }
-        } else if (subfield.type === 'datalist') {
-            const datalistElement = element.querySelector('.subfield-datalist');
-            if (datalistElement) {
-                const datalistText = datalistElement.value.trim();
-                subfield.options = datalistText ? datalistText.split('\n').map(line => {
-                    const parts = line.trim().split('|');
-                    return parts.length === 2 ? { value: parts[0].trim(), label: parts[1].trim() } : line.trim();
-                }).filter(opt => opt) : [];
+        if (subfield.type === 'option' || subfield.type === 'datalist') {
+            // 检查数据源类型
+            const dataSourceTypeElement = element.querySelector('.subfield-datasource-type');
+            if (dataSourceTypeElement) {
+                const dataSourceType = dataSourceTypeElement.value;
+                subfield.dataSource = { type: dataSourceType };
+
+                if (dataSourceType === 'manual') {
+                    if (subfield.type === 'option') {
+                        const optionsElement = element.querySelector('.subfield-options');
+                        if (optionsElement) {
+                            const optionsText = optionsElement.value.trim();
+                            subfield.options = optionsText ? optionsText.split('\n').filter(opt => opt.trim()) : [];
+                        }
+                    } else if (subfield.type === 'datalist') {
+                        const datalistElement = element.querySelector('.subfield-datalist');
+                        if (datalistElement) {
+                            const datalistText = datalistElement.value.trim();
+                            subfield.options = datalistText ? datalistText.split('\n').map(line => {
+                                const parts = line.trim().split('|');
+                                return parts.length === 2 ? { value: parts[0].trim(), label: parts[1].trim() } : line.trim();
+                            }).filter(opt => opt) : [];
+                        }
+                    }
+                } else if (dataSourceType === 'linked') {
+                    const linkedSchemaElement = element.querySelector('.subfield-linked-schema');
+                    if (linkedSchemaElement) {
+                        subfield.dataSource.schema = linkedSchemaElement.value;
+                    }
+                }
             }
         }
 
@@ -753,6 +935,7 @@ async function loadDataForSchema() {
             '<div class="empty-state"><i class="fas fa-hand-pointer"></i><p>请从左侧选择或添加数据行</p></div>';
         document.getElementById('data-editor').style.display = 'block';
         document.getElementById('data-table-title').textContent = `${schemaName} - 配表数据`;
+        document.getElementById('preview-data-btn').style.display = 'inline-flex';
         document.getElementById('export-lua-btn').style.display = 'inline-flex';
     } catch (error) {
         console.error('加载数据错误:', error);
@@ -803,7 +986,7 @@ function updateDataRowName(index, newName) {
     dataRows[index].name = newName;
 }
 
-function renderDataRowEditor(index) {
+async function renderDataRowEditor(index) {
     const container = document.getElementById('data-row-editor-container');
     const dataRow = dataRows[index];
     
@@ -830,6 +1013,9 @@ function renderDataRowEditor(index) {
             dataRows[index].isRaw = rawCheckbox.checked;
         });
     }
+    
+    // 异步加载关联字段的选项
+    await loadLinkedFieldOptions(index);
 }
 
 function createDataRowEditorHTML(dataRow, rowIndex) {
@@ -857,6 +1043,305 @@ function createDataRowEditorHTML(dataRow, rowIndex) {
     `;
 }
 
+// 获取字段的选项列表（支持关联配表）
+async function getFieldOptions(field) {
+    // 如果是关联配表模式
+    if (field.dataSource && field.dataSource.type === 'linked' && field.dataSource.schema) {
+        const linkedSchemaName = field.dataSource.schema;
+        try {
+            const response = await fetch(`${API_BASE}/data?action=load&name=${encodeURIComponent(linkedSchemaName)}`);
+            const result = await response.json();
+            
+            if (result.success && result.data) {
+                // 将数据行名称作为选项返回
+                return result.data.map(row => {
+                    // 兼容新旧格式
+                    if (typeof row === 'object' && row.name !== undefined) {
+                        return row.name;
+                    } else if (typeof row === 'object' && row.data) {
+                        return Object.values(row.data)[0] || '';
+                    }
+                    return '';
+                }).filter(opt => opt);
+            }
+        } catch (error) {
+            console.error('加载关联配表数据失败:', error);
+        }
+    }
+    
+    // 手动输入模式，直接返回选项
+    return field.options || [];
+}
+
+// 初始化自定义 datalist 事件
+function initCustomDatalist(inputElement, dropdownElement, options) {
+    const wrapper = inputElement.closest('.custom-datalist-wrapper');
+    if (!wrapper) return;
+    
+    let currentOptions = options;
+    let activeIndex = -1;
+    
+    // 渲染选项列表
+    function renderOptions(filteredOptions) {
+        if (!filteredOptions || filteredOptions.length === 0) {
+            dropdownElement.innerHTML = '<div class="custom-datalist-empty">无匹配项</div>';
+            return;
+        }
+        
+        const optionsHtml = filteredOptions.map((opt, index) => {
+            let valueText, labelText;
+            if (typeof opt === 'object') {
+                valueText = opt.value;
+                labelText = opt.label;
+            } else {
+                valueText = opt;
+                labelText = '';
+            }
+            
+            const isSelected = inputElement.value === valueText;
+            return `
+                <div class="custom-datalist-option ${isSelected ? 'selected' : ''}" data-index="${index}" data-value="${escapeHtml(valueText)}">
+                    <span class="custom-datalist-option-value">${escapeHtml(valueText)}</span>
+                    ${labelText ? `<span class="custom-datalist-option-label">${escapeHtml(labelText)}</span>` : ''}
+                </div>
+            `;
+        }).join('');
+        
+        dropdownElement.innerHTML = optionsHtml;
+    }
+    
+    // 过滤选项
+    function filterOptions(searchText) {
+        if (!searchText) return currentOptions;
+        
+        const search = searchText.toLowerCase();
+        return currentOptions.filter(opt => {
+            if (typeof opt === 'object') {
+                return opt.value.toLowerCase().includes(search) || 
+                       (opt.label && opt.label.toLowerCase().includes(search));
+            }
+            return opt.toLowerCase().includes(search);
+        });
+    }
+    
+    // 显示下拉列表
+    function showDropdown() {
+        const filtered = filterOptions(inputElement.value);
+        renderOptions(filtered);
+        dropdownElement.classList.add('show');
+        activeIndex = -1;
+    }
+    
+    // 隐藏下拉列表
+    function hideDropdown() {
+        dropdownElement.classList.remove('show');
+        activeIndex = -1;
+    }
+    
+    // 选择选项
+    function selectOption(value) {
+        inputElement.value = value;
+        hideDropdown();
+        inputElement.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    
+    // 高亮活动选项
+    function setActiveOption(index) {
+        const options = dropdownElement.querySelectorAll('.custom-datalist-option');
+        options.forEach(opt => opt.classList.remove('active'));
+        
+        if (index >= 0 && index < options.length) {
+            options[index].classList.add('active');
+            options[index].scrollIntoView({ block: 'nearest' });
+            activeIndex = index;
+        }
+    }
+    
+    // 输入事件
+    inputElement.addEventListener('focus', () => {
+        showDropdown();
+    });
+    
+    inputElement.addEventListener('input', () => {
+        showDropdown();
+    });
+    
+    // 键盘导航
+    inputElement.addEventListener('keydown', (e) => {
+        if (!dropdownElement.classList.contains('show')) return;
+        
+        const options = dropdownElement.querySelectorAll('.custom-datalist-option');
+        
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setActiveOption(Math.min(activeIndex + 1, options.length - 1));
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setActiveOption(Math.max(activeIndex - 1, 0));
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (activeIndex >= 0 && activeIndex < options.length) {
+                const value = options[activeIndex].getAttribute('data-value');
+                selectOption(value);
+            }
+        } else if (e.key === 'Escape') {
+            hideDropdown();
+        }
+    });
+    
+    // 点击选项
+    dropdownElement.addEventListener('click', (e) => {
+        const option = e.target.closest('.custom-datalist-option');
+        if (option) {
+            const value = option.getAttribute('data-value');
+            selectOption(value);
+        }
+    });
+    
+    // 点击外部关闭
+    document.addEventListener('click', (e) => {
+        if (!wrapper.contains(e.target)) {
+            hideDropdown();
+        }
+    });
+    
+    // 初始渲染
+    renderOptions(currentOptions);
+}
+
+// 加载所有关联字段的选项
+async function loadLinkedFieldOptions(rowIndex) {
+    const fields = currentSchema.fields || [];
+    
+    for (const field of fields) {
+        if (field.type === 'option' || field.type === 'datalist') {
+            // 检查是否是关联配表模式
+            if (field.dataSource && field.dataSource.type === 'linked') {
+                const options = await getFieldOptions(field);
+                const currentValue = dataRows[rowIndex].data[field.name] || '';
+                
+                // 更新选项
+                if (field.type === 'option') {
+                    const selectElement = document.getElementById(`field-${rowIndex}-${field.name}`);
+                    if (selectElement) {
+                        const optionsHtml = options.map(opt => 
+                            `<option value="${escapeHtml(opt)}" ${currentValue === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`
+                        ).join('');
+                        selectElement.innerHTML = `<option value="">-- 请选择 --</option>${optionsHtml}`;
+                    }
+                } else if (field.type === 'datalist') {
+                    const inputElement = document.getElementById(`field-${rowIndex}-${field.name}`);
+                    const dropdownElement = document.getElementById(`datalist-field-${rowIndex}-${field.name}`);
+                    if (inputElement && dropdownElement) {
+                        // 将简单字符串转换为对象格式（关联模式只返回字符串）
+                        const formattedOptions = options.map(opt => 
+                            typeof opt === 'string' ? { value: opt, label: '' } : opt
+                        );
+                        initCustomDatalist(inputElement, dropdownElement, formattedOptions);
+                    }
+                }
+            } else {
+                // 手动模式，直接使用 field.options
+                const currentValue = dataRows[rowIndex].data[field.name] || '';
+                const options = field.options || [];
+                
+                if (field.type === 'option') {
+                    const selectElement = document.getElementById(`field-${rowIndex}-${field.name}`);
+                    if (selectElement) {
+                        const optionsHtml = options.map(opt => 
+                            `<option value="${escapeHtml(opt)}" ${currentValue === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`
+                        ).join('');
+                        selectElement.innerHTML = `<option value="">-- 请选择 --</option>${optionsHtml}`;
+                    }
+                } else if (field.type === 'datalist') {
+                    const inputElement = document.getElementById(`field-${rowIndex}-${field.name}`);
+                    const dropdownElement = document.getElementById(`datalist-field-${rowIndex}-${field.name}`);
+                    if (inputElement && dropdownElement) {
+                        // 手动模式已经是正确的格式
+                        const formattedOptions = options.map(opt => {
+                            if (typeof opt === 'object') {
+                                return opt;
+                            }
+                            return { value: opt, label: '' };
+                        });
+                        initCustomDatalist(inputElement, dropdownElement, formattedOptions);
+                    }
+                }
+            }
+        }
+        
+        // 处理条目类型的子字段
+        if (field.type === 'entry' && field.subfields) {
+            await loadLinkedSubfieldOptions(rowIndex, field);
+        }
+    }
+}
+
+// 加载条目子字段的关联选项
+async function loadLinkedSubfieldOptions(rowIndex, field) {
+    const entries = dataRows[rowIndex].data[field.name] || [];
+    
+    for (let entryIndex = 0; entryIndex < entries.length; entryIndex++) {
+        for (const subfield of field.subfields) {
+            if (subfield.type === 'option' || subfield.type === 'datalist') {
+                const subfieldId = `entry-${rowIndex}-${field.name}-${entryIndex}-${subfield.name}`;
+                
+                // 检查是否是关联配表模式
+                if (subfield.dataSource && subfield.dataSource.type === 'linked') {
+                    const options = await getFieldOptions(subfield);
+                    const currentValue = entries[entryIndex][subfield.name] || '';
+                    
+                    // 更新选项
+                    if (subfield.type === 'option') {
+                        const selectElement = document.getElementById(subfieldId);
+                        if (selectElement) {
+                            const optionsHtml = options.map(opt => 
+                                `<option value="${escapeHtml(opt)}" ${currentValue === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`
+                            ).join('');
+                            selectElement.innerHTML = `<option value="">-- 请选择 --</option>${optionsHtml}`;
+                        }
+                    } else if (subfield.type === 'datalist') {
+                        const inputElement = document.getElementById(subfieldId);
+                        const dropdownElement = document.getElementById(`datalist-${subfieldId}`);
+                        if (inputElement && dropdownElement) {
+                            const formattedOptions = options.map(opt => 
+                                typeof opt === 'string' ? { value: opt, label: '' } : opt
+                            );
+                            initCustomDatalist(inputElement, dropdownElement, formattedOptions);
+                        }
+                    }
+                } else {
+                    // 手动模式，直接使用 subfield.options
+                    const currentValue = entries[entryIndex][subfield.name] || '';
+                    const options = subfield.options || [];
+                    
+                    if (subfield.type === 'option') {
+                        const selectElement = document.getElementById(subfieldId);
+                        if (selectElement) {
+                            const optionsHtml = options.map(opt => 
+                                `<option value="${escapeHtml(opt)}" ${currentValue === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`
+                            ).join('');
+                            selectElement.innerHTML = `<option value="">-- 请选择 --</option>${optionsHtml}`;
+                        }
+                    } else if (subfield.type === 'datalist') {
+                        const inputElement = document.getElementById(subfieldId);
+                        const dropdownElement = document.getElementById(`datalist-${subfieldId}`);
+                        if (inputElement && dropdownElement) {
+                            const formattedOptions = options.map(opt => {
+                                if (typeof opt === 'object') {
+                                    return opt;
+                                }
+                                return { value: opt, label: '' };
+                            });
+                            initCustomDatalist(inputElement, dropdownElement, formattedOptions);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 function createFieldInput(field, value, rowIndex) {
     const fieldId = `field-${rowIndex}-${field.name}`;
     
@@ -872,29 +1357,28 @@ function createFieldInput(field, value, rowIndex) {
             break;
         
         case 'option':
-            const options = (field.options || []).map(opt => 
-                `<option value="${escapeHtml(opt)}" ${value === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`
-            ).join('');
-            inputHtml = `<select id="${fieldId}" class="form-control" ${field.required ? 'required' : ''}>
-                <option value="">-- 请选择 --</option>
-                ${options}
+            // 使用占位符，稍后异步加载选项
+            inputHtml = `<select id="${fieldId}" class="form-control linked-field" data-field-name="${field.name}" ${field.required ? 'required' : ''}>
+                <option value="">-- 加载中... --</option>
             </select>`;
             break;
         
         case 'datalist':
             const datalistId = `datalist-${fieldId}`;
-            const datalistOptions = (field.options || []).map(opt => {
-                if (typeof opt === 'object') {
-                    return `<option value="${escapeHtml(opt.value)}">${escapeHtml(opt.label)}</option>`;
-                }
-                return `<option value="${escapeHtml(opt)}"></option>`;
-            }).join('');
+            // 使用自定义下拉列表
             inputHtml = `
-                <div class="datalist-wrapper">
-                    <input type="text" id="${fieldId}" list="${datalistId}" class="form-control" value="${escapeHtml(value)}" ${field.required ? 'required' : ''}>
-                    <datalist id="${datalistId}">
-                        ${datalistOptions}
-                    </datalist>
+                <div class="custom-datalist-wrapper" data-datalist-id="${datalistId}">
+                    <input type="text" 
+                           id="${fieldId}" 
+                           class="custom-datalist-input" 
+                           data-field-name="${field.name}" 
+                           value="${escapeHtml(value)}" 
+                           ${field.required ? 'required' : ''}
+                           autocomplete="off"
+                           placeholder="请输入或选择...">
+                    <div class="custom-datalist-dropdown" id="${datalistId}">
+                        <div class="custom-datalist-empty">加载中...</div>
+                    </div>
                 </div>
             `;
             break;
@@ -957,28 +1441,27 @@ function createEntryItem(field, entry, rowIndex, entryIndex) {
                 break;
             
             case 'option':
-                const options = (subfield.options || []).map(opt => 
-                    `<option value="${escapeHtml(opt)}" ${value === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`
-                ).join('');
+                // 使用占位符，稍后异步加载选项
                 inputHtml = `<select id="${subfieldId}" class="form-control">
-                    <option value="">-- 请选择 --</option>
-                    ${options}
+                    <option value="">-- 加载中... --</option>
                 </select>`;
                 break;
             
             case 'datalist':
                 const datalistId = `datalist-${subfieldId}`;
-                const datalistOptions = (subfield.options || []).map(opt => {
-                    if (typeof opt === 'object') {
-                        return `<option value="${escapeHtml(opt.value)}">${escapeHtml(opt.label)}</option>`;
-                    }
-                    return `<option value="${escapeHtml(opt)}"></option>`;
-                }).join('');
+                // 使用自定义下拉列表
                 inputHtml = `
-                    <input type="text" id="${subfieldId}" list="${datalistId}" class="form-control" value="${escapeHtml(value)}">
-                    <datalist id="${datalistId}">
-                        ${datalistOptions}
-                    </datalist>
+                    <div class="custom-datalist-wrapper" data-datalist-id="${datalistId}">
+                        <input type="text" 
+                               id="${subfieldId}" 
+                               class="custom-datalist-input" 
+                               value="${escapeHtml(value)}"
+                               autocomplete="off"
+                               placeholder="请输入或选择...">
+                        <div class="custom-datalist-dropdown" id="${datalistId}">
+                            <div class="custom-datalist-empty">加载中...</div>
+                        </div>
+                    </div>
                 `;
                 break;
         }
@@ -1047,7 +1530,7 @@ function removeDataRow(index) {
     }
 }
 
-function addEntryItem(rowIndex, fieldName) {
+async function addEntryItem(rowIndex, fieldName) {
     const field = currentSchema.fields.find(f => f.name === fieldName);
     if (!field) return;
 
@@ -1068,6 +1551,59 @@ function addEntryItem(rowIndex, fieldName) {
 
     const itemHtml = createEntryItem(field, newEntry, rowIndex, currentItemCount);
     container.insertAdjacentHTML('beforeend', itemHtml);
+    
+    // 加载新添加条目的关联子字段选项
+    for (const subfield of field.subfields || []) {
+        if (subfield.type === 'option' || subfield.type === 'datalist') {
+            const subfieldId = `entry-${rowIndex}-${fieldName}-${currentItemCount}-${subfield.name}`;
+            
+            if (subfield.dataSource && subfield.dataSource.type === 'linked') {
+                const options = await getFieldOptions(subfield);
+                
+                if (subfield.type === 'option') {
+                    const selectElement = document.getElementById(subfieldId);
+                    if (selectElement) {
+                        const optionsHtml = options.map(opt => 
+                            `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`
+                        ).join('');
+                        selectElement.innerHTML = `<option value="">-- 请选择 --</option>${optionsHtml}`;
+                    }
+                } else if (subfield.type === 'datalist') {
+                    const datalistElement = document.getElementById(`datalist-${subfieldId}`);
+                    if (datalistElement) {
+                        const optionsHtml = options.map(opt => 
+                            `<option value="${escapeHtml(opt)}"></option>`
+                        ).join('');
+                        datalistElement.innerHTML = optionsHtml;
+                    }
+                }
+            } else {
+                // 手动模式，直接使用 subfield.options
+                const options = subfield.options || [];
+                
+                if (subfield.type === 'option') {
+                    const selectElement = document.getElementById(subfieldId);
+                    if (selectElement) {
+                        const optionsHtml = options.map(opt => 
+                            `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`
+                        ).join('');
+                        selectElement.innerHTML = `<option value="">-- 请选择 --</option>${optionsHtml}`;
+                    }
+                } else if (subfield.type === 'datalist') {
+                    const datalistElement = document.getElementById(`datalist-${subfieldId}`);
+                    if (datalistElement) {
+                        const datalistOptions = options.map(opt => {
+                            if (typeof opt === 'object') {
+                                return `<option value="${escapeHtml(opt.value)}">${escapeHtml(opt.label)}</option>`;
+                            }
+                            return `<option value="${escapeHtml(opt)}"></option>`;
+                        }).join('');
+                        datalistElement.innerHTML = datalistOptions;
+                    }
+                }
+            }
+        }
+    }
 }
 
 function removeEntryItem(rowIndex, fieldName, entryIndex) {
@@ -1123,6 +1659,56 @@ async function saveData() {
         console.error('保存配表数据错误:', error);
         alert('保存配表数据失败');
     }
+}
+
+function previewData() {
+    const modal = document.getElementById('preview-modal');
+    modal.classList.add('show');
+    
+    const container = document.getElementById('preview-container');
+    const data = collectData();
+    
+    let html = `<div class="preview-table-wrapper">
+        <table class="preview-table">
+            <thead>
+                <tr>
+                    <th>数据行名称</th>`;
+    
+    // 表头
+    const fields = currentSchema.fields || [];
+    fields.forEach(field => {
+        html += `<th>${escapeHtml(field.label || field.name)}</th>`;
+    });
+    html += '</tr></thead><tbody>';
+    
+    // 数据行
+    dataRows.forEach((dataRow, index) => {
+        const rowData = data[index];
+        html += `<tr>
+            <td class="preview-row-name">${escapeHtml(dataRow.name)}${dataRow.isRaw ? ' <span class="raw-badge">原始</span>' : ''}</td>`;
+        
+        fields.forEach(field => {
+            let value = rowData[field.name];
+            let isHtml = false;
+            if (field.type === 'entry') {
+                value = `${Array.isArray(value) ? value.length : 0} 项`;
+            } else if (value === '' || value === null || value === undefined) {
+                value = '<span class="empty-value">nil</span>';
+                isHtml = true;
+            }
+            html += `<td>${isHtml ? value : escapeHtml(String(value))}</td>`;
+        });
+        
+        html += '</tr>';
+    });
+    
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+}
+
+function closePreviewModal() {
+    const modal = document.getElementById('preview-modal');
+    modal.classList.remove('show');
 }
 
 function collectData() {

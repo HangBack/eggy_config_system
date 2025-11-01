@@ -1,0 +1,622 @@
+[
+  {
+    "name": "FishCode.Clownfish",
+    "isRaw": true,
+    "data": {
+      "id": "Clownfish",
+      "name": "小丑鱼",
+      "image": "1674687236",
+      "priority": "Common",
+      "quality_range": [
+        {
+          "min": 100,
+          "max": 300
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073815606,
+      "start_scale": 0.2,
+      "base_value": 120
+    }
+  },
+  {
+    "name": "FishCode.Anthias",
+    "isRaw": true,
+    "data": {
+      "id": "Anthias",
+      "name": "海金鱼",
+      "image": "1643426622",
+      "priority": "Common",
+      "quality_range": [
+        {
+          "min": 100,
+          "max": 500
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073832050,
+      "start_scale": 0.1,
+      "base_value": 150
+    }
+  },
+  {
+    "name": "FishCode.SeaBream",
+    "isRaw": true,
+    "data": {
+      "id": "SeaBream",
+      "name": "海鲫鱼",
+      "image": "1625900520",
+      "priority": "Uncommon",
+      "quality_range": [
+        {
+          "min": 500,
+          "max": 4000
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073840251,
+      "start_scale": 0.1,
+      "base_value": 40
+    }
+  },
+  {
+    "name": "FishCode.Salmon",
+    "isRaw": true,
+    "data": {
+      "id": "Salmon",
+      "name": "鲑鱼",
+      "image": "1703636999",
+      "priority": "Rare",
+      "quality_range": [
+        {
+          "min": 3000,
+          "max": 30000
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073836120,
+      "start_scale": 0.1,
+      "base_value": 233
+    }
+  },
+  {
+    "name": "FishCode.BullShark",
+    "isRaw": true,
+    "data": {
+      "id": "BullShark",
+      "name": "牛鲨",
+      "image": "1746399836",
+      "priority": "Rare",
+      "quality_range": [
+        {
+          "min": 90000,
+          "max": 230000
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073819771,
+      "start_scale": 0.3,
+      "base_value": 15
+    }
+  },
+  {
+    "name": "FishCode.GreatWhiteShark",
+    "isRaw": true,
+    "data": {
+      "id": "GreatWhiteShark",
+      "name": "大白鲨",
+      "image": "1669770660",
+      "priority": "Mythic",
+      "quality_range": [
+        {
+          "min": 680000,
+          "max": 1900000
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073823768,
+      "start_scale": 0.2,
+      "base_value": 70
+    }
+  },
+  {
+    "name": "FishCode.SilverPomfret",
+    "isRaw": true,
+    "data": {
+      "id": "SilverPomfret",
+      "name": "鲳鱼",
+      "image": "1639033275",
+      "priority": "Common",
+      "quality_range": [
+        {
+          "min": 400,
+          "max": 1000
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073844261,
+      "start_scale": 0.05,
+      "base_value": 35
+    }
+  },
+  {
+    "name": "FishCode.Snapper",
+    "isRaw": true,
+    "data": {
+      "id": "Snapper",
+      "name": "鲷鱼",
+      "image": "1612964003",
+      "priority": "Common",
+      "quality_range": [
+        {
+          "min": 3000,
+          "max": 10000
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073848442,
+      "start_scale": 0.1,
+      "base_value": 25
+    }
+  },
+  {
+    "name": "FishCode.Seahorse",
+    "isRaw": true,
+    "data": {
+      "id": "Seahorse",
+      "name": "海马",
+      "image": "1743515168",
+      "priority": "Rare",
+      "quality_range": [
+        {
+          "min": 5,
+          "max": 200
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073852522,
+      "start_scale": 0.1,
+      "base_value": 600
+    }
+  },
+  {
+    "name": "FishCode.Butterflyfish",
+    "isRaw": true,
+    "data": {
+      "id": "Butterflyfish",
+      "name": "蝴蝶鱼",
+      "image": "1785763001",
+      "priority": "Common",
+      "quality_range": [
+        {
+          "min": 100,
+          "max": 500
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073856587,
+      "start_scale": 0.1,
+      "base_value": 85
+    }
+  },
+  {
+    "name": "FishCode.KillerWhale",
+    "isRaw": true,
+    "data": {
+      "id": "KillerWhale",
+      "name": "虎鲸",
+      "image": "1676108843",
+      "priority": "Mythic",
+      "quality_range": [
+        {
+          "min": 2600000,
+          "max": 9000000
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073860667,
+      "start_scale": 0.1,
+      "base_value": 60
+    }
+  },
+  {
+    "name": "FishCode.SwordFish",
+    "isRaw": true,
+    "data": {
+      "id": "SwordFish",
+      "name": "剑鱼",
+      "image": "1705896167",
+      "priority": "Epic",
+      "quality_range": [
+        {
+          "min": 150000,
+          "max": 450000
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073864756,
+      "start_scale": 0.1,
+      "base_value": 85
+    }
+  },
+  {
+    "name": "FishCode.Tuna",
+    "isRaw": true,
+    "data": {
+      "id": "Tuna",
+      "name": "金枪鱼",
+      "image": "1618903474",
+      "priority": "Epic",
+      "quality_range": [
+        {
+          "min": 200000,
+          "max": 600000
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073868852,
+      "start_scale": 0.1,
+      "base_value": 75
+    }
+  },
+  {
+    "name": "FishCode.Bannerfish",
+    "isRaw": true,
+    "data": {
+      "id": "Bannerfish",
+      "name": "马夫鱼",
+      "image": "1754935464",
+      "priority": "Common",
+      "quality_range": [
+        {
+          "min": 200,
+          "max": 800
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073877003,
+      "start_scale": 0.1,
+      "base_value": 70
+    }
+  },
+  {
+    "name": "FishCode.Triggerfish",
+    "isRaw": true,
+    "data": {
+      "id": "Triggerfish",
+      "name": "炮弹鱼",
+      "image": "1749697912",
+      "priority": "Uncommon",
+      "quality_range": [
+        {
+          "min": 1000,
+          "max": 10000
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073881119,
+      "start_scale": 0.1,
+      "base_value": 100
+    }
+  },
+  {
+    "name": "FishCode.Sailfish",
+    "isRaw": true,
+    "data": {
+      "id": "Sailfish",
+      "name": "旗鱼",
+      "image": "1717542426",
+      "priority": "Rare",
+      "quality_range": [
+        {
+          "min": 40000,
+          "max": 100000
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073885297,
+      "start_scale": 0.1,
+      "base_value": 35
+    }
+  },
+  {
+    "name": "FishCode.Sacabambaspis",
+    "isRaw": true,
+    "data": {
+      "id": "Sacabambaspis",
+      "name": "萨卡班甲鱼",
+      "image": "1790036124",
+      "priority": "Secret",
+      "quality_range": [
+        {
+          "min": 1000,
+          "max": 3000
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073889302,
+      "start_scale": 0.1,
+      "base_value": 18888
+    }
+  },
+  {
+    "name": "FishCode.SilverSillago",
+    "isRaw": true,
+    "data": {
+      "id": "SilverSillago",
+      "name": "沙尖鱼",
+      "image": "1847743942",
+      "priority": "Common",
+      "quality_range": [
+        {
+          "min": 200,
+          "max": 500
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073893465,
+      "start_scale": 0.1,
+      "base_value": 40
+    }
+  },
+  {
+    "name": "FishCode.Angelfish",
+    "isRaw": true,
+    "data": {
+      "id": "Angelfish",
+      "name": "神仙鱼",
+      "image": "1745096821",
+      "priority": "Common",
+      "quality_range": [
+        {
+          "min": 500,
+          "max": 2000
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073897564,
+      "start_scale": 0.1,
+      "base_value": 40
+    }
+  },
+  {
+    "name": "FishCode.Epinephelus",
+    "isRaw": true,
+    "data": {
+      "id": "Epinephelus",
+      "name": "石斑鱼",
+      "image": "1827434131",
+      "priority": "Rare",
+      "quality_range": [
+        {
+          "min": 10000,
+          "max": 400000
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073901586,
+      "start_scale": 0.1,
+      "base_value": 12
+    }
+  },
+  {
+    "name": "FishCode.Goby",
+    "isRaw": true,
+    "data": {
+      "id": "Goby",
+      "name": "虾虎鱼",
+      "image": "1789289105",
+      "priority": "Common",
+      "quality_range": [
+        {
+          "min": 10,
+          "max": 100
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073905681,
+      "start_scale": 0.1,
+      "base_value": 85
+    }
+  },
+  {
+    "name": "FishCode.Moonfish",
+    "isRaw": true,
+    "data": {
+      "id": "Moonfish",
+      "name": "月亮鱼",
+      "image": "1812100361",
+      "priority": "Legendary",
+      "quality_range": [
+        {
+          "min": 150000,
+          "max": 2000000
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073917956,
+      "start_scale": 0.1,
+      "base_value": 30
+    }
+  },
+  {
+    "name": "FishCode.MeneMaculata",
+    "isRaw": true,
+    "data": {
+      "id": "MeneMaculata",
+      "name": "眼镜鱼",
+      "image": "1689537194",
+      "priority": "Common",
+      "quality_range": [
+        {
+          "min": 500,
+          "max": 1500
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073909843,
+      "start_scale": 0.1,
+      "base_value": 85
+    }
+  },
+  {
+    "name": "FishCode.Architeuthis",
+    "isRaw": true,
+    "data": {
+      "id": "Architeuthis",
+      "name": "深海鱿鱼",
+      "image": "1659491663",
+      "priority": "Epic",
+      "quality_range": [
+        {
+          "min": 150000,
+          "max": 450000
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073913882,
+      "start_scale": 0.1,
+      "base_value": 30
+    }
+  },
+  {
+    "name": "FishCode.SeaMullet",
+    "isRaw": true,
+    "data": {
+      "id": "SeaMullet",
+      "name": "鲻鱼",
+      "image": "1611037869",
+      "priority": "Uncommon",
+      "quality_range": [
+        {
+          "min": 500,
+          "max": 4000
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073922145,
+      "start_scale": 0.1,
+      "base_value": 60
+    }
+  },
+  {
+    "name": "FishCode.Barracuda",
+    "isRaw": true,
+    "data": {
+      "id": "Barracuda",
+      "name": "梭子鱼",
+      "image": "1864265915",
+      "priority": "Rare",
+      "quality_range": [
+        {
+          "min": 5000,
+          "max": 50000
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073926187,
+      "start_scale": 0.1,
+      "base_value": 50
+    }
+  },
+  {
+    "name": "FishCode.JonahCrab",
+    "isRaw": true,
+    "data": {
+      "id": "JonahCrab",
+      "name": "面包蟹",
+      "image": "1702577034",
+      "priority": "Rare",
+      "quality_range": [
+        {
+          "min": 500,
+          "max": 1500
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073930298,
+      "start_scale": 0.1,
+      "base_value": 2888
+    }
+  },
+  {
+    "name": "FishCode.AmericanLobster",
+    "isRaw": true,
+    "data": {
+      "id": "AmericanLobster",
+      "name": "波士顿龙虾",
+      "image": "1683784030",
+      "priority": "Rare",
+      "quality_range": [
+        {
+          "min": 500,
+          "max": 4000
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073934423,
+      "start_scale": 0.1,
+      "base_value": 500
+    }
+  },
+  {
+    "name": "FishCode.DeepSeaGlutton",
+    "isRaw": true,
+    "data": {
+      "id": "DeepSeaGlutton",
+      "name": "深海饕餮",
+      "image": "1743207403",
+      "priority": "Legendary",
+      "quality_range": [
+        {
+          "min": 500000,
+          "max": 1200000
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073938555,
+      "start_scale": 0.1,
+      "base_value": 45
+    }
+  },
+  {
+    "name": "FishCode.BlueShark",
+    "isRaw": true,
+    "data": {
+      "id": "BlueShark",
+      "name": "大青鲨",
+      "image": "1858954524",
+      "priority": "Legendary",
+      "quality_range": [
+        {
+          "min": 80000,
+          "max": 200000
+        }
+      ],
+      "mutation": 0,
+      "model_key": 1073872966,
+      "start_scale": 0.1,
+      "base_value": 125
+    }
+  },
+  {
+    "name": "FishCode.SaltyFish",
+    "isRaw": true,
+    "data": {
+      "id": "SaltyFish",
+      "name": "咸鱼",
+      "image": "15372",
+      "priority": "Secret",
+      "quality_range": [
+        {
+          "min": 1000,
+          "max": 5000
+        }
+      ],
+      "mutation": 0,
+      "model_key": 102179,
+      "start_scale": 1,
+      "base_value": 337
+    }
+  }
+]

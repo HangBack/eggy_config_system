@@ -1,0 +1,194 @@
+[
+  {
+    "name": "AreaCode.FisheggyIsland",
+    "isRaw": true,
+    "data": {
+      "area": "FisheggyIsland",
+      "space": "1817315067",
+      "entries": [
+        {
+          "code": "Clownfish",
+          "weight": "50"
+        },
+        {
+          "code": "SeaBream",
+          "weight": "35"
+        },
+        {
+          "code": "BullShark",
+          "weight": "10"
+        },
+        {
+          "code": "Bannerfish",
+          "weight": "50"
+        },
+        {
+          "code": "Anthias",
+          "weight": "50"
+        },
+        {
+          "code": "Epinephelus",
+          "weight": "10"
+        },
+        {
+          "code": "Butterflyfish",
+          "weight": "50"
+        },
+        {
+          "code": "Goby",
+          "weight": "50"
+        },
+        {
+          "code": "Seahorse",
+          "weight": "10"
+        },
+        {
+          "code": "SilverPomfret",
+          "weight": "50"
+        },
+        {
+          "code": "SilverSillago",
+          "weight": "50"
+        },
+        {
+          "code": "Snapper",
+          "weight": "50"
+        },
+        {
+          "code": "Moonfish",
+          "weight": "1"
+        },
+        {
+          "code": "SaltyFish",
+          "weight": "1"
+        }
+      ]
+    }
+  },
+  {
+    "name": "AreaCode.VolcanoIsland",
+    "isRaw": true,
+    "data": {
+      "area": "VolcanoIsland",
+      "space": "1996499721",
+      "entries": [
+        {
+          "code": "Triggerfish",
+          "weight": "60"
+        },
+        {
+          "code": "Epinephelus",
+          "weight": "40"
+        },
+        {
+          "code": "Sacabambaspis",
+          "weight": "2"
+        }
+      ]
+    }
+  },
+  {
+    "name": "AreaCode.IceMountainIsland",
+    "isRaw": true,
+    "data": {
+      "area": "IceMountainIsland",
+      "space": "1867366161",
+      "entries": [
+        {
+          "code": "AmericanLobster",
+          "weight": "25"
+        },
+        {
+          "code": "Angelfish",
+          "weight": "25"
+        },
+        {
+          "code": "Salmon",
+          "weight": "25"
+        },
+        {
+          "code": "SeaMullet",
+          "weight": "35"
+        },
+        {
+          "code": "JonahCrab",
+          "weight": "15"
+        },
+        {
+          "code": "KillerWhale",
+          "weight": "1"
+        },
+        {
+          "code": "Clownfish",
+          "weight": "100"
+        },
+        {
+          "code": "SilverSillago",
+          "weight": "100"
+        },
+        {
+          "code": "SilverPomfret",
+          "weight": "100"
+        }
+      ]
+    }
+  },
+  {
+    "name": "AreaCode.Ocean",
+    "isRaw": true,
+    "data": {
+      "area": "Ocean",
+      "space": "",
+      "entries": [
+        {
+          "code": "FishCode.Architeuthis",
+          "weight": "20"
+        },
+        {
+          "code": "FishCode.Barracuda",
+          "weight": "30"
+        },
+        {
+          "code": "FishCode.BlueShark",
+          "weight": "10"
+        },
+        {
+          "code": "FishCode.DeepSeaGlutton",
+          "weight": "10"
+        },
+        {
+          "code": "FishCode.GreatWhiteShark",
+          "weight": "1"
+        },
+        {
+          "code": "FishCode.Sailfish",
+          "weight": "30"
+        },
+        {
+          "code": "FishCode.SwordFish",
+          "weight": "20"
+        },
+        {
+          "code": "FishCode.Tuna",
+          "weight": "20"
+        },
+        {
+          "code": "FishCode.Clownfish",
+          "weight": "220"
+        },
+        {
+          "code": "FishCode.SilverSillago",
+          "weight": "220"
+        },
+        {
+          "code": "FishCode.SilverPomfret",
+          "weight": "220"
+        },
+        {
+          "code": "FishCode.Bannerfish",
+          "weight": "220"
+        }
+      ]
+    }
+  }
+]

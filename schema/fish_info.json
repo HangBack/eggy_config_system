@@ -1,0 +1,111 @@
+{
+  "name": "fish_info",
+  "description": "鱼类信息配置",
+  "fields": [
+    {
+      "name": "id",
+      "label": "鱼类ID",
+      "type": "text",
+      "defaultValue": "",
+      "required": true,
+      "isRaw": false,
+      "luaType": "FishCode"
+    },
+    {
+      "name": "name",
+      "label": "名称",
+      "type": "text",
+      "defaultValue": "",
+      "required": true,
+      "isRaw": false
+    },
+    {
+      "name": "image",
+      "label": "图片ID",
+      "type": "text",
+      "defaultValue": "",
+      "required": false,
+      "isRaw": false
+    },
+    {
+      "name": "priority",
+      "label": "稀有度",
+      "type": "option",
+      "defaultValue": "Common",
+      "required": true,
+      "isRaw": true,
+      "luaType": "Priority",
+      "dataSource": {
+        "type": "manual"
+      },
+      "options": [
+        "Common",
+        "Uncommon",
+        "Rare",
+        "Epic",
+        "Legendary",
+        "Mythic",
+        "Secret"
+      ]
+    },
+    {
+      "name": "quality_range",
+      "label": "品质范围",
+      "type": "entry",
+      "defaultValue": [],
+      "required": true,
+      "subfields": [
+        {
+          "name": "min",
+          "label": "最小值",
+          "type": "number",
+          "defaultValue": "0",
+          "isRaw": false
+        },
+        {
+          "name": "max",
+          "label": "最大值",
+          "type": "number",
+          "defaultValue": "100",
+          "isRaw": false
+        }
+      ]
+    },
+    {
+      "name": "mutation",
+      "label": "变异值",
+      "type": "number",
+      "defaultValue": "0",
+      "required": false,
+      "isRaw": false
+    },
+    {
+      "name": "model_key",
+      "label": "模型Key",
+      "type": "number",
+      "defaultValue": "",
+      "required": true,
+      "isRaw": false
+    },
+    {
+      "name": "start_scale",
+      "label": "初始缩放",
+      "type": "number",
+      "defaultValue": "0.1",
+      "required": false,
+      "isRaw": false
+    },
+    {
+      "name": "base_value",
+      "label": "基础价值",
+      "type": "number",
+      "defaultValue": "0",
+      "required": false,
+      "isRaw": false
+    }
+  ],
+  "exportConfig": {
+    "namespace": "Fish",
+    "requires": []
+  }
+}
