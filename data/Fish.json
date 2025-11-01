@@ -1,0 +1,134 @@
+[
+  {
+    "name": "Fish.Carp",
+    "isRaw": false,
+    "data": {
+      "id": 1,
+      "fishName": "鲤鱼",
+      "fishType": "freshwater",
+      "rarity": "Common",
+      "weight": "2-8",
+      "catchDifficulty": 2,
+      "iconColor": "FFA500",
+      "rewards": [
+        {
+          "rewardType": "金币",
+          "rewardId": 0,
+          "amount": 50,
+          "probability": 100
+        },
+        {
+          "rewardType": "经验",
+          "rewardId": 0,
+          "amount": 10,
+          "probability": 100
+        }
+      ]
+    }
+  },
+  {
+    "name": "Fish.Bass",
+    "isRaw": false,
+    "data": {
+      "id": 2,
+      "fishName": "鲈鱼",
+      "fishType": "freshwater",
+      "rarity": "Rare",
+      "weight": "3-10",
+      "catchDifficulty": 4,
+      "iconColor": "4682B4",
+      "rewards": [
+        {
+          "rewardType": "金币",
+          "rewardId": 0,
+          "amount": 120,
+          "probability": 100
+        },
+        {
+          "rewardType": "经验",
+          "rewardId": 0,
+          "amount": 25,
+          "probability": 100
+        },
+        {
+          "rewardType": "道具",
+          "rewardId": 1001,
+          "amount": 1,
+          "probability": 20
+        }
+      ]
+    }
+  },
+  {
+    "name": "Fish.Tuna",
+    "isRaw": false,
+    "data": {
+      "id": 3,
+      "fishName": "金枪鱼",
+      "fishType": "saltwater",
+      "rarity": "Epic",
+      "weight": "50-200",
+      "catchDifficulty": 7,
+      "iconColor": "1E90FF",
+      "rewards": [
+        {
+          "rewardType": "金币",
+          "rewardId": 0,
+          "amount": 500,
+          "probability": 100
+        },
+        {
+          "rewardType": "经验",
+          "rewardId": 0,
+          "amount": 80,
+          "probability": 100
+        },
+        {
+          "rewardType": "道具",
+          "rewardId": 2001,
+          "amount": 1,
+          "probability": 50
+        }
+      ]
+    }
+  },
+  {
+    "name": "Fish.Dragon",
+    "isRaw": false,
+    "data": {
+      "id": 4,
+      "fishName": "龙鱼",
+      "fishType": "legendary",
+      "rarity": "Legendary",
+      "weight": "100-500",
+      "catchDifficulty": 10,
+      "iconColor": "FF4500",
+      "rewards": [
+        {
+          "rewardType": "金币",
+          "rewardId": 0,
+          "amount": 2000,
+          "probability": 100
+        },
+        {
+          "rewardType": "经验",
+          "rewardId": 0,
+          "amount": 300,
+          "probability": 100
+        },
+        {
+          "rewardType": "道具",
+          "rewardId": 3001,
+          "amount": 1,
+          "probability": 100
+        },
+        {
+          "rewardType": "道具",
+          "rewardId": 3002,
+          "amount": 1,
+          "probability": 30
+        }
+      ]
+    }
+  }
+]

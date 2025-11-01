@@ -1,0 +1,23 @@
+{
+  "name": "FishType",
+  "description": "鱼类类型",
+  "namespace": "Enum",
+  "type": "string",
+  "values": [
+    {
+      "key": "Freshwater",
+      "value": "freshwater",
+      "label": "淡水鱼"
+    },
+    {
+      "key": "Saltwater",
+      "value": "saltwater",
+      "label": "海水鱼"
+    },
+    {
+      "key": "Legendary",
+      "value": "legendary",
+      "label": "传说生物"
+    }
+  ]
+}

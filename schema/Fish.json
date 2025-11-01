@@ -1,0 +1,132 @@
+{
+  "description": "鱼类配置表",
+  "exportConfig": {
+    "namespace": "Tile",
+    "requires": [],
+    "tableKeyType": "string"
+  },
+  "fields": [
+    {
+      "comment": "唯一标识",
+      "defaultValue": "1",
+      "label": "鱼类ID",
+      "luaType": "",
+      "name": "id",
+      "required": true,
+      "type": "number"
+    },
+    {
+      "comment": "鱼的名称",
+      "defaultValue": "",
+      "isRaw": false,
+      "label": "鱼类名称",
+      "luaType": "",
+      "name": "fishName",
+      "required": true,
+      "type": "text"
+    },
+    {
+      "comment": "淡水/海水/传说",
+      "dataSource": {
+        "enum": "FishType",
+        "type": "enum"
+      },
+      "defaultValue": "",
+      "label": "鱼类类型",
+      "luaType": "",
+      "name": "fishType",
+      "required": true,
+      "type": "datalist"
+    },
+    {
+      "comment": "稀有度等级",
+      "dataSource": {
+        "enum": "RarityLevel",
+        "type": "enum"
+      },
+      "defaultValue": "",
+      "label": "稀有度",
+      "luaType": "",
+      "name": "rarity",
+      "required": true,
+      "type": "option"
+    },
+    {
+      "comment": "鱼的重量范围(kg)",
+      "defaultValue": "1-5",
+      "isRaw": false,
+      "label": "重量范围",
+      "luaType": "",
+      "name": "weight",
+      "required": true,
+      "type": "text"
+    },
+    {
+      "comment": "1-10的难度等级",
+      "defaultValue": "1",
+      "label": "捕获难度",
+      "luaType": "",
+      "name": "catchDifficulty",
+      "required": true,
+      "type": "number"
+    },
+    {
+      "comment": "鱼类图标主色",
+      "defaultValue": "3498DB",
+      "label": "图标颜色",
+      "luaType": "",
+      "name": "iconColor",
+      "required": false,
+      "type": "color"
+    },
+    {
+      "comment": "捕获后的奖励",
+      "label": "奖励列表",
+      "name": "rewards",
+      "required": false,
+      "subfields": [
+        {
+          "dataSource": {
+            "type": "manual"
+          },
+          "defaultValue": "",
+          "label": "奖励类型",
+          "name": "rewardType",
+          "options": [
+            "金币",
+            "经验",
+            "道具"
+          ],
+          "required": true,
+          "type": "option"
+        },
+        {
+          "defaultValue": "0",
+          "label": "奖励ID",
+          "name": "rewardId",
+          "required": false,
+          "type": "number"
+        },
+        {
+          "defaultValue": "1",
+          "label": "数量",
+          "name": "amount",
+          "required": true,
+          "type": "number"
+        },
+        {
+          "defaultValue": "100",
+          "label": "概率",
+          "name": "probability",
+          "required": false,
+          "type": "number"
+        }
+      ],
+      "type": "entry"
+    }
+  ],
+  "name": "Fish",
+  "namespace": "Config",
+  "requires": [],
+  "tableKeyType": "number"
+}

@@ -5,7 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>配表系统</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
+    <!-- CSS 样式文件 -->
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/schema.css">
+    <link rel="stylesheet" href="css/data.css">
+    <link rel="stylesheet" href="css/enum.css">
 </head>
 <body>
     <div class="container">
@@ -14,6 +18,7 @@
             <h1>配表系统</h1>
             <div class="nav-tabs">
                 <button class="nav-tab active" data-tab="schema">Schema编辑</button>
+                <button class="nav-tab" data-tab="enum">枚举管理</button>
                 <button class="nav-tab" data-tab="data">配表编辑</button>
             </div>
         </header>
@@ -85,6 +90,85 @@
             </div>
         </div>
 
+        <!-- 枚举管理面板 -->
+        <div class="panel" id="enum-panel" style="display: none;">
+            <div class="panel-header">
+                <h2>枚举管理</h2>
+                <button class="btn btn-primary" id="add-enum-btn">
+                    <i class="fas fa-plus"></i> 新建枚举
+                </button>
+            </div>
+
+            <div class="enum-list">
+                <div class="schema-list-header">
+                    <h3>枚举列表</h3>
+                </div>
+                <div id="enum-items" class="schema-items">
+                    <!-- 枚举项将动态添加 -->
+                </div>
+            </div>
+
+            <div class="schema-editor" id="enum-editor" style="display: none;">
+                <div class="editor-header">
+                    <h3 id="enum-editor-title">编辑枚举</h3>
+                    <div class="editor-actions">
+                        <button class="btn btn-success" id="save-enum-btn">
+                            <i class="fas fa-save"></i> 保存
+                        </button>
+                        <button class="btn btn-secondary" id="cancel-enum-btn">
+                            <i class="fas fa-times"></i> 取消
+                        </button>
+                        <button class="btn btn-primary" id="export-enum-lua-btn" style="display: none;">
+                            <i class="fas fa-file-export"></i> 导出Lua
+                        </button>
+                    </div>
+                </div>
+
+                <div class="editor-basic-info enum-basic-info-grid">
+                    <div class="form-group">
+                        <label>枚举名称</label>
+                        <input type="text" id="enum-name-input" class="form-control" placeholder="例如: RodCode">
+                    </div>
+
+                    <div class="form-group">
+                        <label>枚举类型</label>
+                        <select id="enum-type-select" class="form-control">
+                            <option value="number">数字</option>
+                            <option value="string">字符</option>
+                            <option value="flag">标志</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Namespace</label>
+                        <input type="text" id="enum-namespace-input" class="form-control" placeholder="Enum" value="Enum">
+                    </div>
+                    
+                    <div class="form-group form-group-full">
+                        <label>枚举描述</label>
+                        <input type="text" id="enum-desc-input" class="form-control" placeholder="请输入枚举描述">
+                    </div>
+                </div>
+
+                <div class="enum-values-container">
+                    <div class="enum-values-header">
+                        <h4>枚举值</h4>
+                        <div class="enum-values-actions">
+                            <button class="btn btn-sm btn-secondary" id="preview-enum-btn" style="display: none;">
+                                <i class="fas fa-eye"></i> 预览
+                            </button>
+                            <button class="btn btn-sm btn-primary" id="add-enum-value-btn">
+                                <i class="fas fa-plus"></i> 添加
+                            </button>
+                        </div>
+                    </div>
+                    <div id="enum-values-list" class="enum-values-list">
+                        <!-- 枚举值列表 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- 配表编辑面板 -->
         <div class="panel" id="data-panel" style="display: none;">
             <div class="panel-header">
@@ -124,9 +208,14 @@
                     <div class="editor-sidebar">
                         <div class="sidebar-header">
                             <h4>数据列表</h4>
-                            <button class="btn btn-sm btn-primary" id="add-data-row-btn">
-                                <i class="fas fa-plus"></i>
-                            </button>
+                            <div class="sidebar-header-actions">
+                                <button class="btn btn-sm btn-secondary" id="fill-enum-btn" onclick="showFillFromEnumDialog()" title="从枚举填充数据行">
+                                    <i class="fas fa-fill"></i>
+                                </button>
+                                <button class="btn btn-sm btn-primary" id="add-data-row-btn">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
                         </div>
                         <div id="data-rows-list" class="data-rows-list">
                             <!-- 数据行列表将动态添加 -->
@@ -149,7 +238,7 @@
     <div id="export-lua-modal" class="modal">
         <div class="modal-content modal-large">
             <div class="modal-header">
-                <h3>导出为Lua表</h3>
+                <h3>导出Lua</h3>
                 <button class="btn-close" onclick="closeLuaExportModal()">
                     <i class="fas fa-times"></i>
                 </button>
@@ -159,16 +248,16 @@
                     <div class="form-group">
                         <label>导出格式：</label>
                         <select id="export-format-select" class="form-control">
-                            <option value="table">Lua表格式 (table)</option>
-                            <option value="array">Lua数组格式 (array)</option>
+                            <option value="table">Lua表格 (table)</option>
+                            <option value="array">Lua数组 (array)</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Namespace名称：</label>
+                        <label>命名空间：</label>
                         <input type="text" id="export-namespace" class="form-control" placeholder="例如: Tile" value="Tile">
                     </div>
                     <div class="form-group" id="table-key-type-group">
-                        <label>Table键类型：</label>
+                        <label>字段键类型：</label>
                         <input type="text" id="export-table-key-type" class="form-control" placeholder="例如: string, integer, FishCode" value="string">
                         <small style="color: #7f8c8d;">仅在Table格式下生效，用于类型注解 @type table&lt;键类型, 值类型&gt;</small>
                     </div>
@@ -231,6 +320,59 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <!-- 填充枚举模态框 -->
+    <div id="fill-enum-modal" class="modal">
+        <div class="modal-content">
+            <h3>填充为枚举</h3>
+            <div class="form-group">
+                <label>选择枚举表</label>
+                <select id="fill-enum-select" class="form-control">
+                    <option value="">请选择枚举</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>填充方式</label>
+                <select id="fill-enum-mode" class="form-control">
+                    <option value="key">使用枚举键名 (例如: Wood, Bamboo)</option>
+                    <option value="value">使用枚举值 (例如: 1, 2)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="fill-enum-with-prefix" checked>
+                    添加枚举表名前缀 (例如: RodCode.Wood)
+                </label>
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="fill-enum-as-raw" checked>
+                    数据行名称为原始文本 (不加引号)
+                </label>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-primary" id="confirm-fill-enum-btn">确定</button>
+                <button class="btn btn-secondary" id="cancel-fill-enum-btn">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 枚举预览模态框 -->
+    <div id="enum-preview-modal" class="modal">
+        <div class="modal-content modal-content-large">
+            <h3>枚举预览</h3>
+            <div id="enum-preview-content" class="enum-preview-content">
+                <!-- 预览内容 -->
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="close-enum-preview-btn">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript文件 -->
+    <script src="js/common.js"></script>
+    <script src="js/enum-manager.js"></script>
+    <script src="js/schema-manager.js"></script>
+    <script src="js/data-manager.js"></script>
 </body>
 </html>

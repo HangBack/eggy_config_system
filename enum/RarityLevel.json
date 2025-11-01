@@ -1,0 +1,28 @@
+{
+  "name": "RarityLevel",
+  "description": "稀有度等级",
+  "namespace": "Enum",
+  "type": "number",
+  "values": [
+    {
+      "key": "Common",
+      "label": "普通",
+      "value": 1
+    },
+    {
+      "key": "Rare",
+      "label": "稀有",
+      "value": 2
+    },
+    {
+      "key": "Epic",
+      "label": "史诗",
+      "value": 3
+    },
+    {
+      "key": "Legendary",
+      "label": "传说",
+      "value": 4
+    }
+  ]
+}
