@@ -2300,6 +2300,10 @@ function exportToLua() {
     // 监听格式切换，显示/隐藏键类型配置
     document.getElementById('export-format-select').addEventListener('change', toggleTableKeyTypeVisibility);
     toggleTableKeyTypeVisibility();
+    
+    // 监听配置变化，自动保存到schema
+    document.getElementById('export-namespace').addEventListener('blur', saveExportConfigToSchema);
+    document.getElementById('export-table-key-type').addEventListener('blur', saveExportConfigToSchema);
 }
 
 function toggleTableKeyTypeVisibility() {
@@ -2308,16 +2312,33 @@ function toggleTableKeyTypeVisibility() {
     keyTypeGroup.style.display = format === 'table' ? 'block' : 'none';
 }
 
+function saveExportConfigToSchema() {
+    if (!currentSchema) return;
+    
+    if (!currentSchema.exportConfig) {
+        currentSchema.exportConfig = {};
+    }
+    
+    currentSchema.exportConfig.namespace = document.getElementById('export-namespace').value.trim() || 'Tile';
+    currentSchema.exportConfig.tableKeyType = document.getElementById('export-table-key-type').value.trim() || 'string';
+    currentSchema.exportConfig.requires = [...requireItems];
+    
+    // 自动保存到服务器
+    saveSchemaExportConfig();
+}
+
 function addRequireItem() {
     requireItems.push({ varName: '', path: '' });
     renderRequireList();
     updateLuaExport();
+    saveExportConfigToSchema();
 }
 
 function removeRequireItem(index) {
     requireItems.splice(index, 1);
     renderRequireList();
     updateLuaExport();
+    saveExportConfigToSchema();
 }
 
 function renderRequireList() {
@@ -2347,24 +2368,15 @@ function renderRequireList() {
 function updateRequireItem(index, field, value) {
     requireItems[index][field] = value;
     updateLuaExport();
+    saveExportConfigToSchema();
 }
 
 function closeLuaExportModal() {
     const modal = document.getElementById('export-lua-modal');
     modal.classList.remove('show');
     
-    // 保存导出配置到当前schema
-    if (currentSchema) {
-        if (!currentSchema.exportConfig) {
-            currentSchema.exportConfig = {};
-        }
-        currentSchema.exportConfig.namespace = document.getElementById('export-namespace').value.trim() || 'Tile';
-        currentSchema.exportConfig.tableKeyType = document.getElementById('export-table-key-type').value.trim() || 'string';
-        currentSchema.exportConfig.requires = [...requireItems];
-        
-        // 自动保存schema（静默保存，不弹提示）
-        saveSchemaExportConfig();
-    }
+    // 关闭时再次保存（确保所有更改都已保存）
+    saveExportConfigToSchema();
 }
 
 async function saveSchemaExportConfig() {
