@@ -374,16 +374,21 @@ function createFieldEditorHTML(field, index) {
         </div>
         
         <div class="field-compact-row">
-            <div class="field-compact-actions">
-                <label>
-                    <input type="checkbox" id="field-required-${index}" ${field.required ? 'checked' : ''}> 必填字段
-                </label>
-                ${showRawOption ? `
-                <label style="margin-left: 20px;">
-                    <input type="checkbox" id="field-raw-${index}" ${field.isRaw ? 'checked' : ''}> 原始文本（Lua导出不加引号）
-                </label>
-                ` : ''}
+            <div class="form-group">
+                <label>Lua注解类型（可选）</label>
+                <input type="text" id="field-luatype-${index}" class="form-control" value="${escapeHtml(field.luaType || '')}" placeholder="留空使用默认类型，如: ConfigType">
             </div>
+        </div>
+        
+        <div class="field-options-row">
+            <label>
+                <input type="checkbox" id="field-required-${index}" ${field.required ? 'checked' : ''}> 必填
+            </label>
+            ${showRawOption ? `
+            <label>
+                <input type="checkbox" id="field-raw-${index}" ${field.isRaw ? 'checked' : ''}> 原始文本
+            </label>
+            ` : ''}
         </div>
         
         <div id="field-type-specific-${index}">
@@ -398,6 +403,7 @@ function bindFieldEditorEvents(index) {
     const labelInput = document.getElementById(`field-label-${index}`);
     const typeSelect = document.getElementById(`field-type-${index}`);
     const defaultInput = document.getElementById(`field-default-${index}`);
+    const luaTypeInput = document.getElementById(`field-luatype-${index}`);
     const requiredCheckbox = document.getElementById(`field-required-${index}`);
     const rawCheckbox = document.getElementById(`field-raw-${index}`);
     
@@ -406,6 +412,7 @@ function bindFieldEditorEvents(index) {
         currentSchema.fields[index].label = labelInput.value;
         currentSchema.fields[index].type = typeSelect.value;
         currentSchema.fields[index].defaultValue = defaultInput.value;
+        currentSchema.fields[index].luaType = luaTypeInput.value.trim();
         currentSchema.fields[index].required = requiredCheckbox.checked;
         if (rawCheckbox) {
             currentSchema.fields[index].isRaw = rawCheckbox.checked;
@@ -416,6 +423,7 @@ function bindFieldEditorEvents(index) {
     nameInput.addEventListener('input', updateField);
     labelInput.addEventListener('input', updateField);
     defaultInput.addEventListener('input', updateField);
+    luaTypeInput.addEventListener('input', updateField);
     requiredCheckbox.addEventListener('change', updateField);
     if (rawCheckbox) {
         rawCheckbox.addEventListener('change', updateField);
@@ -493,11 +501,17 @@ function renderSubfields(subfields, parentIndex) {
                     <input type="text" class="form-control subfield-default" value="${escapeHtml(subfield.defaultValue || '')}" placeholder="默认值">
                 </div>
             </div>
-            <div class="subfield-checkboxes">
+            <div class="field-compact-row">
+                <div class="form-group">
+                    <label>Lua注解类型（可选）</label>
+                    <input type="text" class="form-control subfield-luatype" value="${escapeHtml(subfield.luaType || '')}" placeholder="留空使用默认类型">
+                </div>
+            </div>
+            <div class="field-options-row">
                 ${(subfield.type === 'text' || subfield.type === 'option' || subfield.type === 'datalist') ? `
-                <label style="margin-right: 15px;">
+                <label>
                     <input type="checkbox" class="subfield-raw" ${subfield.isRaw ? 'checked' : ''}>
-                    原始文本（Lua导出不加引号）
+                    原始文本
                 </label>
                 ` : ''}
             </div>
@@ -625,6 +639,12 @@ function collectSubfields(parentIndex) {
             defaultValue: element.querySelector('.subfield-default').value.trim()
         };
 
+        // 收集 Lua 类型
+        const luaTypeInput = element.querySelector('.subfield-luatype');
+        if (luaTypeInput) {
+            subfield.luaType = luaTypeInput.value.trim();
+        }
+
         // 收集原始文本标记
         const rawCheckbox = element.querySelector('.subfield-raw');
         if (rawCheckbox) {
@@ -706,10 +726,25 @@ async function loadDataForSchema() {
         
         dataRows = [];
         if (dataResult.success) {
-            dataRows = (dataResult.data || []).map((row, index) => ({
-                name: `数据行 ${index + 1}`,
-                data: row
-            }));
+            const loadedData = dataResult.data || [];
+            dataRows = loadedData.map((row, index) => {
+                // 兼容新旧格式：新格式有 name 和 data 字段，旧格式直接是数据
+                if (row.name !== undefined && row.data !== undefined) {
+                    // 新格式
+                    return {
+                        name: row.name,
+                        isRaw: row.isRaw || false,
+                        data: row.data
+                    };
+                } else {
+                    // 旧格式（向后兼容）
+                    return {
+                        name: `数据行 ${index + 1}`,
+                        isRaw: false,
+                        data: row
+                    };
+                }
+            });
         }
 
         selectedDataRowIndex = -1;
@@ -787,6 +822,14 @@ function renderDataRowEditor(index) {
             renderDataRowsList();
         });
     }
+    
+    // 绑定原始文本复选框事件
+    const rawCheckbox = document.getElementById(`data-row-raw-${index}`);
+    if (rawCheckbox) {
+        rawCheckbox.addEventListener('change', () => {
+            dataRows[index].isRaw = rawCheckbox.checked;
+        });
+    }
 }
 
 function createDataRowEditorHTML(dataRow, rowIndex) {
@@ -798,9 +841,15 @@ function createDataRowEditorHTML(dataRow, rowIndex) {
 
     return `
         <div class="data-row-editor-header">
-            <input type="text" id="data-row-name-input-${rowIndex}" class="data-row-name-input" 
-                   value="${escapeHtml(dataRow.name)}" 
-                   placeholder="数据行名称">
+            <div class="data-row-name-section">
+                <label>
+                    <input type="checkbox" id="data-row-raw-${rowIndex}" ${dataRow.isRaw ? 'checked' : ''}>
+                    原始
+                </label>
+                <input type="text" id="data-row-name-input-${rowIndex}" class="data-row-name-input" 
+                       value="${escapeHtml(dataRow.name)}" 
+                       placeholder="数据行名称">
+            </div>
         </div>
         <div class="data-row-fields">
             ${fieldsHtml}
@@ -859,9 +908,11 @@ function createFieldInput(field, value, rowIndex) {
             `;
     }
 
+    const rawBadge = field.isRaw ? '<span class="raw-badge" title="此字段Lua导出时不加引号">原始</span>' : '';
+    
     return `
         <div class="form-group">
-            <label>${escapeHtml(field.label || field.name)}${field.required ? ' *' : ''}</label>
+            <label>${escapeHtml(field.label || field.name)}${field.required ? ' *' : ''} ${rawBadge}</label>
             ${inputHtml}
         </div>
     `;
@@ -1040,6 +1091,13 @@ function removeEntryItem(rowIndex, fieldName, entryIndex) {
 
 async function saveData() {
     const data = collectData();
+    
+    // 保存完整的 dataRows 信息（包括 name 和 isRaw）
+    const dataWithMeta = dataRows.map((dataRow, index) => ({
+        name: dataRow.name,
+        isRaw: dataRow.isRaw || false,
+        data: data[index]
+    }));
 
     try {
         const response = await fetch(API.DATA, {
@@ -1050,7 +1108,7 @@ async function saveData() {
             body: JSON.stringify({
                 action: 'update',
                 name: currentSchemaName,
-                data: data
+                data: dataWithMeta
             })
         });
 
@@ -1320,6 +1378,11 @@ function toPascalCase(str) {
 }
 
 function getLuaType(field, parentName = '') {
+    // 如果设置了自定义的 Lua 类型，优先使用
+    if (field.luaType && field.luaType.trim()) {
+        return field.luaType.trim();
+    }
+    
     switch (field.type) {
         case 'number':
             return 'integer';
@@ -1350,7 +1413,13 @@ function generateLuaTable(data, schema, schemaName) {
         // 使用数据行名称作为键
         const key = dataRow.name || `item_${index + 1}`;
         
-        code += `    ["${escapeHtml(key)}"] = {\n`;
+        // 根据 isRaw 决定键的格式
+        if (dataRow.isRaw) {
+            code += `    [${key}] = {\n`;
+        } else {
+            code += `    ["${escapeHtml(key)}"] = {\n`;
+        }
+        
         code += generateLuaFields(row, schema, '        ');
         code += `    }`;
         

@@ -10,6 +10,10 @@
       {
         "path": "game.items.ItemCode",
         "varName": "ItemCode"
+      },
+      {
+        "varName": "ConfigData",
+        "path": "game.xxx.ConfigData"
       }
     ]
   },
@@ -24,7 +28,8 @@
     {
       "defaultValue": "",
       "isRaw": true,
-      "label": "枚举类型（原始文本）",
+      "label": "枚举类型",
+      "luaType": "ConfigType",
       "name": "enum_field",
       "options": [
         "ConfigType.Normal",
@@ -52,7 +57,7 @@
     {
       "defaultValue": "AreaCode.Ocean",
       "isRaw": true,
-      "label": "数据列表（原始文本）",
+      "label": "数据列表",
       "name": "datalist_field",
       "options": [
         {
