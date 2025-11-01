@@ -1,5 +1,13 @@
 # 配表系统
 
+![GitHub](https://img.shields.io/badge/GitHub-HangBack-blue?style=flat-square&logo=github)
+![Python](https://img.shields.io/badge/Python-3.7+-green?style=flat-square&logo=python)
+![Flask](https://img.shields.io/badge/Flask-2.0+-lightgrey?style=flat-square&logo=flask)
+![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
+![Platform](https://img.shields.io/badge/Platform-Web-orange?style=flat-square)
+![Lua](https://img.shields.io/badge/Export-Lua-blue?style=flat-square&logo=lua)
+![Status](https://img.shields.io/badge/Status-Active-success?style=flat-square)
+
 一个基于Web的配表编辑工具，支持自定义Schema和可视化数据编辑，可一键导出为Lua代码。
 
 ## 功能特性
