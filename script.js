@@ -1245,6 +1245,11 @@ async function loadDataForSchema() {
         return;
     }
 
+    // 在切换 schema 前，保存当前编辑的数据（如果有的话）
+    if (currentSchema && selectedDataRowIndex >= 0) {
+        saveCurrentEditToMemory();
+    }
+
     try {
         // 加载Schema定义
         const schemaResponse = await fetch(`${API.SCHEMA}?action=get&name=${encodeURIComponent(schemaName)}`);
@@ -1330,6 +1335,9 @@ function createDataRowListItem(dataRow, index) {
     `;
     
     div.addEventListener('click', () => {
+        // 在切换前保存当前编辑的数据到内存
+        saveCurrentEditToMemory();
+        
         selectedDataRowIndex = index;
         renderDataRowsList();
         renderDataRowEditor(index);
@@ -1340,6 +1348,39 @@ function createDataRowListItem(dataRow, index) {
 
 function updateDataRowName(index, newName) {
     dataRows[index].name = newName;
+}
+
+// 将当前编辑器中的数据保存到内存中的 dataRows
+function saveCurrentEditToMemory() {
+    if (selectedDataRowIndex < 0 || selectedDataRowIndex >= dataRows.length) {
+        return; // 没有选中的数据行
+    }
+    
+    const fields = currentSchema.fields || [];
+    const currentData = {};
+    
+    fields.forEach(field => {
+        if (field.type === 'entry') {
+            const container = document.querySelector(`.entry-container[data-row="${selectedDataRowIndex}"][data-field="${field.name}"]`);
+            if (container) {
+                currentData[field.name] = collectEntryDataFromContainer(container, field);
+            } else {
+                // 如果容器不存在，保持原有数据
+                currentData[field.name] = getFieldValue(dataRows[selectedDataRowIndex].data, field.name) || [];
+            }
+        } else {
+            const input = document.querySelector(`#field-${selectedDataRowIndex}-${field.name}`);
+            if (input) {
+                currentData[field.name] = input.value;
+            } else {
+                // 如果输入框不存在，保持原有数据
+                currentData[field.name] = getFieldValue(dataRows[selectedDataRowIndex].data, field.name) || '';
+            }
+        }
+    });
+    
+    // 更新内存中的数据
+    dataRows[selectedDataRowIndex].data = currentData;
 }
 
 async function renderDataRowEditor(index) {
@@ -1894,6 +1935,9 @@ function addDataRow() {
         data: newRowData
     };
 
+    // 在添加新数据行前，先保存当前编辑的数据
+    saveCurrentEditToMemory();
+
     dataRows.push(newDataRow);
     selectedDataRowIndex = dataRows.length - 1;
     
@@ -1902,6 +1946,11 @@ function addDataRow() {
 }
 
 function removeDataRow(index) {
+    // 在删除前，先保存当前编辑的数据（如果不是删除当前选中的）
+    if (selectedDataRowIndex !== index) {
+        saveCurrentEditToMemory();
+    }
+    
     dataRows.splice(index, 1);
     
     // 如果删除的是当前选中的数据行，重置选择
@@ -2017,6 +2066,9 @@ function removeEntryItem(rowIndex, fieldName, entryIndex) {
 }
 
 async function saveData() {
+    // 在保存前，先将当前编辑器中的数据保存到内存
+    saveCurrentEditToMemory();
+    
     const data = collectData();
     
     // 保存完整的 dataRows 信息（包括 name 和 isRaw）
