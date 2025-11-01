@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>配表系统</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 顶部导航 -->
+        <header class="header">
+            <h1>配表系统</h1>
+            <div class="nav-tabs">
+                <button class="nav-tab active" data-tab="schema">Schema编辑</button>
+                <button class="nav-tab" data-tab="data">配表编辑</button>
+            </div>
+        </header>
+
+        <!-- Schema编辑面板 -->
+        <div class="panel" id="schema-panel">
+            <div class="panel-header">
+                <h2>Schema管理</h2>
+                <button class="btn btn-primary" id="add-schema-btn">
+                    <i class="fas fa-plus"></i> 新建Schema
+                </button>
+            </div>
+
+            <div class="schema-list">
+                <div class="schema-list-header">
+                    <h3>Schema列表</h3>
+                </div>
+                <div id="schema-items" class="schema-items">
+                    <!-- Schema项将动态添加 -->
+                </div>
+            </div>
+
+            <div class="schema-editor" id="schema-editor" style="display: none;">
+                <div class="editor-header">
+                    <h3 id="schema-editor-title">编辑Schema</h3>
+                    <div class="editor-actions">
+                        <button class="btn btn-success" id="save-schema-btn">
+                            <i class="fas fa-save"></i> 保存
+                        </button>
+                        <button class="btn btn-secondary" id="cancel-schema-btn">
+                            <i class="fas fa-times"></i> 取消
+                        </button>
+                    </div>
+                </div>
+
+                <div class="editor-basic-info">
+                    <div class="form-group">
+                        <label>Schema名称</label>
+                        <input type="text" id="schema-name-input" class="form-control" placeholder="请输入Schema名称">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Schema描述</label>
+                        <input type="text" id="schema-desc-input" class="form-control" placeholder="请输入Schema描述">
+                    </div>
+                </div>
+
+                <div class="split-editor">
+                    <div class="editor-sidebar">
+                        <div class="sidebar-header">
+                            <h4>字段列表</h4>
+                            <button class="btn btn-sm btn-primary" id="add-field-btn">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        <div id="fields-list" class="fields-list">
+                            <!-- 字段列表将动态添加 -->
+                        </div>
+                    </div>
+                    <div class="editor-main">
+                        <div id="field-editor-container" class="field-editor-container">
+                            <div class="empty-state">
+                                <i class="fas fa-hand-pointer"></i>
+                                <p>请从左侧选择或添加字段</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 配表编辑面板 -->
+        <div class="panel" id="data-panel" style="display: none;">
+            <div class="panel-header">
+                <h2>配表编辑</h2>
+                <div class="schema-selector">
+                    <label>选择Schema：</label>
+                    <select id="data-schema-select" class="form-control">
+                        <option value="">-- 请选择Schema --</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="data-editor" class="data-editor" style="display: none;">
+                <div class="data-header">
+                    <h3 id="data-table-title">配表数据</h3>
+                    <div class="data-header-actions">
+                        <button class="btn btn-success" id="save-data-btn">
+                            <i class="fas fa-save"></i> 保存
+                        </button>
+                        <button class="btn btn-primary" id="export-lua-btn" style="display: none;">
+                            <i class="fas fa-file-export"></i> 导出Lua
+                        </button>
+                    </div>
+                </div>
+
+                <div class="split-editor">
+                    <div class="editor-sidebar">
+                        <div class="sidebar-header">
+                            <h4>数据列表</h4>
+                            <button class="btn btn-sm btn-primary" id="add-data-row-btn">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        <div id="data-rows-list" class="data-rows-list">
+                            <!-- 数据行列表将动态添加 -->
+                        </div>
+                    </div>
+                    <div class="editor-main">
+                        <div id="data-row-editor-container" class="data-row-editor-container">
+                            <div class="empty-state">
+                                <i class="fas fa-hand-pointer"></i>
+                                <p>请从左侧选择或添加数据行</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导出Lua模态框 -->
+    <div id="export-lua-modal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>导出为Lua表</h3>
+                <button class="btn-close" onclick="closeLuaExportModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="export-options">
+                    <div class="form-group">
+                        <label>导出格式：</label>
+                        <select id="export-format-select" class="form-control">
+                            <option value="table">Lua表格式 (table)</option>
+                            <option value="array">Lua数组格式 (array)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Namespace名称：</label>
+                        <input type="text" id="export-namespace" class="form-control" placeholder="例如: Tile" value="Tile">
+                    </div>
+                    <div class="form-group">
+                        <label>包导入列表：</label>
+                        <div id="require-list" class="require-list">
+                            <!-- 动态生成的包导入项 -->
+                        </div>
+                        <button type="button" class="btn btn-sm btn-primary" onclick="addRequireItem()">
+                            <i class="fas fa-plus"></i> 添加包导入
+                        </button>
+                    </div>
+                </div>
+                <div class="code-container">
+                    <pre id="lua-code-output" class="lua-code"></pre>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="copy-lua-btn">
+                    <i class="fas fa-copy"></i> 复制代码
+                </button>
+                <button class="btn btn-secondary" onclick="closeLuaExportModal()">
+                    <i class="fas fa-times"></i> 关闭
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 删除确认模态框 -->
+    <div id="confirm-modal" class="modal">
+        <div class="modal-content">
+            <h3>确认删除</h3>
+            <p id="confirm-message">确定要删除吗？</p>
+            <div class="modal-actions">
+                <button class="btn btn-danger" id="confirm-delete-btn">删除</button>
+                <button class="btn btn-secondary" id="cancel-delete-btn">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

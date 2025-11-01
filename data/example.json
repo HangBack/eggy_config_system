@@ -1,0 +1,46 @@
+[
+  {
+    "config_name": "示例配置1",
+    "enum_field": "ConfigType.Normal",
+    "text_field": "这是普通文本",
+    "number_field": "100",
+    "datalist_field": "AreaCode.Ocean",
+    "entry_list": [
+      {
+        "item_id": "ItemCode.Fish001",
+        "item_name": "小丑鱼",
+        "count": "1",
+        "rarity": "common"
+      },
+      {
+        "item_id": "ItemCode.Fish002",
+        "item_name": "鲷鱼",
+        "count": "2",
+        "rarity": "uncommon"
+      }
+    ]
+  },
+  {
+    "config_name": "示例配置2",
+    "enum_field": "ConfigType.Special",
+    "text_field": "特殊配置",
+    "number_field": "200",
+    "datalist_field": "AreaCode.River",
+    "entry_list": [
+      {
+        "item_id": "ItemCode.Fish003",
+        "item_name": "鲑鱼",
+        "count": "5",
+        "rarity": "rare"
+      }
+    ]
+  },
+  {
+    "config_name": "示例配置3",
+    "enum_field": "ConfigType.Rare",
+    "text_field": "稀有配置",
+    "number_field": "500",
+    "datalist_field": "AreaCode.Lake",
+    "entry_list": []
+  }
+]

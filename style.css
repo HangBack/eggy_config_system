@@ -1,0 +1,975 @@
+/* 全局样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+    background: #f5f5f5;
+    color: #333;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* 头部样式 */
+.header {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.header h1 {
+    font-size: 24px;
+    margin-bottom: 15px;
+    color: #2c3e50;
+}
+
+.nav-tabs {
+    display: flex;
+    gap: 10px;
+}
+
+.nav-tab {
+    padding: 10px 20px;
+    border: none;
+    background: #ecf0f1;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.nav-tab:hover {
+    background: #bdc3c7;
+}
+
+.nav-tab.active {
+    background: #3498db;
+    color: white;
+}
+
+/* 面板样式 */
+.panel {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #ecf0f1;
+}
+
+.panel-header h2 {
+    font-size: 20px;
+    color: #2c3e50;
+}
+
+/* 按钮样式 */
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.3s;
+}
+
+.btn-primary {
+    background: #3498db;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #2980b9;
+}
+
+.btn-success {
+    background: #27ae60;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #229954;
+}
+
+.btn-danger {
+    background: #e74c3c;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #c0392b;
+}
+
+.btn-secondary {
+    background: #95a5a6;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #7f8c8d;
+}
+
+.btn-sm {
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+/* Schema列表 */
+.schema-list {
+    margin-bottom: 20px;
+}
+
+.schema-list-header h3 {
+    font-size: 16px;
+    margin-bottom: 15px;
+    color: #34495e;
+}
+
+.schema-items {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 15px;
+}
+
+.schema-item {
+    background: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: 6px;
+    padding: 15px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.schema-item:hover {
+    border-color: #3498db;
+    box-shadow: 0 2px 8px rgba(52, 152, 219, 0.2);
+}
+
+.schema-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 10px;
+}
+
+.schema-item-title {
+    font-weight: bold;
+    font-size: 16px;
+    color: #2c3e50;
+}
+
+.schema-item-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.schema-item-actions .btn {
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+.schema-item-desc {
+    color: #7f8c8d;
+    font-size: 13px;
+    margin-bottom: 10px;
+}
+
+.schema-item-fields {
+    font-size: 12px;
+    color: #95a5a6;
+}
+
+/* Schema编辑器 */
+.schema-editor {
+    border-top: 2px solid #ecf0f1;
+    padding-top: 20px;
+    margin-top: 20px;
+}
+
+.editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.editor-header h3 {
+    font-size: 18px;
+    color: #2c3e50;
+}
+
+.editor-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.editor-basic-info {
+    max-width: 900px;
+    margin-bottom: 20px;
+}
+
+/* 左右分栏编辑器 */
+.split-editor {
+    display: flex;
+    gap: 20px;
+    height: 600px;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.editor-sidebar {
+    width: 280px;
+    background: #f8f9fa;
+    border-right: 1px solid #e9ecef;
+    display: flex;
+    flex-direction: column;
+}
+
+.sidebar-header {
+    padding: 15px;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+}
+
+.sidebar-header h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.editor-main {
+    flex: 1;
+    background: white;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+/* 字段列表 */
+.fields-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.field-list-item {
+    padding: 12px;
+    margin-bottom: 8px;
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.field-list-item:hover {
+    border-color: #3498db;
+    background: #f0f8ff;
+}
+
+.field-list-item.active {
+    border-color: #3498db;
+    background: #e3f2fd;
+}
+
+.field-list-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.field-list-item-name {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 14px;
+}
+
+.field-list-item-type {
+    font-size: 12px;
+    color: #7f8c8d;
+    background: #ecf0f1;
+    padding: 2px 8px;
+    border-radius: 3px;
+}
+
+.field-list-item-label {
+    font-size: 12px;
+    color: #95a5a6;
+    margin-top: 5px;
+}
+
+/* 字段编辑器 */
+.field-editor-container,
+.data-row-editor-container {
+    min-height: 100%;
+}
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #95a5a6;
+}
+
+.empty-state i {
+    font-size: 48px;
+    margin-bottom: 15px;
+}
+
+.empty-state p {
+    font-size: 14px;
+}
+
+.field-editor {
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.field-editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #ecf0f1;
+}
+
+.field-editor-header h4 {
+    font-size: 16px;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.field-compact-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 150px 150px;
+    gap: 15px;
+    margin-bottom: 15px;
+    align-items: end;
+}
+
+.field-compact-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #34495e;
+    font-size: 14px;
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: border-color 0.3s;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #3498db;
+}
+
+/* 数据行列表 */
+.data-rows-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.data-row-list-item {
+    padding: 12px;
+    margin-bottom: 8px;
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.data-row-list-item:hover {
+    border-color: #27ae60;
+    background: #f0fff4;
+}
+
+.data-row-list-item.active {
+    border-color: #27ae60;
+    background: #e8f8f0;
+}
+
+.data-row-list-item-name {
+    flex: 1;
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 14px;
+    margin-right: 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.data-row-list-item-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.data-row-list-item-actions .btn {
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+/* 数据行编辑器 */
+.data-row-editor {
+    animation: fadeIn 0.3s;
+}
+
+.data-row-editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #ecf0f1;
+}
+
+.data-row-editor-header h4 {
+    font-size: 16px;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.data-row-name-input {
+    width: 100%;
+    max-width: 400px;
+    padding: 8px 12px;
+    border: 2px solid #e9ecef;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #2c3e50;
+    transition: border-color 0.3s;
+}
+
+.data-row-name-input:focus {
+    outline: none;
+    border-color: #27ae60;
+}
+
+.data-row-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+/* 条目字段子项配置 */
+.entry-subfields {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 15px;
+    margin-top: 10px;
+}
+
+.entry-subfields-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.entry-subfields-header h6 {
+    font-size: 13px;
+    color: #495057;
+}
+
+.subfield-item {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.subfield-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.subfield-checkboxes {
+    margin: 10px 0;
+    padding: 5px 0;
+}
+
+.subfield-checkboxes label {
+    display: inline-flex;
+    align-items: center;
+    font-size: 14px;
+    color: #555;
+    cursor: pointer;
+}
+
+.subfield-checkboxes input[type="checkbox"] {
+    margin-right: 5px;
+}
+
+/* Schema选择器 */
+.schema-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.schema-selector label {
+    font-weight: 500;
+    color: #34495e;
+}
+
+.schema-selector select {
+    min-width: 200px;
+}
+
+/* 数据编辑器 */
+.data-editor {
+    margin-top: 20px;
+}
+
+.data-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.data-header h3 {
+    font-size: 18px;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.data-header-actions {
+    display: flex;
+    gap: 10px;
+}
+
+
+
+/* 条目类型特殊样式 */
+.entry-container {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 15px;
+    background: #f8f9fa;
+}
+
+.entry-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.entry-header label {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.entry-items {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.entry-item {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.entry-item-field {
+    flex: 1;
+    min-width: 0;
+}
+
+.entry-item-field label {
+    display: block;
+    font-size: 12px;
+    color: #6c757d;
+    margin-bottom: 5px;
+}
+
+.entry-item-field input,
+.entry-item-field select {
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.entry-item-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.entry-item-actions .btn {
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+/* 鱼类预览特殊样式 */
+.entry-fish-preview {
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.entry-fish-preview img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+/* 数据列表类型样式 */
+.datalist-wrapper {
+    position: relative;
+}
+
+.datalist-wrapper input {
+    padding-right: 30px;
+}
+
+.datalist-wrapper::after {
+    content: '\f0d7';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: #6c757d;
+}
+
+/* 模态框样式 */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    justify-content: center;
+    align-items: center;
+}
+
+.modal.show {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.modal-content.modal-large {
+    max-width: 900px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #ecf0f1;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: #2c3e50;
+}
+
+.btn-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #95a5a6;
+    cursor: pointer;
+    padding: 5px;
+    transition: color 0.3s;
+}
+
+.btn-close:hover {
+    color: #e74c3c;
+}
+
+.modal-body {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 20px;
+}
+
+.modal-footer {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    padding-top: 15px;
+    border-top: 2px solid #ecf0f1;
+}
+
+.modal-content h3 {
+    margin-bottom: 15px;
+    color: #2c3e50;
+}
+
+.modal-content p {
+    margin-bottom: 20px;
+    color: #7f8c8d;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+/* Lua导出样式 */
+.export-options {
+    margin-bottom: 20px;
+}
+
+.require-list {
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 10px;
+    margin-bottom: 10px;
+    background: #f8f9fa;
+    min-height: 50px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.require-item {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 8px;
+    padding: 8px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+.require-item input {
+    flex: 1;
+    min-width: 0;
+}
+
+.require-item .var-name-input {
+    flex: 0 0 120px;
+}
+
+.require-item .path-input {
+    flex: 2;
+}
+
+.require-item .btn-remove {
+    flex: 0 0 auto;
+}
+
+.code-container {
+    background: #282c34;
+    border-radius: 6px;
+    padding: 20px;
+    overflow: auto;
+    max-height: 60vh;
+}
+
+.lua-code {
+    color: #abb2bf;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 0;
+    white-space: pre;
+    overflow-x: auto;
+}
+
+/* Lua语法高亮 */
+.lua-keyword {
+    color: #c678dd;
+    font-weight: bold;
+}
+
+.lua-string {
+    color: #98c379;
+}
+
+.lua-number {
+    color: #d19a66;
+}
+
+.lua-comment {
+    color: #5c6370;
+    font-style: italic;
+}
+
+.lua-function {
+    color: #61afef;
+}
+
+.lua-operator {
+    color: #56b6c2;
+}
+
+/* 重复警告 */
+.duplicate-warning {
+    display: none;
+    color: #e74c3c;
+    font-size: 12px;
+    margin-top: 5px;
+}
+
+.duplicate-warning.show {
+    display: block;
+}
+
+/* 概率显示 */
+.probability-display {
+    padding: 6px 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.probability-value {
+    font-weight: 600;
+    color: #3498db;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+
+    .panel-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .schema-items {
+        grid-template-columns: 1fr;
+    }
+
+    .split-editor {
+        flex-direction: column;
+        height: auto;
+    }
+
+    .editor-sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid #e9ecef;
+        max-height: 300px;
+    }
+
+    .field-compact-row {
+        grid-template-columns: 1fr;
+    }
+
+    .data-row-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .entry-item {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #bdc3c7;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #95a5a6;
+}
