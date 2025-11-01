@@ -275,6 +275,68 @@
     font-size: 12px;
 }
 
+/* 列表容器样式（类似条目容器） */
+.list-container {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 10px;
+}
+
+.list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.list-header label {
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.list-items {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.list-item {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.list-item-value {
+    flex: 1;
+    min-width: 0;
+}
+
+.list-item-value input,
+.list-item-value select {
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.list-item-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.list-item-actions .btn {
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
 /* 鱼类预览特殊样式 */
 .entry-fish-preview {
     width: 40px;

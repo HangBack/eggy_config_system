@@ -1,0 +1,104 @@
+{
+  "description": "武器配置表",
+  "exportConfig": {
+    "namespace": "Tile",
+    "requires": []
+  },
+  "fields": [
+    {
+      "defaultValue": "1",
+      "label": "武器ID",
+      "name": "id",
+      "required": true,
+      "type": "number"
+    },
+    {
+      "defaultValue": "",
+      "isRaw": false,
+      "label": "武器名称",
+      "luaType": "",
+      "name": "name",
+      "required": true,
+      "type": "text"
+    },
+    {
+      "dataSource": {
+        "enum": "ItemType",
+        "enumPrefix": "Enum.ItemType",
+        "type": "enum"
+      },
+      "defaultValue": "",
+      "isRaw": true,
+      "label": "武器类型",
+      "name": "type",
+      "required": true,
+      "type": "option"
+    },
+    {
+      "defaultValue": "10",
+      "label": "伤害值",
+      "luaType": "",
+      "name": "damage",
+      "required": true,
+      "type": "number"
+    },
+    {
+      "dataSource": {
+        "enum": "ItemRarity",
+        "enumPrefix": "Enum.ItemRarity",
+        "type": "enum"
+      },
+      "defaultValue": "",
+      "isRaw": true,
+      "label": "稀有度",
+      "luaType": "",
+      "name": "rarity",
+      "required": true,
+      "type": "option"
+    },
+    {
+      "defaultValue": "#4A90E2",
+      "label": "图标颜色",
+      "name": "iconColor",
+      "required": false,
+      "type": "color"
+    },
+    {
+      "defaultValue": [],
+      "label": "附加属性",
+      "name": "stats",
+      "required": false,
+      "subfields": [
+        {
+          "defaultValue": "0",
+          "label": "攻击加成",
+          "name": "attack",
+          "type": "number"
+        },
+        {
+          "defaultValue": "0",
+          "label": "暴击率",
+          "name": "critical",
+          "type": "number"
+        },
+        {
+          "defaultValue": "1.0",
+          "label": "攻击速度",
+          "name": "speed",
+          "type": "number"
+        }
+      ],
+      "type": "entry"
+    },
+    {
+      "defaultValue": [],
+      "elementType": "text",
+      "isRaw": false,
+      "label": "特殊效果",
+      "name": "effects",
+      "required": false,
+      "type": "list"
+    }
+  ],
+  "name": "Weapon"
+}

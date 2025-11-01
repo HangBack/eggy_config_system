@@ -146,14 +146,22 @@ function saveCurrentEditToMemory() {
         return; // 没有选中的数据行
     }
     
+    // 如果 currentSchema 为空，则无法保存
+    if (!currentSchema) {
+        return;
+    }
+    
     const fields = currentSchema.fields || [];
     const currentData = {};
     
     fields.forEach(field => {
-        if (field.type === 'entry') {
-            const container = document.querySelector(`.entry-container[data-row="${selectedDataRowIndex}"][data-field="${field.name}"]`);
+        if (field.type === 'entry' || field.type === 'list') {
+            const selector = field.type === 'entry' ?
+                `.entry-container[data-row="${selectedDataRowIndex}"][data-field="${field.name}"]` :
+                `.list-container[data-row="${selectedDataRowIndex}"][data-field="${field.name}"]`;
+            const container = document.querySelector(selector);
             if (container) {
-                currentData[field.name] = collectEntryDataFromContainer(container, field);
+                currentData[field.name] = field.type === 'entry' ? collectEntryDataFromContainer(container, field) : collectListDataFromContainer(container, field);
             } else {
                 // 如果容器不存在，保持原有数据
                 currentData[field.name] = getFieldValue(dataRows[selectedDataRowIndex].data, field.name) || [];
@@ -176,6 +184,12 @@ function saveCurrentEditToMemory() {
 async function renderDataRowEditor(index) {
     const container = document.getElementById('data-row-editor-container');
     const dataRow = dataRows[index];
+    
+    // 如果 currentSchema 为空，显示错误信息
+    if (!currentSchema) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Schema 未加载，请刷新或重新选择</p></div>';
+        return;
+    }
     
     container.innerHTML = '';
     
@@ -206,6 +220,11 @@ async function renderDataRowEditor(index) {
 }
 
 function createDataRowEditorHTML(dataRow, rowIndex) {
+    // 防御性检查
+    if (!currentSchema) {
+        return '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Schema Schema 未加载，请刷新或重新选择</p></div>';
+    }
+    
     const fields = currentSchema.fields || [];
     const fieldsHtml = fields.map(field => {
         // 使用工具函数获取字段值，支持数字键
@@ -260,21 +279,27 @@ async function getFieldOptions(field) {
     // 如果是枚举模式
     if (field.dataSource && field.dataSource.type === 'enum' && field.dataSource.enum) {
         const enumName = field.dataSource.enum;
+        const enumPrefix = field.dataSource.enumPrefix || '';
         try {
             const response = await fetch(`${API.ENUM}?action=get&name=${encodeURIComponent(enumName)}`);
             const result = await response.json();
             
             if (result.success && result.data && result.data.values) {
-                // 返回枚举值（键名或value|label格式）
-                if (field.type === 'datalist') {
+                // 返回枚举值（键名或value|label格式），带前缀
+                if (field.type === 'datalist' || field.elementType === 'datalist') {
                     // datalist返回带标签的格式
-                    return result.data.values.map(v => ({
-                        value: v.key,
-                        label: v.label || ''
-                    }));
+                    return result.data.values.map(v => {
+                        const valueWithPrefix = enumPrefix ? `${enumPrefix}.${v.key}` : v.key;
+                        return {
+                            value: valueWithPrefix,
+                            label: v.label || ''
+                        };
+                    });
                 } else {
-                    // option返回键名
-                    return result.data.values.map(v => v.key);
+                    // option返回键名，带前缀
+                    return result.data.values.map(v => {
+                        return enumPrefix ? `${enumPrefix}.${v.key}` : v.key;
+                    });
                 }
             }
         } catch (error) {
@@ -424,6 +449,7 @@ function initCustomDatalist(inputElement, dropdownElement, options) {
 
 // 加载所有关联字段的选项
 async function loadLinkedFieldOptions(rowIndex) {
+    if (!currentSchema) return;
     const fields = currentSchema.fields || [];
     
     for (const field of fields) {
@@ -486,6 +512,55 @@ async function loadLinkedFieldOptions(rowIndex) {
         // 处理条目类型的子字段
         if (field.type === 'entry' && field.subfields) {
             await loadLinkedSubfieldOptions(rowIndex, field);
+        }
+        
+        // 处理列表类型的元素（如果元素类型为 option 或 datalist）
+        if (field.type === 'list' && (field.elementType === 'option' || field.elementType === 'datalist')) {
+            const items = dataRows[rowIndex].data[field.name] || [];
+            for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+                const currentValue = items[itemIndex] || '';
+                const itemId = `list-${rowIndex}-${field.name}-${itemIndex}`;
+
+                // 检查是否是关联配表或枚举模式
+                if (field.dataSource && (field.dataSource.type === 'linked' || field.dataSource.type === 'enum')) {
+                    const options = await getFieldOptions(field);
+                    if (field.elementType === 'option') {
+                        const selectElement = document.getElementById(itemId);
+                        if (selectElement) {
+                            const optionsHtml = options.map(opt => 
+                                `<option value="${escapeHtml(opt)}" ${currentValue === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`
+                            ).join('');
+                            selectElement.innerHTML = `<option value="">-- 请选择 --</option>${optionsHtml}`;
+                        }
+                    } else if (field.elementType === 'datalist') {
+                        const inputElement = document.getElementById(itemId);
+                        const dropdownElement = document.getElementById(`datalist-${itemId}`);
+                        if (inputElement && dropdownElement) {
+                            const formattedOptions = options.map(opt => typeof opt === 'string' ? { value: opt, label: '' } : opt);
+                            initCustomDatalist(inputElement, dropdownElement, formattedOptions);
+                        }
+                    }
+                } else {
+                    // 手动模式，直接使用 field.options
+                    const options = field.options || [];
+                    if (field.elementType === 'option') {
+                        const selectElement = document.getElementById(itemId);
+                        if (selectElement) {
+                            const optionsHtml = options.map(opt => 
+                                `<option value="${escapeHtml(opt)}" ${currentValue === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`
+                            ).join('');
+                            selectElement.innerHTML = `<option value="">-- 请选择 --</option>${optionsHtml}`;
+                        }
+                    } else if (field.elementType === 'datalist') {
+                        const inputElement = document.getElementById(itemId);
+                        const dropdownElement = document.getElementById(`datalist-${itemId}`);
+                        if (inputElement && dropdownElement) {
+                            const formattedOptions = options.map(opt => typeof opt === 'object' ? opt : { value: opt, label: '' });
+                            initCustomDatalist(inputElement, dropdownElement, formattedOptions);
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -620,6 +695,13 @@ function createFieldInput(field, value, rowIndex) {
                     ${inputHtml}
                 </div>
             `;
+        case 'list':
+            inputHtml = createListInput(field, value, rowIndex);
+            return `
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    ${inputHtml}
+                </div>
+            `;
     }
 
     const rawBadge = field.isRaw ? '<span class="raw-badge" title="此字段Lua导出时不加引号">原始</span>' : '';
@@ -651,6 +733,142 @@ function createEntryInput(field, value, rowIndex) {
             </div>
         </div>
     `;
+}
+
+function createListInput(field, value, rowIndex) {
+    const items = Array.isArray(value) ? value : [];
+    const itemsHtml = items.map((it, idx) => createListItem(field, it, rowIndex, idx)).join('');
+
+    return `
+        <div class="list-container" data-row="${rowIndex}" data-field="${field.name}">
+            <div class="list-header">
+                <label>${escapeHtml(field.label || field.name)}</label>
+                <button type="button" class="btn btn-sm btn-primary" onclick="addListItem(${rowIndex}, '${field.name}')">
+                    <i class="fas fa-plus"></i> 添加元素
+                </button>
+            </div>
+            <div class="list-items">
+                ${itemsHtml || '<p style="color: #95a5a6; text-align: center; padding: 10px;">暂无元素</p>'}
+            </div>
+        </div>
+    `;
+}
+
+function createListItem(field, value, rowIndex, itemIndex) {
+    const elementType = field.elementType || 'text';
+    const itemId = `list-${rowIndex}-${field.name}-${itemIndex}`;
+    let inputHtml = '';
+
+    switch (elementType) {
+        case 'text':
+            inputHtml = `<input type="text" id="${itemId}" class="form-control" value="${escapeHtml(value)}">`;
+            break;
+        case 'number':
+            inputHtml = `<input type="number" id="${itemId}" class="form-control" value="${value}">`;
+            break;
+        case 'color':
+            const hexValue = value ? String(value).replace(/^0x/i, '') : 'FFFFFF';
+            const colorValue = '#' + hexValue;
+            inputHtml = `
+                <div class="color-input-wrapper">
+                    <input type="color" id="${itemId}-picker" class="color-picker" value="${colorValue}" onchange="updateColorFromPicker('${itemId}', this.value)">
+                    <input type="text" id="${itemId}" class="form-control color-text-input" value="${value || '0xFFFFFF'}" oninput="updateColorFromText('${itemId}', this.value)" placeholder="0xFFFFFF">
+                    <div class="color-preview" id="${itemId}-preview" style="background-color: ${colorValue};"></div>
+                </div>
+            `;
+            break;
+        case 'option':
+            inputHtml = `<select id="${itemId}" class="form-control linked-field" data-field-name="${field.name}"><option value="">-- 加载中... --</option></select>`;
+            break;
+        case 'datalist':
+            const datalistId = `datalist-${itemId}`;
+            inputHtml = `
+                <div class="custom-datalist-wrapper" data-datalist-id="${datalistId}">
+                    <input type="text" id="${itemId}" class="custom-datalist-input" value="${escapeHtml(value)}" autocomplete="off" placeholder="请输入或选择...">
+                    <div class="custom-datalist-dropdown" id="${datalistId}"><div class="custom-datalist-empty">加载中...</div></div>
+                </div>
+            `;
+            break;
+    }
+
+    return `
+        <div class="list-item">
+            <div class="list-item-value">${inputHtml}</div>
+            <div class="list-item-actions">
+                <button type="button" class="btn btn-sm btn-danger" onclick="removeListItem(${rowIndex}, '${field.name}', ${itemIndex})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+async function addListItem(rowIndex, fieldName) {
+    if (!currentSchema || !currentSchema.fields) return;
+    const field = currentSchema.fields.find(f => f.name === fieldName);
+    if (!field) return;
+
+    const container = document.querySelector(`.list-container[data-row="${rowIndex}"][data-field="${fieldName}"] .list-items`);
+    if (!container) return;
+
+    if (container.querySelector('p')) container.innerHTML = '';
+
+    const currentCount = container.querySelectorAll('.list-item').length;
+    const newItemValue = '';
+    const itemHtml = createListItem(field, newItemValue, rowIndex, currentCount);
+    container.insertAdjacentHTML('beforeend', itemHtml);
+
+    // 如果元素类型需要异步加载选项，加载它们
+    if (field.elementType === 'option' || field.elementType === 'datalist') {
+        const options = await getFieldOptions(field);
+        const itemId = `list-${rowIndex}-${fieldName}-${currentCount}`;
+
+        if (field.elementType === 'option') {
+            const selectEl = document.getElementById(itemId);
+            if (selectEl) {
+                const optionsHtml = options.map(opt => `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`).join('');
+                selectEl.innerHTML = `<option value="">-- 请选择 --</option>${optionsHtml}`;
+            }
+        } else if (field.elementType === 'datalist') {
+            const inputElement = document.getElementById(itemId);
+            const dropdownElement = document.getElementById(`datalist-${itemId}`);
+            if (inputElement && dropdownElement) {
+                // 格式化选项并初始化自定义 datalist
+                const formattedOptions = options.map(opt => 
+                    typeof opt === 'object' ? opt : { value: opt, label: '' }
+                );
+                initCustomDatalist(inputElement, dropdownElement, formattedOptions);
+            }
+        }
+    }
+}
+
+function removeListItem(rowIndex, fieldName, itemIndex) {
+    const container = document.querySelector(`.list-container[data-row="${rowIndex}"][data-field="${fieldName}"] .list-items`);
+    const item = container.querySelectorAll('.list-item')[itemIndex];
+    if (item) {
+        item.remove();
+        // 重新编号（通过重新渲染索引顺序）
+        container.querySelectorAll('.list-item').forEach((it, idx) => {
+            // nothing to change in DOM ids; indexing works on query order when collecting
+        });
+
+        if (container.querySelectorAll('.list-item').length === 0) {
+            container.innerHTML = '<p style="color: #95a5a6; text-align: center; padding: 10px;">暂无元素</p>';
+        }
+    }
+}
+
+function collectListDataFromContainer(container, field) {
+    const items = container.querySelectorAll('.list-item');
+    const values = [];
+    items.forEach((item, idx) => {
+        const input = item.querySelector('input, select');
+        if (input) {
+            values.push(input.value);
+        }
+    });
+    return values;
 }
 
 function createEntryItem(field, entry, rowIndex, entryIndex) {
@@ -738,7 +956,7 @@ function addDataRow() {
     
     // 使用默认值初始化新行
     (currentSchema.fields || []).forEach(field => {
-        if (field.type === 'entry') {
+        if (field.type === 'entry' || field.type === 'list') {
             newRowData[field.name] = [];
         } else {
             newRowData[field.name] = field.defaultValue || '';
@@ -786,6 +1004,7 @@ function removeDataRow(index) {
 }
 
 async function addEntryItem(rowIndex, fieldName) {
+    if (!currentSchema || !currentSchema.fields) return;
     const field = currentSchema.fields.find(f => f.name === fieldName);
     if (!field) return;
 
@@ -1027,10 +1246,13 @@ function collectData() {
         const fields = currentSchema.fields || [];
 
         fields.forEach(field => {
-            if (field.type === 'entry') {
-                const container = document.querySelector(`.entry-container[data-row="${rowIndex}"][data-field="${field.name}"]`);
+            if (field.type === 'entry' || field.type === 'list') {
+                const selector = field.type === 'entry' ?
+                    `.entry-container[data-row="${rowIndex}"][data-field="${field.name}"]` :
+                    `.list-container[data-row="${rowIndex}"][data-field="${field.name}"]`;
+                const container = document.querySelector(selector);
                 if (container) {
-                    setFieldValue(rowData, field.name, collectEntryDataFromContainer(container, field));
+                    setFieldValue(rowData, field.name, field.type === 'entry' ? collectEntryDataFromContainer(container, field) : collectListDataFromContainer(container, field));
                 } else {
                     setFieldValue(rowData, field.name, getFieldValue(dataRow.data, field.name) || []);
                 }
@@ -1416,6 +1638,13 @@ function generateLuaFields(row, schema, indent) {
                 code += '\n';
             });
             code += `${indent}}`;
+        } else if (field.type === 'list' && Array.isArray(value)) {
+            // 导出列表为Lua数组，元素按 field.elementType 处理
+            const elemType = field.elementType || 'text';
+            code += '{ ';
+            const parts = value.map(v => formatLuaValue(v, elemType, field.isRaw));
+            code += parts.join(', ');
+            code += ' }';
         } else {
             // 传递 isRaw 参数
             code += formatLuaValue(value, field.type, field.isRaw);

@@ -1,0 +1,33 @@
+{
+  "name": "ItemType",
+  "description": "物品类型",
+  "type": "string",
+  "namespace": "Enum",
+  "values": [
+    {
+      "key": "Weapon",
+      "value": "weapon",
+      "label": "武器"
+    },
+    {
+      "key": "Armor",
+      "value": "armor",
+      "label": "护甲"
+    },
+    {
+      "key": "Consumable",
+      "value": "consumable",
+      "label": "消耗品"
+    },
+    {
+      "key": "Material",
+      "value": "material",
+      "label": "材料"
+    },
+    {
+      "key": "Quest",
+      "value": "quest",
+      "label": "任务物品"
+    }
+  ]
+}

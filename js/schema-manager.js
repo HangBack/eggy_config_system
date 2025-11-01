@@ -49,7 +49,12 @@ function renderSchemaList() {
     }
 }
 
-function addNewSchema() {
+async function addNewSchema() {
+    // 确保枚举列表已加载（用于数据源配置）
+    if (!enums || enums.length === 0) {
+        await loadEnums();
+    }
+    
     isEditMode = false;
     currentSchemaName = '';
     selectedFieldIndex = -1;
@@ -70,6 +75,11 @@ function addNewSchema() {
 
 async function editSchema(schemaName) {
     try {
+        // 确保枚举列表已加载（用于数据源配置）
+        if (!enums || enums.length === 0) {
+            await loadEnums();
+        }
+        
         const response = await fetch(`${API.SCHEMA}?action=get&name=${encodeURIComponent(schemaName)}`);
         const result = await response.json();
         
@@ -164,6 +174,38 @@ async function saveSchema() {
             }
             
             alert(isEditMode ? 'Schema更新成功' : 'Schema创建成功');
+            
+            // 如果数据管理器中正在编辑此 schema 的数据，刷新数据表
+            if (typeof currentSchemaName !== 'undefined' && currentSchemaName === name) {
+                console.log('检测到当前正在编辑的数据表对应此 Schema，自动刷新...');
+                // 保存当前选中的数据行索引和滚动位置
+                const savedIndex = typeof selectedDataRowIndex !== 'undefined' ? selectedDataRowIndex : -1;
+                const editorContainer = document.getElementById('data-row-editor-container');
+                const scrollTop = editorContainer ? editorContainer.scrollTop : 0;
+                
+                // 重新加载数据
+                if (typeof loadDataForSchema === 'function') {
+                    await loadDataForSchema();
+                    // 恢复选中状态并重新渲染编辑器
+                    if (savedIndex >= 0 && typeof dataRows !== 'undefined' && savedIndex < dataRows.length && typeof renderDataRowEditor === 'function') {
+                        selectedDataRowIndex = savedIndex;
+                        await renderDataRowEditor(savedIndex);
+                        // 更新列表中的选中状态
+                        document.querySelectorAll('.data-row-item').forEach((item, idx) => {
+                            if (idx === savedIndex) {
+                                item.classList.add('active');
+                            } else {
+                                item.classList.remove('active');
+                            }
+                        });
+                        // 恢复滚动位置
+                        if (editorContainer) {
+                            editorContainer.scrollTop = scrollTop;
+                        }
+                    }
+                }
+            }
+            
             cancelSchemaEdit();
             loadSchemas();
         } else {
@@ -409,6 +451,21 @@ async function migrateDataForSchemaChange(schemaName, newSchema, oldSchema) {
                         // 字段不存在或格式不对，使用空数组
                         newData[field.name] = [];
                     }
+                } else if (field.type === 'list') {
+                    // 处理列表类型字段（元素为简单值）
+                    const oldList = oldData[field.name];
+                    if (oldList !== undefined) {
+                        if (Array.isArray(oldList)) {
+                            // 保留数组
+                            newData[field.name] = oldList;
+                        } else {
+                            // 单值升级为数组
+                            newData[field.name] = [oldList];
+                        }
+                    } else {
+                        // 新增列表，使用空数组
+                        newData[field.name] = [];
+                    }
                 } else {
                     // 处理普通字段
                     if (oldData[field.name] !== undefined) {
@@ -565,7 +622,12 @@ function createFieldListItem(field, index) {
     return div;
 }
 
-function renderFieldEditor(index) {
+async function renderFieldEditor(index) {
+    // 确保枚举列表已加载（用于数据源配置）
+    if (!enums || enums.length === 0) {
+        await loadEnums();
+    }
+    
     const container = document.getElementById('field-editor-container');
     const field = currentSchema.fields[index];
     
@@ -581,7 +643,11 @@ function renderFieldEditor(index) {
 }
 
 function createFieldEditorHTML(field, index) {
-    const showRawOption = field.type === 'text' || field.type === 'option' || field.type === 'datalist';
+    // 判断是否显示"原始文本"选项
+    // text, option, datalist 类型直接支持
+    // list 类型当元素类型为 text, option, datalist 时也支持
+    const showRawOption = field.type === 'text' || field.type === 'option' || field.type === 'datalist' ||
+                          (field.type === 'list' && ['text', 'option', 'datalist'].includes(field.elementType));
     
     return `
         <div class="field-editor-header">
@@ -607,6 +673,7 @@ function createFieldEditorHTML(field, index) {
                     <option value="number" ${field.type === 'number' ? 'selected' : ''}>数字</option>
                     <option value="color" ${field.type === 'color' ? 'selected' : ''}>颜色</option>
                     <option value="entry" ${field.type === 'entry' ? 'selected' : ''}>条目</option>
+                    <option value="list" ${field.type === 'list' ? 'selected' : ''}>列表</option>
                     <option value="option" ${field.type === 'option' ? 'selected' : ''}>选项</option>
                     <option value="datalist" ${field.type === 'datalist' ? 'selected' : ''}>数据列表</option>
                 </select>
@@ -624,7 +691,7 @@ function createFieldEditorHTML(field, index) {
             </div>
         </div>
         
-        <div class="field-options-row">
+        <div class="field-options-row" id="field-options-row-${index}">
             <label>
                 <input type="checkbox" id="field-required-${index}" ${field.required ? 'checked' : ''}> 必填
             </label>
@@ -716,6 +783,11 @@ function renderFieldTypeSpecific(field, index) {
                             ${enums.map(e => `<option value="${e.name}" ${linkedEnum === e.name ? 'selected' : ''}>${e.name}</option>`).join('')}
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label>枚举前缀（可选）</label>
+                        <input type="text" id="field-enum-prefix-${index}" class="form-control" value="${escapeHtml(field.dataSource?.enumPrefix || '')}" placeholder="例如: ConfigType">
+                        <small class="form-text text-muted">导出时为 前缀.枚举值，留空则直接使用枚举值</small>
+                    </div>
                 `}
             </div>
         `;
@@ -754,6 +826,11 @@ function renderFieldTypeSpecific(field, index) {
                             ${enums.map(e => `<option value="${e.name}" ${linkedEnum === e.name ? 'selected' : ''}>${e.name}</option>`).join('')}
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label>枚举前缀（可选）</label>
+                        <input type="text" id="field-enum-prefix-${index}" class="form-control" value="${escapeHtml(field.dataSource?.enumPrefix || '')}" placeholder="例如: ConfigType">
+                        <small class="form-text text-muted">导出时为 前缀.枚举值，留空则直接使用枚举值</small>
+                    </div>
                 `}
             </div>
         `;
@@ -768,6 +845,67 @@ function renderFieldTypeSpecific(field, index) {
                 </div>
                 <div class="subfields-container" data-parent="${index}">
                     ${renderSubfields(field.subfields || [], index)}
+                </div>
+            </div>
+        `;
+    } else if (field.type === 'list') {
+        const elementType = field.elementType || 'text';
+        const dataSourceType = field.dataSource?.type || 'manual';
+        const linkedSchema = field.dataSource?.schema || '';
+        const linkedEnum = field.dataSource?.enum || '';
+
+        return `
+            <div class="list-config">
+                <div class="form-group">
+                    <label>元素类型</label>
+                    <select id="field-list-elementtype-${index}" class="form-control" onchange="updateListElementType(${index}, this.value)">
+                        <option value="text" ${elementType === 'text' ? 'selected' : ''}>文本</option>
+                        <option value="number" ${elementType === 'number' ? 'selected' : ''}>数字</option>
+                        <option value="color" ${elementType === 'color' ? 'selected' : ''}>颜色</option>
+                        <option value="option" ${elementType === 'option' ? 'selected' : ''}>选项</option>
+                        <option value="datalist" ${elementType === 'datalist' ? 'selected' : ''}>数据列表</option>
+                    </select>
+                </div>
+                <div id="field-list-type-config-${index}">
+                    ${ (elementType === 'option' || elementType === 'datalist') ? `
+                        <div class="form-group">
+                            <label>数据源</label>
+                            <select id="field-list-datasource-type-${index}" class="form-control" onchange="updateListDataSourceType(${index}, this.value)">
+                                <option value="manual" ${dataSourceType === 'manual' ? 'selected' : ''}>手动输入</option>
+                                <option value="linked" ${dataSourceType === 'linked' ? 'selected' : ''}>关联配表</option>
+                                <option value="enum" ${dataSourceType === 'enum' ? 'selected' : ''}>枚举</option>
+                            </select>
+                        </div>
+                        <div id="field-list-datasource-config-${index}">
+                            ${dataSourceType === 'manual' ? `
+                                <div class="form-group">
+                                    <label>选项列表（每行一个）</label>
+                                    <textarea id="field-list-options-${index}" class="form-control" rows="4" placeholder="选项1&#10;选项2">${(field.options || []).join('\n')}</textarea>
+                                </div>
+                            ` : dataSourceType === 'linked' ? `
+                                <div class="form-group">
+                                    <label>关联的配表</label>
+                                    <select id="field-list-linked-schema-${index}" class="form-control">
+                                        <option value="">-- 请选择配表 --</option>
+                                        ${schemas.map(s => `<option value="${s.name}" ${linkedSchema === s.name ? 'selected' : ''}>${s.name}</option>`).join('')}
+                                    </select>
+                                </div>
+                            ` : `
+                                <div class="form-group">
+                                    <label>关联的枚举</label>
+                                    <select id="field-list-linked-enum-${index}" class="form-control">
+                                        <option value="">-- 请选择枚举 --</option>
+                                        ${enums.map(e => `<option value="${e.name}" ${linkedEnum === e.name ? 'selected' : ''}>${e.name}</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>枚举前缀（可选）</label>
+                                    <input type="text" id="field-list-enum-prefix-${index}" class="form-control" value="${escapeHtml(field.dataSource?.enumPrefix || '')}" placeholder="例如: ConfigType">
+                                    <small class="form-text text-muted">导出时为 前缀.枚举值，留空则直接使用枚举值</small>
+                                </div>
+                            `}
+                        </div>
+                    ` : ''}
                 </div>
             </div>
         `;
@@ -925,9 +1063,183 @@ function updateDataSourceType(fieldIndex, type) {
     }
     field.dataSource.type = type;
     
-    // 重新渲染字段特定区域
-    document.getElementById(`field-type-specific-${fieldIndex}`).innerHTML = 
-        renderFieldTypeSpecific(field, fieldIndex);
+    // 只更新数据源配置区域，而不是整个字段特定区域
+    const configContainer = document.getElementById(`field-datasource-config-${fieldIndex}`);
+    if (configContainer) {
+        const linkedSchema = field.dataSource?.schema || '';
+        const linkedEnum = field.dataSource?.enum || '';
+        
+        if (type === 'manual') {
+            if (field.type === 'option') {
+                configContainer.innerHTML = `
+                    <div class="form-group">
+                        <label>选项列表（每行一个）</label>
+                        <textarea id="field-options-${fieldIndex}" class="form-control" rows="4" placeholder="选项1&#10;选项2&#10;选项3">${(field.options || []).join('\n')}</textarea>
+                    </div>
+                `;
+            } else if (field.type === 'datalist') {
+                configContainer.innerHTML = `
+                    <div class="form-group">
+                        <label>数据列表配置（格式: value|label，每行一个）</label>
+                        <textarea id="field-datalist-${fieldIndex}" class="form-control" rows="4" placeholder="value1|标签1&#10;value2|标签2">${formatDatalist(field.options || [])}</textarea>
+                    </div>
+                `;
+            }
+        } else if (type === 'linked') {
+            configContainer.innerHTML = `
+                <div class="form-group">
+                    <label>关联的配表</label>
+                    <select id="field-linked-schema-${fieldIndex}" class="form-control">
+                        <option value="">-- 请选择配表 --</option>
+                        ${schemas.map(s => `<option value="${s.name}" ${linkedSchema === s.name ? 'selected' : ''}>${s.name}</option>`).join('')}
+                    </select>
+                </div>
+            `;
+        } else if (type === 'enum') {
+            const enumPrefix = field.dataSource?.enumPrefix || '';
+            configContainer.innerHTML = `
+                <div class="form-group">
+                    <label>关联的枚举</label>
+                    <select id="field-linked-enum-${fieldIndex}" class="form-control">
+                        <option value="">-- 请选择枚举 --</option>
+                        ${enums.map(e => `<option value="${e.name}" ${linkedEnum === e.name ? 'selected' : ''}>${e.name}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>枚举前缀（可选）</label>
+                    <input type="text" id="field-enum-prefix-${fieldIndex}" class="form-control" value="${escapeHtml(enumPrefix)}" placeholder="例如: ConfigType">
+                    <small class="form-text text-muted">导出时为 前缀.枚举值，留空则直接使用枚举值</small>
+                </div>
+            `;
+        }
+    }
+}
+
+function updateListElementType(fieldIndex, elementType) {
+    const field = currentSchema.fields[fieldIndex];
+    field.elementType = elementType;
+    
+    // 更新"原始文本"复选框的显示
+    const optionsRow = document.getElementById(`field-options-row-${fieldIndex}`);
+    if (optionsRow) {
+        const showRawOption = ['text', 'option', 'datalist'].includes(elementType);
+        const requiredCheckbox = document.getElementById(`field-required-${fieldIndex}`);
+        const currentRawChecked = field.isRaw || false;
+        
+        if (showRawOption) {
+            optionsRow.innerHTML = `
+                <label>
+                    <input type="checkbox" id="field-required-${fieldIndex}" ${field.required ? 'checked' : ''}> 必填
+                </label>
+                <label>
+                    <input type="checkbox" id="field-raw-${fieldIndex}" ${currentRawChecked ? 'checked' : ''}> 原始文本
+                </label>
+            `;
+        } else {
+            optionsRow.innerHTML = `
+                <label>
+                    <input type="checkbox" id="field-required-${fieldIndex}" ${field.required ? 'checked' : ''}> 必填
+                </label>
+            `;
+        }
+    }
+    
+    // 重新渲染 list 类型配置区域
+    const configContainer = document.getElementById(`field-list-type-config-${fieldIndex}`);
+    if (configContainer) {
+        const dataSourceType = field.dataSource?.type || 'manual';
+        const linkedSchema = field.dataSource?.schema || '';
+        const linkedEnum = field.dataSource?.enum || '';
+        
+        if (elementType === 'option' || elementType === 'datalist') {
+            configContainer.innerHTML = `
+                <div class="form-group">
+                    <label>数据源</label>
+                    <select id="field-list-datasource-type-${fieldIndex}" class="form-control" onchange="updateListDataSourceType(${fieldIndex}, this.value)">
+                        <option value="manual" ${dataSourceType === 'manual' ? 'selected' : ''}>手动输入</option>
+                        <option value="linked" ${dataSourceType === 'linked' ? 'selected' : ''}>关联配表</option>
+                        <option value="enum" ${dataSourceType === 'enum' ? 'selected' : ''}>枚举</option>
+                    </select>
+                </div>
+                <div id="field-list-datasource-config-${fieldIndex}">
+                    ${dataSourceType === 'manual' ? `
+                        <div class="form-group">
+                            <label>选项列表（每行一个）</label>
+                            <textarea id="field-list-options-${fieldIndex}" class="form-control" rows="4" placeholder="选项1&#10;选项2">${(field.options || []).join('\n')}</textarea>
+                        </div>
+                    ` : dataSourceType === 'linked' ? `
+                        <div class="form-group">
+                            <label>关联的配表</label>
+                            <select id="field-list-linked-schema-${fieldIndex}" class="form-control">
+                                <option value="">-- 请选择配表 --</option>
+                                ${schemas.map(s => `<option value="${s.name}" ${linkedSchema === s.name ? 'selected' : ''}>${s.name}</option>`).join('')}
+                            </select>
+                        </div>
+                    ` : `
+                        <div class="form-group">
+                            <label>关联的枚举</label>
+                            <select id="field-list-linked-enum-${fieldIndex}" class="form-control">
+                                <option value="">-- 请选择枚举 --</option>
+                                ${enums.map(e => `<option value="${e.name}" ${linkedEnum === e.name ? 'selected' : ''}>${e.name}</option>`).join('')}
+                            </select>
+                        </div>
+                    `}
+                </div>
+            `;
+        } else {
+            configContainer.innerHTML = '';
+        }
+    }
+}
+
+function updateListDataSourceType(fieldIndex, type) {
+    const field = currentSchema.fields[fieldIndex];
+    if (!field.dataSource) {
+        field.dataSource = {};
+    }
+    field.dataSource.type = type;
+    
+    // 重新渲染数据源配置区域
+    const configContainer = document.getElementById(`field-list-datasource-config-${fieldIndex}`);
+    if (configContainer) {
+        const linkedSchema = field.dataSource?.schema || '';
+        const linkedEnum = field.dataSource?.enum || '';
+        
+        if (type === 'manual') {
+            configContainer.innerHTML = `
+                <div class="form-group">
+                    <label>选项列表（每行一个）</label>
+                    <textarea id="field-list-options-${fieldIndex}" class="form-control" rows="4" placeholder="选项1&#10;选项2">${(field.options || []).join('\n')}</textarea>
+                </div>
+            `;
+        } else if (type === 'linked') {
+            configContainer.innerHTML = `
+                <div class="form-group">
+                    <label>关联的配表</label>
+                    <select id="field-list-linked-schema-${fieldIndex}" class="form-control">
+                        <option value="">-- 请选择配表 --</option>
+                        ${schemas.map(s => `<option value="${s.name}" ${linkedSchema === s.name ? 'selected' : ''}>${s.name}</option>`).join('')}
+                    </select>
+                </div>
+            `;
+        } else if (type === 'enum') {
+            const enumPrefix = field.dataSource?.enumPrefix || '';
+            configContainer.innerHTML = `
+                <div class="form-group">
+                    <label>关联的枚举</label>
+                    <select id="field-list-linked-enum-${fieldIndex}" class="form-control">
+                        <option value="">-- 请选择枚举 --</option>
+                        ${enums.map(e => `<option value="${e.name}" ${linkedEnum === e.name ? 'selected' : ''}>${e.name}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>枚举前缀（可选）</label>
+                    <input type="text" id="field-list-enum-prefix-${fieldIndex}" class="form-control" value="${escapeHtml(enumPrefix)}" placeholder="例如: ConfigType">
+                    <small class="form-text text-muted">导出时为 前缀.枚举值，留空则直接使用枚举值</small>
+                </div>
+            `;
+        }
+    }
 }
 
 function updateSubfieldType(parentIndex, subIndex, type) {
@@ -1072,6 +1384,11 @@ function collectFields() {
                     if (linkedEnumSelect) {
                         field.dataSource.enum = linkedEnumSelect.value;
                     }
+                    // 收集枚举前缀
+                    const enumPrefixInput = document.getElementById(`field-enum-prefix-${index}`);
+                    if (enumPrefixInput) {
+                        field.dataSource.enumPrefix = enumPrefixInput.value.trim();
+                    }
                 }
             }
         } else if (field.type === 'entry') {
@@ -1082,6 +1399,52 @@ function collectFields() {
                 field.subfields = collectedSubfields;
             }
             // 如果DOM中没有子字段元素,保持field.subfields不变(使用currentSchema中已有的)
+        } else if (field.type === 'list') {
+            // 收集列表类型的元素类型与数据源配置
+            const elementTypeSelect = document.getElementById(`field-list-elementtype-${index}`);
+            if (elementTypeSelect) {
+                field.elementType = elementTypeSelect.value;
+            }
+
+            const dataSourceTypeSelect = document.getElementById(`field-list-datasource-type-${index}`);
+            if (dataSourceTypeSelect) {
+                if (!field.dataSource) field.dataSource = {};
+                field.dataSource.type = dataSourceTypeSelect.value;
+
+                if (field.dataSource.type === 'manual') {
+                    if (field.elementType === 'option') {
+                        const optionsElement = document.getElementById(`field-list-options-${index}`);
+                        if (optionsElement) {
+                            const optionsText = optionsElement.value.trim();
+                            field.options = optionsText ? optionsText.split('\n').filter(opt => opt.trim()) : [];
+                        }
+                    } else if (field.elementType === 'datalist') {
+                        const datalistElement = document.getElementById(`field-list-options-${index}`);
+                        if (datalistElement) {
+                            const datalistText = datalistElement.value.trim();
+                            field.options = datalistText ? datalistText.split('\n').map(line => {
+                                const parts = line.trim().split('|');
+                                return parts.length === 2 ? { value: parts[0].trim(), label: parts[1].trim() } : line.trim();
+                            }).filter(opt => opt) : [];
+                        }
+                    }
+                } else if (field.dataSource.type === 'linked') {
+                    const linkedSchemaSelect = document.getElementById(`field-list-linked-schema-${index}`);
+                    if (linkedSchemaSelect) {
+                        field.dataSource.schema = linkedSchemaSelect.value;
+                    }
+                } else if (field.dataSource.type === 'enum') {
+                    const linkedEnumSelect = document.getElementById(`field-list-linked-enum-${index}`);
+                    if (linkedEnumSelect) {
+                        field.dataSource.enum = linkedEnumSelect.value;
+                    }
+                    // 收集枚举前缀
+                    const enumPrefixInput = document.getElementById(`field-list-enum-prefix-${index}`);
+                    if (enumPrefixInput) {
+                        field.dataSource.enumPrefix = enumPrefixInput.value.trim();
+                    }
+                }
+            }
         }
     });
 
