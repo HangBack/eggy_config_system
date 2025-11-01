@@ -78,6 +78,7 @@ function initializeApp() {
     document.getElementById('copy-lua-btn').addEventListener('click', copyLuaCode);
     document.getElementById('export-format-select').addEventListener('change', updateLuaExport);
     document.getElementById('export-namespace').addEventListener('input', updateLuaExport);
+    document.getElementById('export-table-key-type').addEventListener('input', updateLuaExport);
 
     // 绑定模态框事件
     document.getElementById('cancel-delete-btn').addEventListener('click', closeModal);
@@ -2285,14 +2286,26 @@ function exportToLua() {
     // 从当前schema加载导出配置
     if (currentSchema && currentSchema.exportConfig) {
         document.getElementById('export-namespace').value = currentSchema.exportConfig.namespace || 'Tile';
+        document.getElementById('export-table-key-type').value = currentSchema.exportConfig.tableKeyType || 'string';
         requireItems = currentSchema.exportConfig.requires ? [...currentSchema.exportConfig.requires] : [];
     } else {
         document.getElementById('export-namespace').value = 'Tile';
+        document.getElementById('export-table-key-type').value = 'string';
         requireItems = [];
     }
     
     renderRequireList();
     updateLuaExport();
+    
+    // 监听格式切换，显示/隐藏键类型配置
+    document.getElementById('export-format-select').addEventListener('change', toggleTableKeyTypeVisibility);
+    toggleTableKeyTypeVisibility();
+}
+
+function toggleTableKeyTypeVisibility() {
+    const format = document.getElementById('export-format-select').value;
+    const keyTypeGroup = document.getElementById('table-key-type-group');
+    keyTypeGroup.style.display = format === 'table' ? 'block' : 'none';
 }
 
 function addRequireItem() {
@@ -2346,6 +2359,7 @@ function closeLuaExportModal() {
             currentSchema.exportConfig = {};
         }
         currentSchema.exportConfig.namespace = document.getElementById('export-namespace').value.trim() || 'Tile';
+        currentSchema.exportConfig.tableKeyType = document.getElementById('export-table-key-type').value.trim() || 'string';
         currentSchema.exportConfig.requires = [...requireItems];
         
         // 自动保存schema（静默保存，不弹提示）
@@ -2376,12 +2390,13 @@ async function saveSchemaExportConfig() {
 function updateLuaExport() {
     const format = document.getElementById('export-format-select').value;
     const namespace = document.getElementById('export-namespace').value.trim() || 'Tile';
+    const tableKeyType = document.getElementById('export-table-key-type').value.trim() || 'string';
     const data = collectData();
-    const luaCode = generateLuaCode(data, format, namespace);
+    const luaCode = generateLuaCode(data, format, namespace, tableKeyType);
     document.getElementById('lua-code-output').textContent = luaCode;
 }
 
-function generateLuaCode(data, format, namespace) {
+function generateLuaCode(data, format, namespace, tableKeyType) {
     const schema = currentSchema;
     const schemaName = currentSchemaName;
     
@@ -2410,7 +2425,7 @@ function generateLuaCode(data, format, namespace) {
     
     // 生成数据
     if (format === 'table') {
-        code += generateLuaTable(data, schema, schemaName);
+        code += generateLuaTable(data, schema, schemaName, tableKeyType);
     } else {
         code += generateLuaArray(data, schema, schemaName);
     }
@@ -2435,7 +2450,9 @@ function generateTypeDefinition(schema, schemaName) {
                 const comment = subfield.label || subfield.name;
                 // 如果字段名不是合法的 Lua 标识符（比如纯数字），使用 [fieldName] 格式
                 const fieldName = isValidLuaIdentifier(subfield.name) ? subfield.name : `[${subfield.name}]`;
-                code += `---@field ${fieldName} ${subfieldType} ${comment}\n`;
+                // 非必填字段添加 ? 标记
+                const optionalMark = subfield.required ? '' : '?';
+                code += `---@field ${fieldName} ${subfieldType}${optionalMark} ${comment}\n`;
             });
             code += '\n';
         }
@@ -2448,7 +2465,9 @@ function generateTypeDefinition(schema, schemaName) {
         const comment = field.label || field.name;
         // 如果字段名不是合法的 Lua 标识符（比如纯数字），使用 [fieldName] 格式
         const fieldName = isValidLuaIdentifier(field.name) ? field.name : `[${field.name}]`;
-        code += `---@field ${fieldName} ${fieldType} ${comment}\n`;
+        // 非必填字段添加 ? 标记
+        const optionalMark = field.required ? '' : '?';
+        code += `---@field ${fieldName} ${fieldType}${optionalMark} ${comment}\n`;
     });
     
     return code;
@@ -2490,9 +2509,9 @@ function getLuaType(field, parentName = '') {
     }
 }
 
-function generateLuaTable(data, schema, schemaName) {
+function generateLuaTable(data, schema, schemaName, tableKeyType = 'string') {
     const typeName = toPascalCase(schemaName);
-    let code = `---@type table<string, ${typeName}>\nlocal result = {\n`;
+    let code = `---@type table<${tableKeyType}, ${typeName}>\nlocal result = {\n`;
     
     dataRows.forEach((dataRow, index) => {
         const row = data[index];

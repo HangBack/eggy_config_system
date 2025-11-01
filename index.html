@@ -167,6 +167,11 @@
                         <label>Namespace名称：</label>
                         <input type="text" id="export-namespace" class="form-control" placeholder="例如: Tile" value="Tile">
                     </div>
+                    <div class="form-group" id="table-key-type-group">
+                        <label>Table键类型：</label>
+                        <input type="text" id="export-table-key-type" class="form-control" placeholder="例如: string, integer, FishCode" value="string">
+                        <small style="color: #7f8c8d;">仅在Table格式下生效，用于类型注解 @type table&lt;键类型, 值类型&gt;</small>
+                    </div>
                     <div class="form-group">
                         <label>包导入列表：</label>
                         <div id="require-list" class="require-list">
