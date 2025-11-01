@@ -1181,3 +1181,52 @@ body {
     color: #95a5a6;
     font-size: 14px;
 }
+
+/* 颜色选择器样式 */
+.color-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.color-picker {
+    width: 50px;
+    height: 40px;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    padding: 2px;
+}
+
+.color-picker:hover {
+    border-color: #3498db;
+}
+
+.color-text-input {
+    flex: 1;
+    font-family: 'Courier New', monospace;
+    text-transform: uppercase;
+}
+
+.color-preview {
+    width: 40px;
+    height: 40px;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+
+/* 预览中的颜色显示 */
+.preview-color-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.preview-color-box {
+    width: 24px;
+    height: 24px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    flex-shrink: 0;
+}

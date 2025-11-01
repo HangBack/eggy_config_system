@@ -374,6 +374,8 @@ function getTypedDefaultValue(field) {
         switch (field.type) {
             case 'number':
                 return 0;
+            case 'color':
+                return '0xFFFFFF';
             case 'entry':
                 return [];
             default:
@@ -386,6 +388,13 @@ function getTypedDefaultValue(field) {
         case 'number':
             const num = Number(defaultValue);
             return isNaN(num) ? 0 : num;
+        case 'color':
+            // 确保颜色值是 0x 格式
+            const colorStr = String(defaultValue);
+            if (/^0x[0-9A-Fa-f]{6}$/i.test(colorStr)) {
+                return colorStr.toUpperCase();
+            }
+            return '0xFFFFFF';
         case 'entry':
             return Array.isArray(defaultValue) ? defaultValue : [];
         default:
@@ -702,6 +711,7 @@ function createFieldEditorHTML(field, index) {
                 <select id="field-type-${index}" class="form-control">
                     <option value="text" ${field.type === 'text' ? 'selected' : ''}>文本</option>
                     <option value="number" ${field.type === 'number' ? 'selected' : ''}>数字</option>
+                    <option value="color" ${field.type === 'color' ? 'selected' : ''}>颜色</option>
                     <option value="entry" ${field.type === 'entry' ? 'selected' : ''}>条目</option>
                     <option value="option" ${field.type === 'option' ? 'selected' : ''}>选项</option>
                     <option value="datalist" ${field.type === 'datalist' ? 'selected' : ''}>数据列表</option>
@@ -874,6 +884,7 @@ function renderSubfields(subfields, parentIndex) {
                     <select class="form-control subfield-type" onchange="updateSubfieldType(${parentIndex}, ${subIndex}, this.value)">
                         <option value="text" ${subfield.type === 'text' ? 'selected' : ''}>文本</option>
                         <option value="number" ${subfield.type === 'number' ? 'selected' : ''}>数字</option>
+                        <option value="color" ${subfield.type === 'color' ? 'selected' : ''}>颜色</option>
                         <option value="option" ${subfield.type === 'option' ? 'selected' : ''}>选项</option>
                         <option value="datalist" ${subfield.type === 'datalist' ? 'selected' : ''}>数据列表</option>
                     </select>
@@ -1702,6 +1713,23 @@ function createFieldInput(field, value, rowIndex) {
             inputHtml = `<input type="number" id="${fieldId}" class="form-control" value="${value}" ${field.required ? 'required' : ''}>`;
             break;
         
+        case 'color':
+            // 颜色选择器：包含色盘和文本输入框
+            const hexValue = value ? String(value).replace(/^0x/i, '') : 'FFFFFF';
+            const colorValue = '#' + hexValue;
+            inputHtml = `
+                <div class="color-input-wrapper">
+                    <input type="color" id="${fieldId}-picker" class="color-picker" value="${colorValue}" 
+                           onchange="updateColorFromPicker('${fieldId}', this.value)">
+                    <input type="text" id="${fieldId}" class="form-control color-text-input" value="${value || '0xFFFFFF'}" 
+                           ${field.required ? 'required' : ''}
+                           oninput="updateColorFromText('${fieldId}', this.value)"
+                           placeholder="0xFFFFFF">
+                    <div class="color-preview" id="${fieldId}-preview" style="background-color: ${colorValue};"></div>
+                </div>
+            `;
+            break;
+        
         case 'option':
             // 使用占位符，稍后异步加载选项
             inputHtml = `<select id="${fieldId}" class="form-control linked-field" data-field-name="${field.name}" ${field.required ? 'required' : ''}>
@@ -1785,6 +1813,22 @@ function createEntryItem(field, entry, rowIndex, entryIndex) {
             
             case 'number':
                 inputHtml = `<input type="number" id="${subfieldId}" class="form-control" value="${value}">`;
+                break;
+            
+            case 'color':
+                // 颜色选择器：包含色盘和文本输入框
+                const hexValue = value ? String(value).replace(/^0x/i, '') : 'FFFFFF';
+                const colorValue = '#' + hexValue;
+                inputHtml = `
+                    <div class="color-input-wrapper">
+                        <input type="color" id="${subfieldId}-picker" class="color-picker" value="${colorValue}" 
+                               onchange="updateColorFromPicker('${subfieldId}', this.value)">
+                        <input type="text" id="${subfieldId}" class="form-control color-text-input" value="${value || '0xFFFFFF'}" 
+                               oninput="updateColorFromText('${subfieldId}', this.value)"
+                               placeholder="0xFFFFFF">
+                        <div class="color-preview" id="${subfieldId}-preview" style="background-color: ${colorValue};"></div>
+                    </div>
+                `;
                 break;
             
             case 'option':
@@ -2083,6 +2127,12 @@ function previewData() {
             let isHtml = false;
             if (field.type === 'entry') {
                 value = `${Array.isArray(value) ? value.length : 0} 项`;
+            } else if (field.type === 'color' && value) {
+                // 显示颜色方块和值
+                const hex = String(value).replace(/^0x/i, '');
+                const colorValue = '#' + hex;
+                value = `<div class="preview-color-wrapper"><div class="preview-color-box" style="background-color: ${colorValue};"></div><span>${value}</span></div>`;
+                isHtml = true;
             } else if (value === '' || value === null || value === undefined) {
                 value = '<span class="empty-value">nil</span>';
                 isHtml = true;
@@ -2370,6 +2420,8 @@ function getLuaType(field, parentName = '') {
             return 'integer';
         case 'text':
             return 'string';
+        case 'color':
+            return 'integer';
         case 'option':
             return 'string';
         case 'datalist':
@@ -2521,6 +2573,10 @@ function formatLuaValue(value, type, isRaw = false) {
         case 'number':
             return String(value);
         
+        case 'color':
+            // 颜色值直接输出 0xRRGGBB 格式
+            return String(value);
+        
         case 'text':
         case 'option':
         case 'datalist':
@@ -2613,6 +2669,44 @@ function escapeHtml(text) {
         "'": '&#039;'
     };
     return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+// 颜色处理函数
+function updateColorFromPicker(fieldId, hexColor) {
+    // hexColor 格式: #RRGGBB
+    const textInput = document.getElementById(fieldId);
+    const preview = document.getElementById(`${fieldId}-preview`);
+    
+    if (textInput) {
+        // 转换为 0xRRGGBB 格式
+        const hex = hexColor.replace('#', '');
+        textInput.value = '0x' + hex.toUpperCase();
+    }
+    
+    if (preview) {
+        preview.style.backgroundColor = hexColor;
+    }
+}
+
+function updateColorFromText(fieldId, value) {
+    const picker = document.getElementById(`${fieldId}-picker`);
+    const preview = document.getElementById(`${fieldId}-preview`);
+    
+    // 解析输入的颜色值
+    let hex = value.replace(/^0x/i, '').replace(/^#/, '');
+    
+    // 确保是有效的 hex 颜色
+    if (/^[0-9A-Fa-f]{6}$/.test(hex)) {
+        const hexColor = '#' + hex;
+        
+        if (picker) {
+            picker.value = hexColor;
+        }
+        
+        if (preview) {
+            preview.style.backgroundColor = hexColor;
+        }
+    }
 }
 
 function showModal(message, onConfirm) {
