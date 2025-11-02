@@ -561,6 +561,11 @@ async function deleteSchema(schemaName) {
 
 // ========== 字段管理 ==========
 function addField() {
+    // 先保存当前正在编辑的字段
+    if (selectedFieldIndex !== -1) {
+        saveCurrentFieldChanges();
+    }
+    
     const field = {
         name: '',
         label: '',
@@ -614,6 +619,10 @@ function createFieldListItem(field, index) {
     `;
     
     div.addEventListener('click', () => {
+        // 如果要切换到的字段与当前字段不同，先保存当前字段
+        if (selectedFieldIndex !== -1 && selectedFieldIndex !== index) {
+            saveCurrentFieldChanges();
+        }
         selectedFieldIndex = index;
         renderFieldsList();
         renderFieldEditor(index);
@@ -1025,6 +1034,11 @@ function renderSubfieldTypeSpecific(subfield, parentIndex, subIndex) {
                             ${enums.map(e => `<option value="${e.name}" ${linkedEnum === e.name ? 'selected' : ''}>${e.name}</option>`).join('')}
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label>枚举前缀（可选）</label>
+                        <input type="text" class="form-control subfield-enum-prefix" value="${escapeHtml(subfield.dataSource?.enumPrefix || '')}" placeholder="例如: ConfigType">
+                        <small class="form-text text-muted">导出时为 前缀.枚举值，留空则直接使用枚举值</small>
+                    </div>
                 `}
             </div>
         `;
@@ -1061,6 +1075,11 @@ function renderSubfieldTypeSpecific(subfield, parentIndex, subIndex) {
                             <option value="">-- 请选择枚举 --</option>
                             ${enums.map(e => `<option value="${e.name}" ${linkedEnum === e.name ? 'selected' : ''}>${e.name}</option>`).join('')}
                         </select>
+                    </div>
+                    <div class="form-group">
+                        <label>枚举前缀（可选）</label>
+                        <input type="text" class="form-control subfield-enum-prefix" value="${escapeHtml(subfield.dataSource?.enumPrefix || '')}" placeholder="例如: ConfigType">
+                        <small class="form-text text-muted">导出时为 前缀.枚举值，留空则直接使用枚举值</small>
                     </div>
                 `}
             </div>
@@ -1363,6 +1382,128 @@ function removeField(index) {
     }
 }
 
+// 保存当前正在编辑的字段的修改
+function saveCurrentFieldChanges() {
+    if (selectedFieldIndex === -1 || !currentSchema.fields[selectedFieldIndex]) {
+        return;
+    }
+    
+    const index = selectedFieldIndex;
+    const field = currentSchema.fields[index];
+    
+    // 收集类型特定的配置
+    if (field.type === 'option' || field.type === 'datalist') {
+        // 收集数据源配置
+        const dataSourceTypeSelect = document.getElementById(`field-datasource-type-${index}`);
+        if (dataSourceTypeSelect) {
+            if (!field.dataSource) {
+                field.dataSource = {};
+            }
+            field.dataSource.type = dataSourceTypeSelect.value;
+            
+            if (field.dataSource.type === 'manual') {
+                // 手动输入
+                if (field.type === 'option') {
+                    const optionsElement = document.getElementById(`field-options-${index}`);
+                    if (optionsElement) {
+                        const optionsText = optionsElement.value.trim();
+                        field.options = optionsText ? optionsText.split('\n').filter(opt => opt.trim()) : [];
+                    }
+                } else {
+                    const datalistElement = document.getElementById(`field-datalist-${index}`);
+                    if (datalistElement) {
+                        const datalistText = datalistElement.value.trim();
+                        field.options = datalistText ? datalistText.split('\n').map(line => {
+                            const parts = line.trim().split('|');
+                            return parts.length === 2 ? { value: parts[0].trim(), label: parts[1].trim() } : line.trim();
+                        }).filter(opt => opt) : [];
+                    }
+                }
+            } else if (field.dataSource.type === 'linked') {
+                // 关联配表
+                const linkedSchemaSelect = document.getElementById(`field-linked-schema-${index}`);
+                if (linkedSchemaSelect) {
+                    field.dataSource.schema = linkedSchemaSelect.value;
+                }
+            } else if (field.dataSource.type === 'enum') {
+                // 关联枚举
+                const linkedEnumSelect = document.getElementById(`field-linked-enum-${index}`);
+                if (linkedEnumSelect) {
+                    field.dataSource.enum = linkedEnumSelect.value;
+                }
+                // 收集枚举前缀
+                const enumPrefixInput = document.getElementById(`field-enum-prefix-${index}`);
+                if (enumPrefixInput) {
+                    field.dataSource.enumPrefix = enumPrefixInput.value.trim();
+                }
+            }
+        }
+    } else if (field.type === 'entry') {
+        const collectedSubfields = collectSubfields(index);
+        if (collectedSubfields.length > 0 || 
+            document.querySelectorAll(`.subfield-item[data-parent="${index}"]`).length > 0) {
+            field.subfields = collectedSubfields;
+        }
+    } else if (field.type === 'list') {
+        // 收集列表类型的元素类型与数据源配置
+        const elementTypeSelect = document.getElementById(`field-list-elementtype-${index}`);
+        if (elementTypeSelect) {
+            field.elementType = elementTypeSelect.value;
+        }
+
+        const dataSourceTypeSelect = document.getElementById(`field-list-datasource-type-${index}`);
+        if (dataSourceTypeSelect) {
+            if (!field.dataSource) field.dataSource = {};
+            field.dataSource.type = dataSourceTypeSelect.value;
+
+            if (field.dataSource.type === 'manual') {
+                if (field.elementType === 'option') {
+                    const optionsElement = document.getElementById(`field-list-options-${index}`);
+                    if (optionsElement) {
+                        const optionsText = optionsElement.value.trim();
+                        field.options = optionsText ? optionsText.split('\n').filter(opt => opt.trim()) : [];
+                    }
+                } else if (field.elementType === 'datalist') {
+                    const datalistElement = document.getElementById(`field-list-options-${index}`);
+                    if (datalistElement) {
+                        const datalistText = datalistElement.value.trim();
+                        field.options = datalistText ? datalistText.split('\n').map(line => {
+                            const parts = line.trim().split('|');
+                            return parts.length === 2 ? { value: parts[0].trim(), label: parts[1].trim() } : line.trim();
+                        }).filter(opt => opt) : [];
+                    }
+                }
+            } else if (field.dataSource.type === 'linked') {
+                const linkedSchemaSelect = document.getElementById(`field-list-linked-schema-${index}`);
+                if (linkedSchemaSelect) {
+                    field.dataSource.schema = linkedSchemaSelect.value;
+                }
+            } else if (field.dataSource.type === 'enum') {
+                const linkedEnumSelect = document.getElementById(`field-list-linked-enum-${index}`);
+                if (linkedEnumSelect) {
+                    field.dataSource.enum = linkedEnumSelect.value;
+                }
+                const enumPrefixInput = document.getElementById(`field-list-enum-prefix-${index}`);
+                if (enumPrefixInput) {
+                    field.dataSource.enumPrefix = enumPrefixInput.value.trim();
+                }
+            }
+        }
+    } else if (field.type === 'flags') {
+        const linkedEnumSelect = document.getElementById(`field-flags-enum-${index}`);
+        if (linkedEnumSelect) {
+            if (!field.dataSource) field.dataSource = {};
+            field.dataSource.type = 'enum';
+            field.dataSource.enum = linkedEnumSelect.value;
+        }
+        const enumPrefixInput = document.getElementById(`field-flags-enum-prefix-${index}`);
+        if (enumPrefixInput) {
+            if (!field.dataSource) field.dataSource = {};
+            field.dataSource.enumPrefix = enumPrefixInput.value.trim();
+        }
+    }
+}
+
 function collectFields() {
     // 现在字段数据已经在currentSchema中实时更新了
     // 但我们需要收集类型特定的配置（选项、数据列表等）
@@ -1546,6 +1687,10 @@ function collectSubfields(parentIndex) {
                     const linkedEnumElement = element.querySelector('.subfield-linked-enum');
                     if (linkedEnumElement) {
                         subfield.dataSource.enum = linkedEnumElement.value;
+                    }
+                    const enumPrefixElement = element.querySelector('.subfield-enum-prefix');
+                    if (enumPrefixElement) {
+                        subfield.dataSource.enumPrefix = enumPrefixElement.value.trim();
                     }
                 }
             }

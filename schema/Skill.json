@@ -2,7 +2,16 @@
   "description": "技能配置表",
   "exportConfig": {
     "namespace": "Tile",
-    "requires": [],
+    "requires": [
+      {
+        "varName": "a",
+        "path": "a"
+      },
+      {
+        "varName": "b",
+        "path": "b"
+      }
+    ],
     "tableKeyType": "string"
   },
   "fields": [

@@ -1688,7 +1688,10 @@ function generateTypeDefinition(schema, schemaName) {
     const fields = schema.fields || [];
     fields.forEach(field => {
         if (field.type === 'entry' && field.subfields && field.subfields.length > 0) {
-            const entryTypeName = toPascalCase(field.name);
+            // 如果设置了自定义 luaType，使用它；否则使用字段名生成
+            const entryTypeName = (field.luaType && field.luaType.trim()) 
+                ? field.luaType.trim().replace(/\[\]$/, '') // 移除可能的 []
+                : toPascalCase(field.name);
             code += `---@class (exact) ${entryTypeName}\n`;
             field.subfields.forEach(subfield => {
                 const subfieldType = getLuaType(subfield);
@@ -1743,7 +1746,13 @@ function getLuaType(field, parentName = '') {
         case 'datalist':
             return 'string';
         case 'entry':
-            // 对于条目类型，使用字段名生成类型名
+            // 对于条目类型，如果设置了 luaType 就直接使用（可能已包含[]），否则使用字段名生成
+            if (field.luaType && field.luaType.trim()) {
+                const customType = field.luaType.trim();
+                // 如果自定义类型已经包含[]，直接返回；否则添加[]
+                return customType.endsWith('[]') ? customType : `${customType}[]`;
+            }
+            // 没有自定义类型，使用字段名生成
             if (field.name) {
                 const entryTypeName = toPascalCase(field.name);
                 return `${entryTypeName}[]`;
@@ -2675,38 +2684,61 @@ function parseLuaValue(value, field) {
             return [];
         
         case 'entry':
-            // 解析嵌套table: { { field1 = val1, field2 = val2 }, ... }
+            // 解析嵌套table: { { field1 = val1, field2 = val2 }, ... } 或单个 {}
             if (value.startsWith('{') && value.endsWith('}')) {
                 const listContent = value.slice(1, -1).trim();
+                
+                // 空对象 {} 返回空数组
                 if (!listContent) return [];
                 
-                // 分割出各个entry
-                const entries = smartSplitLuaList(listContent);
-                const result = [];
+                // 检查是否是单层对象（直接包含字段，不是数组）
+                // 如: { field1 = val1, field2 = val2 } 而不是 { { ... }, { ... } }
+                const isSingleEntry = !listContent.trim().startsWith('{');
                 
-                entries.forEach(entryStr => {
-                    entryStr = entryStr.trim();
-                    if (entryStr.startsWith('{') && entryStr.endsWith('}')) {
-                        const entryContent = entryStr.slice(1, -1);
-                        const entryObj = {};
-                        
-                        // 解析entry的subfields
-                        if (field.subfields && field.subfields.length > 0) {
-                            field.subfields.forEach(subfield => {
-                                const subfieldValue = extractLuaFieldValue(entryContent, subfield.name);
-                                if (subfieldValue !== null) {
-                                    // 递归解析subfield的值
-                                    const parsedValue = parseLuaValue(subfieldValue, subfield);
-                                    setFieldValue(entryObj, subfield.name, parsedValue);
-                                }
-                            });
-                        }
-                        
-                        result.push(entryObj);
+                if (isSingleEntry) {
+                    // 单个entry对象
+                    const entryObj = {};
+                    
+                    if (field.subfields && field.subfields.length > 0) {
+                        field.subfields.forEach(subfield => {
+                            const subfieldValue = extractLuaFieldValue(listContent, subfield.name);
+                            if (subfieldValue !== null) {
+                                const parsedValue = parseLuaValue(subfieldValue, subfield);
+                                setFieldValue(entryObj, subfield.name, parsedValue);
+                            }
+                        });
                     }
-                });
-                
-                return result;
+                    
+                    return [entryObj];
+                } else {
+                    // 多个entry对象的数组
+                    const entries = smartSplitLuaList(listContent);
+                    const result = [];
+                    
+                    entries.forEach(entryStr => {
+                        entryStr = entryStr.trim();
+                        if (entryStr.startsWith('{') && entryStr.endsWith('}')) {
+                            const entryContent = entryStr.slice(1, -1);
+                            const entryObj = {};
+                            
+                            // 解析entry的subfields
+                            if (field.subfields && field.subfields.length > 0) {
+                                field.subfields.forEach(subfield => {
+                                    const subfieldValue = extractLuaFieldValue(entryContent, subfield.name);
+                                    if (subfieldValue !== null) {
+                                        // 递归解析subfield的值
+                                        const parsedValue = parseLuaValue(subfieldValue, subfield);
+                                        setFieldValue(entryObj, subfield.name, parsedValue);
+                                    }
+                                });
+                            }
+                            
+                            result.push(entryObj);
+                        }
+                    });
+                    
+                    return result;
+                }
             }
             return [];
         
