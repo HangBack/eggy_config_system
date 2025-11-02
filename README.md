@@ -1,287 +1,311 @@
-# 配表系统
+# 🎮 蛋仔配表系统
 
-![GitHub](https://img.shields.io/badge/GitHub-HangBack-blue?style=flat-square&logo=github)
-![Python](https://img.shields.io/badge/Python-3.7+-green?style=flat-square&logo=python)
-![Flask](https://img.shields.io/badge/Flask-2.0+-lightgrey?style=flat-square&logo=flask)
-![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
-![Platform](https://img.shields.io/badge/Platform-Web-orange?style=flat-square)
-![Lua](https://img.shields.io/badge/Export-Lua-blue?style=flat-square&logo=lua)
-![Status](https://img.shields.io/badge/Status-Active-success?style=flat-square)
+<div align="center">
 
-一个基于Web的配表编辑工具，支持自定义Schema和可视化数据编辑，可一键导出为Lua代码。
+![Python](https://img.shields.io/badge/Python-3.7+-blue.svg)
+![Flask](https://img.shields.io/badge/Flask-3.0.0-green.svg)
+![License](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)
 
-## 功能特性
+**专为蛋仔派对打造的可视化配表工具**
 
-- **Schema可视化编辑**：左右分栏布局，左侧字段列表，右侧字段配置
-- **多种字段类型**：文本、数字、颜色、选项、数据列表、条目（嵌套表）
-- **配表数据编辑**：根据Schema自动生成编辑表单，支持动态增删数据行
-- **自定义数据行名称**：每行数据可设置独立名称，导出时作为键名
-- **数据联动**：支持字段选项关联其他配表（级联选择）
-- **一键导出Lua**：支持Table和Array两种格式，自动生成类型注解
-- **数据预览**：表格形式预览所有数据
-- **智能迁移**：Schema修改后自动同步更新配表数据
+让游戏数据配置变得简单又高效 🚀
 
-## 项目结构
+[快速开始](#-5分钟上手) · [功能特性](#-核心功能) · [在线文档](./docs/) · [问题反馈](https://github.com/HangBack/eggy_config_system/issues)
 
-```
-web/
-├── index.html              # 主页面
-├── web.py                  # Flask后端服务器
-│
-├── css/                    # 样式文件（模块化，总计1420行）
-│   ├── common.css         # 公共样式 (135行)
-│   ├── schema.css         # Schema样式 (348行)
-│   ├── data.css           # 数据样式 (772行)
-│   └── enum.css           # 枚举样式 (165行)
-│
-├── js/                     # JavaScript文件（模块化，总计3533行）
-│   ├── common.js          # 公共配置和工具 (227行)
-│   ├── enum-manager.js    # 枚举管理 (594行)
-│   ├── schema-manager.js  # Schema管理 (1154行)
-│   └── data-manager.js    # 配表数据管理 (1558行)
-│
-├── schema/                 # Schema定义文件（JSON）
-├── enum/                   # 枚举定义文件（JSON）
-├── data/                   # 配表数据文件（JSON）
-└── assets/                 # 资源文件
-```
+</div>
 
-详细说明：
-- **CSS模块**: [css/README.md](css/README.md)
-- **JavaScript模块**: [js/README.md](js/README.md)
+---
 
-## 快速开始
+## 💡 这是什么？
 
-### 1. 安装依赖
+在蛋仔派对中制作游戏内容时，你是否遇到过这些困扰？
+
+- ❌ **手写配置文件太繁琐**，容易出错
+- ❌ **数据和代码分离**，编辑器的表格无法导出为 Lua
+- ❌ **魔法数字满天飞**，代码难以维护
+- ❌ **团队协作混乱**，配置格式不统一
+
+**蛋仔配表系统**帮你解决这一切！
+
+✅ **可视化界面** - 像填表格一样简单  
+✅ **一键导出 Lua** - 自动生成代码，直接用于蛋仔派对  
+✅ **枚举管理** - 告别魔法数字，代码更清晰  
+✅ **本地运行** - 数据安全可控，无需联网
+
+---
+
+## 🎯 核心功能
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <h3>📋 Schema 配置</h3>
+      <p><strong>定义数据结构，像设计表格一样</strong></p>
+      <ul>
+        <li>🔹 支持10+种字段类型</li>
+        <li>🔹 可视化字段编辑器</li>
+        <li>🔹 自动数据验证</li>
+        <li>🔹 字段关联和引用</li>
+      </ul>
+      <img src="./images/create_schema.png" alt="Schema配置" style="max-width:100%; border-radius:8px;">
+    </td>
+    <td width="50%" valign="top">
+      <h3>🏷️ 枚举管理</h3>
+      <p><strong>统一管理常量，代码更易读</strong></p>
+      <ul>
+        <li>🔸 数字/字符串/标志位/事件枚举</li>
+        <li>🔸 跨表共享枚举值</li>
+        <li>🔸 自动生成注释</li>
+        <li>🔸 支持事件参数定义</li>
+      </ul>
+      <img src="./images/enum_types.png" alt="枚举管理" style="max-width:100%; border-radius:8px;">
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <h3>📝 配表编辑</h3>
+      <p><strong>像Excel一样编辑游戏数据</strong></p>
+      <ul>
+        <li>🔹 所见即所得的编辑体验</li>
+        <li>🔹 智能字段提示和搜索</li>
+        <li>🔹 一键复制/删除数据行</li>
+        <li>🔹 支持复杂嵌套结构</li>
+      </ul>
+      <img src="./images/data_preview.png" alt="配表编辑" style="max-width:100%; border-radius:8px;">
+    </td>
+    <td width="50%" valign="top">
+      <h3>📤 Lua 导出</h3>
+      <p><strong>一键生成蛋仔派对可用代码</strong></p>
+      <ul>
+        <li>🔸 完整的类型注解</li>
+        <li>🔸 规范的代码格式</li>
+        <li>🔸 枚举自动引用</li>
+        <li>🔸 复制即用，零修改</li>
+      </ul>
+      <img src="./images/lua_export_example.png" alt="Lua导出" style="max-width:100%; border-radius:8px;">
+    </td>
+  </tr>
+</table>
+
+---
+
+## ⚡ 5分钟上手
+
+### 第一步：安装并启动
 
 ```bash
-pip install flask flask-cors
-```
+# 1️⃣ 下载项目
+git clone https://github.com/HangBack/eggy_config_system.git
+cd eggy_config_system
 
-### 2. 启动服务
+# 2️⃣ 安装依赖（仅需两个库！）
+pip install -r requirements.txt
 
-```bash
+# 3️⃣ 启动服务
 python web.py
 ```
 
-服务将在 `http://localhost:5000` 启动
+### 第二步：打开浏览器
 
-### 3. 打开界面
+在浏览器输入：**`http://localhost:3001`**
 
-在浏览器中打开 `index.html` 文件即可使用
+看到界面就成功了！🎉
 
-## 字段类型说明
+### 第三步：创建你的第一个配表
+
+1. **点击「Schema 管理」** → 新建 Schema → 填写名称（如 `FishConfig`）
+2. **添加字段** → 鱼类ID、鱼类名称、稀有度...
+3. **切换到「配表编辑」** → 选择刚创建的 Schema → 新增数据
+4. **点击「导出 Lua」** → 复制代码 → 粘贴到蛋仔派对项目中
+
+✨ **完成！** 你已经掌握了核心流程！
+
+---
+
+## 📚 使用场景
+
+<table>
+  <tr>
+    <td align="center" width="25%">
+      <h3>🐟 钓鱼系统</h3>
+      <p>配置鱼类属性、稀有度、掉落概率</p>
+    </td>
+    <td align="center" width="25%">
+      <h3>🏪 商店系统</h3>
+      <p>管理商品、价格、库存、折扣</p>
+    </td>
+    <td align="center" width="25%">
+      <h3>⚔️ 技能系统</h3>
+      <p>定义技能效果、冷却、等级数据</p>
+    </td>
+    <td align="center" width="25%">
+      <h3>🗺️ 关卡配置</h3>
+      <p>设置波次、敌人、奖励、难度</p>
+    </td>
+  </tr>
+</table>
+
+只要涉及到**游戏数据配置**，这个工具都能帮到你！
+
+👉 查看完整案例：[使用示例](./docs/使用示例.md)
+
+---
+
+## 🎨 支持的字段类型
 
 | 类型 | 说明 | 适用场景 |
-|------|------|----------|
-| **文本 (text)** | 单行文本输入框 | 名称、描述等文本信息 |
-| **数字 (number)** | 数字输入框 | 等级、权重、数量等数值 |
-| **颜色 (color)** | 颜色选择器 + 文本输入 | 显示为0xRRGGBB格式，支持色盘选择 |
-| **选项 (option)** | 下拉选择框 | 固定选项的枚举值 |
-| **数据列表 (datalist)** | 带搜索的下拉列表 | 可输入可选择的数据 |
-| **条目 (entry)** | 可动态增删的嵌套表 | 列表类数据（如奖励列表、权重池） |
+|------|------|---------|
+| 📝 **文本** | 字符串类型 | 名称、描述、路径 |
+| 🔢 **数字** | 整数/小数 | ID、属性值、价格 |
+| 🎨 **颜色** | 十六进制颜色 | UI颜色、特效颜色 |
+| 📋 **选项** | 单选下拉框 | 类型、等级、状态 |
+| 🔍 **数据列表** | 可搜索的选择框 | 大量选项、智能搜索 |
+| 📦 **列表** | 数组类型 | 技能列表、道具列表 |
+| 📚 **字典** | 复合对象 | 位置坐标、属性组 |
+| 📑 **条目** | 对象数组 | 商品列表、关卡波次 |
+| 🚩 **标志位** | 位运算枚举 | 权限、功能开关 |
 
-### 数据源配置
+👉 详细说明：[字段类型文档](./docs/字段类型.md)
 
-选项和数据列表类型支持两种数据源：
-- **手动输入**：直接在Schema中定义选项列表
-- **关联配表**：从其他配表中动态加载数据（级联选择）
+---
 
-## 使用流程
+## 🎓 学习资源
 
-```mermaid
-flowchart TD
-    Start([开始使用]) --> CreateSchema[创建Schema]
-    CreateSchema --> AddFields[添加字段并配置]
-    AddFields --> SaveSchema[保存Schema]
-    SaveSchema --> EditData[编辑配表数据]
-    EditData --> AddRow[添加数据行]
-    AddRow --> FillData[填写字段值]
-    FillData --> SaveData[保存数据]
-    SaveData --> NeedMore{需要更多数据?}
-    NeedMore -->|是| AddRow
-    NeedMore -->|否| Preview[预览数据]
-    Preview --> Export[导出Lua代码]
-    Export --> SelectFormat{选择导出格式}
-    SelectFormat -->|Table格式| TableExport[生成键值对代码]
-    SelectFormat -->|Array格式| ArrayExport[生成数组代码]
-    TableExport --> CopyCode[复制代码]
-    ArrayExport --> CopyCode
-    CopyCode --> End([完成])
-    
-    SaveSchema -.修改Schema.-> Migrate[智能迁移数据]
-    Migrate -.-> EditData
-    
-    style Start fill:#e1f5e1
-    style End fill:#ffe1e1
-    style CreateSchema fill:#e3f2fd
-    style EditData fill:#fff3e0
-    style Export fill:#f3e5f5
-```
+| 📚 文档 | 📝 说明 |
+|--------|---------|
+| [字段类型说明](./docs/字段类型.md) | 10+ 种字段类型详细介绍和使用方法 |
+| [枚举管理指南](./docs/枚举管理.md) | 4 种枚举类型完全指南，含代码示例 |
+| [配表编辑教程](./docs/配表编辑.md) | 从新建到导出的完整操作流程 |
+| [使用示例](./docs/使用示例.md) | 5 个真实游戏系统的配表实战案例 |
 
-### 步骤1：创建Schema
+---
 
-1. 切换到"Schema编辑"面板
-2. 点击"新建Schema"按钮
-3. 填写Schema名称和描述
-4. 点击"添加字段"，在左侧列表中添加字段
-5. 点击字段进行编辑，配置字段属性：
-   - 字段名称（用于代码中的变量名）
-   - 字段标签（显示在界面上的名称）
-   - 字段类型（文本、数字、颜色等）
-   - 默认值、是否必填等
-6. 如果是条目类型，配置子字段
-7. 点击"保存"按钮
+## 💬 常见问题
 
-### 步骤2：编辑配表数据
+<details>
+<summary><b>🔧 安装和启动问题</b></summary>
 
-1. 切换到"配表编辑"面板
-2. 从下拉列表选择要编辑的Schema
-3. 点击"添加行"创建数据行
-4. 点击左侧数据行进行编辑
-5. 在右侧编辑器中填写各字段的值
-6. 修改数据行名称（用于Lua导出的键名）
-7. 点击"保存"按钮
+**Q: 提示缺少 Python？**  
+A: 前往 [Python 官网](https://www.python.org/downloads/) 下载安装 Python 3.7 或更高版本
 
-### 步骤3：导出Lua代码
+**Q: 端口被占用怎么办？**  
+A: 编辑 `web.py` 最后一行，将 `port=3001` 改为其他端口（如 `8080`）
 
-1. 点击"导出Lua"按钮
-2. 配置导出选项：
-   - 选择格式（Table/Array）
-   - 设置Namespace名称
-   - 添加require导入（可选）
-3. 点击"复制代码"复制到剪贴板
-4. 粘贴到Lua文件中使用
+**Q: 浏览器打不开？**  
+A: 检查 Python 服务是否成功启动，确认命令行窗口没有报错
 
-### 数据预览
+</details>
 
-点击"预览"按钮可以以表格形式查看所有数据
+<details>
+<summary><b>📝 使用问题</b></summary>
 
-## Lua导出说明
+**Q: 修改 Schema 后，旧数据会丢失吗？**  
+A: 不会！系统会智能处理：
+- 新增字段 → 自动填充默认值
+- 删除字段 → 自动清理旧字段
+- 修改类型 → 提示手动检查
 
-### Table格式（键值对）
+**Q: 数据保存在哪里？**  
+A: 所有数据保存在项目文件夹：
+- `schema/` - 表结构定义
+- `data/` - 数据内容
+- `enum/` - 枚举定义
 
-适合通过ID快速查找的场景：
+**Q: 导出的 Lua 代码有错误？**  
+A: 检查是否有特殊字符或格式问题，「原始文本」选项用于 Lua 代码片段
 
-```lua
----@type table<string, FishPool>
-local result = {
-    ["pool_1"] = {
-        pool_name = "新手池",
-        min_level = 1,
-        fish_entries = {
-            { fish_id = "FishCode.Clownfish", weight = 50 }
-        }
-    }
-}
-```
+</details>
 
-### Array格式（数组）
+<details>
+<summary><b>🤝 协作问题</b></summary>
 
-适合顺序遍历的场景：
+**Q: 可以多人同时编辑吗？**  
+A: 当前不支持实时协作，建议：
+- 使用 Git 管理配置文件
+- 约定编辑时间避免冲突
+- 定期同步和合并
 
-```lua
----@type FishPool[]
-local result = {
-    {
-        pool_name = "新手池",
-        min_level = 1,
-        fish_entries = {
-            { fish_id = "FishCode.Clownfish", weight = 50 }
-        }
-    }
-}
-```
+**Q: 如何备份数据？**  
+A: 两种方式：
+1. 复制 `schema/`、`data/`、`enum/` 文件夹
+2. 使用「导出 JSON」功能
 
-### 特性
+</details>
 
-- 自动生成LuaLS类型注解（`@class`, `@field`）
-- 智能识别枚举值（包含`.`的字段值不加引号）
-- 自动添加字段注释（显示字段标签）
-- 颜色类型导出为`0xRRGGBB`格式
-- 纯数字字段名使用`[1]`格式（不带引号）
-- 支持自定义require导入和namespace
+<details>
+<summary><b>🎮 蛋仔派对集成问题</b></summary>
 
-## 高级功能
+**Q: 导出的代码如何使用？**  
+A: 直接粘贴到蛋仔项目的 Lua 文件中，使用 `require` 引入即可
 
-### Schema智能迁移
+**Q: 类型注解有什么用？**  
+A: 提供智能代码提示，减少输入错误，提高开发效率
 
-修改Schema后保存时，系统会自动：
-- 检测字段的增删改
-- 显示变更详情供确认
-- 智能映射重命名的字段（按顺序和类型匹配）
-- 保留类型未变字段的原有数据
-- 新增字段使用默认值
+**Q: 枚举值怎么引用？**  
+A: 使用 `Enum.枚举名.键名`，如 `Enum.FishRarity.EPIC`
 
-### 数据联动
+</details>
 
-选项/数据列表字段可以关联其他配表：
-1. 配置数据源为"关联配表"
-2. 选择要关联的Schema和字段
-3. 编辑数据时自动加载关联表的选项
+---
 
-### 原始值标记
+## 🌟 为什么选择我们
 
-字段可以标记为"原始"（Raw），导出Lua时：
-- 普通字段：`name = FishCode.Clownfish`（不加引号）
-- 数据行：`[FishCode.Clownfish] = {...}`（键不加引号）
+<table>
+  <tr>
+    <td align="center">
+      <h3>⚡ 简单易用</h3>
+      <p>无需编程基础<br>5分钟即可上手</p>
+    </td>
+    <td align="center">
+      <h3>🎯 专为蛋仔设计</h3>
+      <p>完美支持 Lua<br>自动生成类型注解</p>
+    </td>
+    <td align="center">
+      <h3>🔒 数据安全</h3>
+      <p>本地运行<br>数据完全掌控</p>
+    </td>
+    <td align="center">
+      <h3>🆓 完全免费</h3>
+      <p>开源项目<br>永久免费使用</p>
+    </td>
+  </tr>
+</table>
 
-## 注意事项
+---
 
-- 切换数据行前会自动保存当前编辑到内存
-- Schema名称只能包含字母、数字、下划线和连字符
-- 删除Schema会同时删除关联的配表数据
-- 数据存储在 `schema/` 和 `data/` 目录
+## 🤝 参与贡献
 
-## 项目结构
+欢迎提交 Issue 和 Pull Request！
+
+如果这个项目对你有帮助，请给个 ⭐ Star 支持一下！
+
+---
+
+## 📞 联系方式
+
+- 📧 问题反馈：[GitHub Issues](https://github.com/HangBack/eggy_config_system/issues)
+- 📖 完整文档：[./docs/](./docs/)
+- 🌐 项目主页：[GitHub](https://github.com/HangBack/eggy_config_system)
+
+---
+
+## 📄 开源协议
+
+本项目采用 [MIT](./LICENSE) 协议开源
 
 ```
-web/
-├── index.html          # 前端界面
-├── script.js           # 主要逻辑
-├── style.css           # 样式文件
-├── web.py             # 后端服务
-├── schema/            # Schema定义（JSON）
-└── data/              # 配表数据（JSON）
-```
+Copyright (c) 2025 HangBack
 
-### 系统架构
-
-```mermaid
-graph TB
-    subgraph Frontend["前端 (Browser)"]
-        HTML[index.html<br/>界面布局]
-        JS[script.js<br/>业务逻辑]
-        CSS[style.css<br/>样式]
-    end
-    
-    subgraph Backend["后端 (Flask)"]
-        API[web.py<br/>REST API]
-    end
-    
-    subgraph Storage["数据存储"]
-        SchemaFiles[(schema/<br/>Schema定义)]
-        DataFiles[(data/<br/>配表数据)]
-    end
-    
-    subgraph Export["导出模块"]
-        LuaGen[Lua代码生成器<br/>Table/Array格式]
-    end
-    
-    HTML --> JS
-    CSS --> HTML
-    JS -->|HTTP请求| API
-    API -->|读写| SchemaFiles
-    API -->|读写| DataFiles
-    JS -->|调用| LuaGen
-    LuaGen -->|生成| LuaCode[Lua代码文件]
-    
-    style Frontend fill:#e3f2fd
-    style Backend fill:#fff3e0
-    style Storage fill:#f3e5f5
-    style Export fill:#e8f5e9
+使用、复制、修改、合并、发布、分发、再授权和/或出售本软件副本，均无限制。
 ```
 
 ---
 
-**作者**: 豆油汉堡
+<div align="center">
+
+**🎮 让配表变得简单，让游戏开发更高效！**
+
+Made with ❤️ for 蛋仔派对开发者
+
+</div>

@@ -132,10 +132,11 @@
 
                     <div class="form-group">
                         <label>枚举类型</label>
-                        <select id="enum-type-select" class="form-control">
+                        <select id="enum-type-select" class="form-control" onchange="onEnumTypeChange()">
                             <option value="number">数字</option>
                             <option value="string">字符</option>
                             <option value="flag">标志</option>
+                            <option value="event">事件</option>
                         </select>
                     </div>
 
@@ -157,14 +158,14 @@
                             <button class="btn btn-sm btn-secondary" id="preview-enum-btn" style="display: none;">
                                 <i class="fas fa-eye"></i> 预览
                             </button>
-                            <button class="btn btn-sm btn-primary" id="add-enum-value-btn">
-                                <i class="fas fa-plus"></i> 添加
-                            </button>
                         </div>
                     </div>
                     <div id="enum-values-list" class="enum-values-list">
                         <!-- 枚举值列表 -->
                     </div>
+                    <button class="btn btn-primary" id="add-enum-value-btn" style="width: 100%;">
+                        <i class="fas fa-plus"></i> 添加枚举值
+                    </button>
                 </div>
             </div>
         </div>

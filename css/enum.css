@@ -63,6 +63,13 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 10px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    margin-bottom: 15px;
 }
 
 .enum-value-item {
@@ -71,7 +78,7 @@
     gap: 10px;
     align-items: start;
     padding: 12px;
-    background: #f8f9fa;
+    background: white;
     border: 1px solid #dee2e6;
     border-radius: 4px;
 }
@@ -163,3 +170,80 @@
     color: #95a5a6;
     font-style: italic;
 }
+
+/* 事件枚举样式 */
+.event-enum-item {
+    width: 100%;
+}
+
+.event-enum-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.event-enum-row .form-group {
+    flex: 1;
+    margin: 0;
+}
+
+.event-params-group {
+    flex: 1 !important;
+}
+
+.event-params-list {
+    margin-bottom: 10px;
+    min-height: 50px;
+    padding: 8px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+.empty-params {
+    color: #aaa;
+    font-style: italic;
+    text-align: center;
+    padding: 10px;
+}
+
+.event-param-item {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr 2fr auto;
+    gap: 8px;
+    margin-bottom: 8px;
+    padding: 8px;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+.event-param-item input {
+    font-size: 13px;
+}
+
+.event-param-item .param-key {
+    grid-column: 1;
+}
+
+.event-param-item .param-type {
+    grid-column: 2;
+}
+
+.event-param-item .param-desc {
+    grid-column: 3;
+}
+
+.event-param-item button {
+    grid-column: 4;
+    height: 100%;
+}
+
+.enum-value-item:has(.event-enum-item) {
+    grid-template-columns: 1fr auto;
+}
+
+.enum-value-item:has(.event-enum-item) .btn-delete {
+    margin-top: 0;
+}
+

@@ -133,29 +133,89 @@ function renderEnumValuesList() {
         return;
     }
 
+    const enumType = currentEnum.type || 'number';
+
     currentEnum.values.forEach((value, index) => {
         const item = document.createElement('div');
         item.className = 'enum-value-item';
-        item.innerHTML = `
-            <div class="form-group">
-                <label>键名</label>
-                <input type="text" class="form-control" value="${value.key || ''}" 
-                       onchange="updateEnumValue(${index}, 'key', this.value)">
-            </div>
-            <div class="form-group">
-                <label>值</label>
-                <input type="number" class="form-control" value="${value.value || 0}" 
-                       onchange="updateEnumValue(${index}, 'value', parseInt(this.value))">
-            </div>
-            <div class="form-group">
-                <label>注释</label>
-                <input type="text" class="form-control" value="${value.label || ''}" 
-                       onchange="updateEnumValue(${index}, 'label', this.value)">
-            </div>
-            <button class="btn btn-sm btn-danger btn-delete" onclick="removeEnumValue(${index})">
-                <i class="fas fa-trash"></i>
-            </button>
-        `;
+        
+        // 根据枚举类型渲染不同的UI
+        if (enumType === 'event') {
+            // 事件枚举类型 - 多行布局
+            item.innerHTML = `
+                <div class="event-enum-item">
+                    <div class="event-enum-row">
+                        <div class="form-group">
+                            <label>事件名</label>
+                            <input type="text" class="form-control" value="${escapeHtml(value.key || '')}" 
+                                   onchange="updateEnumValue(${index}, 'key', this.value)">
+                        </div>
+                        <div class="form-group">
+                            <label>值</label>
+                            <input type="text" class="form-control" value="${escapeHtml(value.value || '')}" 
+                                   onchange="updateEnumValue(${index}, 'value', this.value)">
+                        </div>
+                    </div>
+                    <div class="event-enum-row">
+                        <div class="form-group">
+                            <label>事件说明</label>
+                            <textarea class="form-control" rows="2" 
+                                      onchange="updateEnumValue(${index}, 'label', this.value)">${escapeHtml(value.label || '')}</textarea>
+                        </div>
+                    </div>
+                    <div class="event-enum-row">
+                        <div class="form-group event-params-group">
+                            <label>注册参数</label>
+                            <div class="event-params-list" id="register-params-${index}">
+                                ${renderEventParams(value.registerParams || [], index, 'registerParams')}
+                            </div>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="addEventParam(${index}, 'registerParams')">
+                                <i class="fas fa-plus"></i> 添加注册参数
+                            </button>
+                        </div>
+                        <div class="form-group event-params-group">
+                            <label>回调参数</label>
+                            <div class="event-params-list" id="callback-params-${index}">
+                                ${renderEventParams(value.callbackParams || [], index, 'callbackParams')}
+                            </div>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="addEventParam(${index}, 'callbackParams')">
+                                <i class="fas fa-plus"></i> 添加回调参数
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-sm btn-danger btn-delete" onclick="removeEnumValue(${index})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            `;
+        } else {
+            // 普通枚举类型 - 单行布局
+            const valueInputType = enumType === 'string' ? 'text' : 'number';
+            const valueOnChange = enumType === 'string' 
+                ? `updateEnumValue(${index}, 'value', this.value)` 
+                : `updateEnumValue(${index}, 'value', parseInt(this.value))`;
+            
+            item.innerHTML = `
+                <div class="form-group">
+                    <label>键名</label>
+                    <input type="text" class="form-control" value="${escapeHtml(value.key || '')}" 
+                           onchange="updateEnumValue(${index}, 'key', this.value)">
+                </div>
+                <div class="form-group">
+                    <label>值</label>
+                    <input type="${valueInputType}" class="form-control" value="${escapeHtml(String(value.value || (enumType === 'string' ? '' : 0)))}" 
+                           onchange="${valueOnChange}">
+                </div>
+                <div class="form-group">
+                    <label>注释</label>
+                    <input type="text" class="form-control" value="${escapeHtml(value.label || '')}" 
+                           onchange="updateEnumValue(${index}, 'label', this.value)">
+                </div>
+                <button class="btn btn-sm btn-danger btn-delete" onclick="removeEnumValue(${index})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            `;
+        }
         container.appendChild(item);
     });
     
@@ -163,16 +223,91 @@ function renderEnumValuesList() {
     updateEnumPreviewButtonVisibility();
 }
 
+// 渲染事件参数列表
+function renderEventParams(params, enumIndex, paramType) {
+    if (!params || params.length === 0) {
+        return '<div class="empty-params">暂无参数</div>';
+    }
+    
+    return params.map((param, paramIndex) => `
+        <div class="event-param-item">
+            <input type="text" class="form-control param-key" placeholder="参数名" 
+                   value="${escapeHtml(param.name || '')}"
+                   onchange="updateEventParam(${enumIndex}, '${paramType}', ${paramIndex}, 'name', this.value)">
+            <input type="text" class="form-control param-type" placeholder="类型" 
+                   value="${escapeHtml(param.type || '')}"
+                   onchange="updateEventParam(${enumIndex}, '${paramType}', ${paramIndex}, 'type', this.value)">
+            <input type="text" class="form-control param-desc" placeholder="说明" 
+                   value="${escapeHtml(param.description || '')}"
+                   onchange="updateEventParam(${enumIndex}, '${paramType}', ${paramIndex}, 'description', this.value)">
+            <button type="button" class="btn btn-sm btn-danger" onclick="removeEventParam(${enumIndex}, '${paramType}', ${paramIndex})">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `).join('');
+}
+
+// 添加事件参数
+function addEventParam(enumIndex, paramType) {
+    if (!currentEnum.values[enumIndex][paramType]) {
+        currentEnum.values[enumIndex][paramType] = [];
+    }
+    currentEnum.values[enumIndex][paramType].push({
+        name: '',
+        type: '',
+        description: ''
+    });
+    renderEnumValuesList();
+}
+
+// 更新事件参数
+function updateEventParam(enumIndex, paramType, paramIndex, field, value) {
+    if (currentEnum.values[enumIndex][paramType] && currentEnum.values[enumIndex][paramType][paramIndex]) {
+        currentEnum.values[enumIndex][paramType][paramIndex][field] = value;
+    }
+}
+
+// 删除事件参数
+function removeEventParam(enumIndex, paramType, paramIndex) {
+    if (currentEnum.values[enumIndex][paramType]) {
+        currentEnum.values[enumIndex][paramType].splice(paramIndex, 1);
+        renderEnumValuesList();
+    }
+}
+
+function onEnumTypeChange() {
+    const newType = document.getElementById('enum-type-select').value;
+    if (currentEnum) {
+        currentEnum.type = newType;
+        // 重新渲染值列表以应用新的UI
+        renderEnumValuesList();
+    }
+}
+
 function addEnumValue() {
     if (!currentEnum.values) {
         currentEnum.values = [];
     }
 
-    currentEnum.values.push({
-        key: '',
-        value: 0,
-        label: ''
-    });
+    const enumType = currentEnum.type || 'number';
+    
+    if (enumType === 'event') {
+        // 事件类型的枚举值
+        currentEnum.values.push({
+            key: '',
+            value: '',
+            label: '',
+            registerParams: [],
+            callbackParams: []
+        });
+    } else {
+        // 普通枚举值
+        currentEnum.values.push({
+            key: '',
+            value: enumType === 'string' ? '' : 0,
+            label: ''
+        });
+    }
 
     renderEnumValuesList();
 }
@@ -306,16 +441,16 @@ function exportEnumToLua() {
     const enumName = currentEnum.name;
     const enumType = currentEnum.type || 'number';
     
-    let luaCode = `---@enum ${enumName}\n`;
+    let luaCode = `---@namespace ${namespace}\n`;
+    luaCode += `---@enum ${enumType === 'event' ? 'Event' : enumName}\n`;
     luaCode += `local ${enumName} = {\n`;
     
     currentEnum.values.forEach((value, index) => {
         const isLast = index === currentEnum.values.length - 1;
         const comma = isLast ? '' : ',';
-        const comment = value.label ? ` --${value.label}` : '';
         
         let valueStr;
-        if (enumType === 'string') {
+        if (enumType === 'string' || enumType === 'event') {
             valueStr = `"${value.value}"`;
         } else if (enumType === 'flag') {
             valueStr = `1 << ${value.value}`;
@@ -323,11 +458,40 @@ function exportEnumToLua() {
             valueStr = value.value;
         }
         
-        luaCode += `    ${value.key} = ${valueStr}${comma}${comment}\n`;
+        if (enumType === 'event') {
+            // 事件类型的注释格式
+            luaCode += `    ${value.key} = ${valueStr}${comma} --[[\n`;
+            if (value.label) {
+                luaCode += `    ${value.label}\n`;
+            }
+            
+            // 注册参数
+            if (value.registerParams && value.registerParams.length > 0) {
+                luaCode += `    注册参数：\n`;
+                value.registerParams.forEach(param => {
+                    const desc = param.description ? ` ${param.description}` : '';
+                    luaCode += `    - ${param.name}: ${param.type}${desc}\n`;
+                });
+            }
+            
+            // 回调参数（事件数据）
+            if (value.callbackParams && value.callbackParams.length > 0) {
+                luaCode += `    事件数据：\n`;
+                value.callbackParams.forEach(param => {
+                    const desc = param.description ? ` ${param.description}` : '';
+                    luaCode += `    - ${param.name}: ${param.type}${desc}\n`;
+                });
+            }
+            
+            luaCode += `    ]]\n`;
+        } else {
+            // 普通枚举的注释格式
+            const comment = value.label ? ` --${value.label}` : '';
+            luaCode += `    ${value.key} = ${valueStr}${comma}${comment}\n`;
+        }
     });
     
     luaCode += `}\n\n`;
-    luaCode += `${namespace}.${enumName} = ${enumName}\n`;
     luaCode += `return ${enumName}\n`;
 
     // 显示模态框
@@ -473,6 +637,74 @@ function previewEnumValues() {
                 labelDiv.className = 'enum-preview-label';
                 labelDiv.textContent = value.label;
                 item.appendChild(labelDiv);
+            }
+            
+            content.appendChild(item);
+        });
+    } else if (currentEnum.type === 'event') {
+        // 事件类型：显示事件详细信息
+        currentEnum.values.forEach(value => {
+            const item = document.createElement('div');
+            item.className = 'enum-preview-item';
+            item.style.flexDirection = 'column';
+            item.style.alignItems = 'flex-start';
+            
+            const headerDiv = document.createElement('div');
+            headerDiv.style.display = 'flex';
+            headerDiv.style.gap = '15px';
+            headerDiv.style.marginBottom = '10px';
+            
+            const keyDiv = document.createElement('div');
+            keyDiv.className = 'enum-preview-key';
+            keyDiv.textContent = value.key;
+            
+            const valueDiv = document.createElement('div');
+            valueDiv.className = 'enum-preview-value';
+            valueDiv.textContent = `"${value.value}"`;
+            
+            headerDiv.appendChild(keyDiv);
+            headerDiv.appendChild(valueDiv);
+            item.appendChild(headerDiv);
+            
+            if (value.label) {
+                const labelDiv = document.createElement('div');
+                labelDiv.style.marginBottom = '8px';
+                labelDiv.textContent = value.label;
+                item.appendChild(labelDiv);
+            }
+            
+            if (value.registerParams && value.registerParams.length > 0) {
+                const registerTitle = document.createElement('div');
+                registerTitle.style.fontWeight = 'bold';
+                registerTitle.style.marginTop = '8px';
+                registerTitle.style.marginBottom = '4px';
+                registerTitle.textContent = '注册参数：';
+                item.appendChild(registerTitle);
+                
+                value.registerParams.forEach(param => {
+                    const paramDiv = document.createElement('div');
+                    paramDiv.style.marginLeft = '10px';
+                    paramDiv.style.fontSize = '13px';
+                    paramDiv.textContent = `- ${param.name}: ${param.type}${param.description ? ' ' + param.description : ''}`;
+                    item.appendChild(paramDiv);
+                });
+            }
+            
+            if (value.callbackParams && value.callbackParams.length > 0) {
+                const callbackTitle = document.createElement('div');
+                callbackTitle.style.fontWeight = 'bold';
+                callbackTitle.style.marginTop = '8px';
+                callbackTitle.style.marginBottom = '4px';
+                callbackTitle.textContent = '事件数据：';
+                item.appendChild(callbackTitle);
+                
+                value.callbackParams.forEach(param => {
+                    const paramDiv = document.createElement('div');
+                    paramDiv.style.marginLeft = '10px';
+                    paramDiv.style.fontSize = '13px';
+                    paramDiv.textContent = `- ${param.name}: ${param.type}${param.description ? ' ' + param.description : ''}`;
+                    item.appendChild(paramDiv);
+                });
             }
             
             content.appendChild(item);
