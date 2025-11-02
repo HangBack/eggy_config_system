@@ -1,4 +1,41 @@
-﻿async function loadSchemas() {
+﻿// Lua ValueType 数据列表 (从 enum.lua 中的 Enums.ValueType 提取)
+const luaValueTypes = [];
+
+async function loadLuaValueTypes() {
+    try {
+        const response = await fetch('enum.lua');
+        const text = await response.text();
+        
+        // 解析 enum.lua 中的 ValueType
+        const lines = text.split('\n');
+        let inValueType = false;
+        
+        for (const line of lines) {
+            if (line.includes('Enums.ValueType')) {
+                inValueType = true;
+                continue;
+            }
+            if (inValueType && line.includes('}')) {
+                break;
+            }
+            if (inValueType) {
+                // 匹配格式: TypeName = 'TypeName', ---描述
+                const match = line.match(/\s*(\w+)\s*=\s*'(\w+)',\s*---(.+)/);
+                if (match) {
+                    const typeName = match[1];
+                    const description = match[3].trim();
+                    luaValueTypes.push({ value: typeName, label: description });
+                }
+            }
+        }
+        
+        console.log(`已加载 ${luaValueTypes.length} 个Lua值类型`);
+    } catch (error) {
+        console.error('加载enum.lua失败:', error);
+    }
+}
+
+async function loadSchemas() {
     try {
         const response = await fetch(`${API.SCHEMA}?action=list`);
         const result = await response.json();
@@ -605,6 +642,7 @@ function createFieldListItem(field, index) {
     const typeMap = {
         'text': '文本',
         'number': '数字',
+        'dict': '字典',
         'entry': '条目',
         'option': '选项',
         'datalist': '数据列表'
@@ -681,6 +719,7 @@ function createFieldEditorHTML(field, index) {
                     <option value="text" ${field.type === 'text' ? 'selected' : ''}>文本</option>
                     <option value="number" ${field.type === 'number' ? 'selected' : ''}>数字</option>
                     <option value="color" ${field.type === 'color' ? 'selected' : ''}>颜色</option>
+                    <option value="dict" ${field.type === 'dict' ? 'selected' : ''}>字典</option>
                     <option value="entry" ${field.type === 'entry' ? 'selected' : ''}>条目</option>
                     <option value="list" ${field.type === 'list' ? 'selected' : ''}>列表</option>
                     <option value="option" ${field.type === 'option' ? 'selected' : ''}>选项</option>
@@ -697,7 +736,8 @@ function createFieldEditorHTML(field, index) {
         <div class="field-compact-row">
             <div class="form-group">
                 <label>Lua注解类型（可选）</label>
-                <input type="text" id="field-luatype-${index}" class="form-control" value="${escapeHtml(field.luaType || '')}" placeholder="留空使用默认类型，如: ConfigType">
+                <input type="text" id="field-luatype-${index}" class="form-control datalist-input" value="${escapeHtml(field.luaType || '')}" placeholder="留空使用默认类型，如: ConfigType" list="lua-types-datalist-${index}">
+                <datalist id="lua-types-datalist-${index}"></datalist>
             </div>
         </div>
         
@@ -727,6 +767,14 @@ function bindFieldEditorEvents(index) {
     const luaTypeInput = document.getElementById(`field-luatype-${index}`);
     const requiredCheckbox = document.getElementById(`field-required-${index}`);
     const rawCheckbox = document.getElementById(`field-raw-${index}`);
+    
+    // 填充Lua类型数据列表
+    const datalist = document.getElementById(`lua-types-datalist-${index}`);
+    if (datalist && luaValueTypes.length > 0) {
+        datalist.innerHTML = luaValueTypes.map(type => 
+            `<option value="${escapeHtml(type.value)}">${escapeHtml(type.label)}</option>`
+        ).join('');
+    }
     
     const updateField = () => {
         currentSchema.fields[index].name = nameInput.value;
@@ -774,8 +822,8 @@ function renderFieldTypeSpecific(field, index) {
             <div id="field-datasource-config-${index}">
                 ${dataSourceType === 'manual' ? `
                     <div class="form-group">
-                        <label>选项列表（每行一个）</label>
-                        <textarea id="field-options-${index}" class="form-control" rows="4" placeholder="选项1&#10;选项2&#10;选项3">${(field.options || []).join('\n')}</textarea>
+                        <label>数据列表配置（格式: value|label，每行一个）</label>
+                        <textarea id="field-options-${index}" class="form-control" rows="4" placeholder="value1|标签1&#10;value2|标签2">${formatDatalist(field.options || [])}</textarea>
                     </div>
                 ` : dataSourceType === 'linked' ? `
                     <div class="form-group">
@@ -842,6 +890,20 @@ function renderFieldTypeSpecific(field, index) {
                         <small class="form-text text-muted">导出时为 前缀.枚举值，留空则直接使用枚举值</small>
                     </div>
                 `}
+            </div>
+        `;
+    } else if (field.type === 'dict') {
+        return `
+            <div class="dict-subfields">
+                <div class="dict-subfields-header">
+                    <h6>字典子字段定义</h6>
+                    <button type="button" class="btn btn-sm btn-primary" onclick="addSubfield(${index})">
+                        <i class="fas fa-plus"></i> 添加子字段
+                    </button>
+                </div>
+                <div class="subfields-container" data-parent="${index}">
+                    ${renderSubfields(field.subfields || [], index)}
+                </div>
             </div>
         `;
     } else if (field.type === 'entry') {
@@ -980,7 +1042,10 @@ function renderSubfields(subfields, parentIndex) {
             <div class="field-compact-row">
                 <div class="form-group">
                     <label>Lua注解类型（可选）</label>
-                    <input type="text" class="form-control subfield-luatype" value="${escapeHtml(subfield.luaType || '')}" placeholder="留空使用默认类型">
+                    <input type="text" class="form-control subfield-luatype datalist-input" value="${escapeHtml(subfield.luaType || '')}" placeholder="留空使用默认类型" list="lua-types-datalist-subfield-${parentIndex}-${subIndex}">
+                    <datalist id="lua-types-datalist-subfield-${parentIndex}-${subIndex}">
+                        ${luaValueTypes.map(type => `<option value="${escapeHtml(type.value)}">${escapeHtml(type.label)}</option>`).join('')}
+                    </datalist>
                 </div>
             </div>
             <div class="field-options-row">
@@ -1015,8 +1080,8 @@ function renderSubfieldTypeSpecific(subfield, parentIndex, subIndex) {
             <div class="subfield-datasource-config-${parentIndex}-${subIndex}">
                 ${dataSourceType === 'manual' ? `
                     <div class="form-group">
-                        <label>选项列表（每行一个）</label>
-                        <textarea class="form-control subfield-options" rows="3" placeholder="选项1&#10;选项2&#10;选项3">${(subfield.options || []).join('\n')}</textarea>
+                        <label>数据列表配置（格式: value|label，每行一个）</label>
+                        <textarea class="form-control subfield-options" rows="3" placeholder="value1|标签1&#10;value2|标签2">${formatDatalist(subfield.options || [])}</textarea>
                     </div>
                 ` : dataSourceType === 'linked' ? `
                     <div class="form-group">
@@ -1407,7 +1472,11 @@ function saveCurrentFieldChanges() {
                     const optionsElement = document.getElementById(`field-options-${index}`);
                     if (optionsElement) {
                         const optionsText = optionsElement.value.trim();
-                        field.options = optionsText ? optionsText.split('\n').filter(opt => opt.trim()) : [];
+                        // option类型也使用数据列表格式：value|label
+                        field.options = optionsText ? optionsText.split('\n').map(line => {
+                            const parts = line.trim().split('|');
+                            return parts.length === 2 ? { value: parts[0].trim(), label: parts[1].trim() } : line.trim();
+                        }).filter(opt => opt) : [];
                     }
                 } else {
                     const datalistElement = document.getElementById(`field-datalist-${index}`);
@@ -1438,7 +1507,7 @@ function saveCurrentFieldChanges() {
                 }
             }
         }
-    } else if (field.type === 'entry') {
+    } else if (field.type === 'dict' || field.type === 'entry') {
         const collectedSubfields = collectSubfields(index);
         if (collectedSubfields.length > 0 || 
             document.querySelectorAll(`.subfield-item[data-parent="${index}"]`).length > 0) {
@@ -1554,7 +1623,7 @@ function collectFields() {
                     }
                 }
             }
-        } else if (field.type === 'entry') {
+        } else if (field.type === 'dict' || field.type === 'entry') {
             const collectedSubfields = collectSubfields(index);
             // 只有当DOM中确实存在子字段元素时才更新,否则保留原有的subfields
             if (collectedSubfields.length > 0 || 
@@ -1666,7 +1735,11 @@ function collectSubfields(parentIndex) {
                         const optionsElement = element.querySelector('.subfield-options');
                         if (optionsElement) {
                             const optionsText = optionsElement.value.trim();
-                            subfield.options = optionsText ? optionsText.split('\n').filter(opt => opt.trim()) : [];
+                            // option类型也使用数据列表格式：value|label
+                            subfield.options = optionsText ? optionsText.split('\n').map(line => {
+                                const parts = line.trim().split('|');
+                                return parts.length === 2 ? { value: parts[0].trim(), label: parts[1].trim() } : line.trim();
+                            }).filter(opt => opt) : [];
                         }
                     } else if (subfield.type === 'datalist') {
                         const datalistElement = element.querySelector('.subfield-datalist');

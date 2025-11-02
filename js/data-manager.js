@@ -179,7 +179,16 @@ function saveCurrentEditToMemory() {
     const currentData = {};
     
     fields.forEach(field => {
-        if (field.type === 'entry' || field.type === 'list') {
+        if (field.type === 'dict') {
+            const selector = `.dict-container[data-row="${selectedDataRowIndex}"][data-field="${field.name}"]`;
+            const container = document.querySelector(selector);
+            if (container) {
+                currentData[field.name] = collectDictDataFromContainer(container, field);
+            } else {
+                // 如果容器不存在，保持原有数据
+                currentData[field.name] = getFieldValue(dataRows[selectedDataRowIndex].data, field.name) || {};
+            }
+        } else if (field.type === 'entry' || field.type === 'list') {
             const selector = field.type === 'entry' ?
                 `.entry-container[data-row="${selectedDataRowIndex}"][data-field="${field.name}"]` :
                 `.list-container[data-row="${selectedDataRowIndex}"][data-field="${field.name}"]`;
@@ -533,6 +542,11 @@ async function loadLinkedFieldOptions(rowIndex) {
             }
         }
         
+        // 处理字典类型的子字段
+        if (field.type === 'dict' && field.subfields) {
+            await loadLinkedDictSubfieldOptions(rowIndex, field);
+        }
+        
         // 处理条目类型的子字段
         if (field.type === 'entry' && field.subfields) {
             await loadLinkedSubfieldOptions(rowIndex, field);
@@ -582,6 +596,57 @@ async function loadLinkedFieldOptions(rowIndex) {
                             const formattedOptions = options.map(opt => typeof opt === 'object' ? opt : { value: opt, label: '' });
                             initCustomDatalist(inputElement, dropdownElement, formattedOptions);
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// 加载字典子字段的关联选项
+async function loadLinkedDictSubfieldOptions(rowIndex, field) {
+    const dictData = dataRows[rowIndex].data[field.name] || {};
+    
+    for (const subfield of field.subfields) {
+        if (subfield.type === 'option' || subfield.type === 'datalist') {
+            const subfieldId = `dict-${rowIndex}-${field.name}-${subfield.name}`;
+            const currentValue = dictData[subfield.name] || '';
+            
+            if (subfield.dataSource && (subfield.dataSource.type === 'linked' || subfield.dataSource.type === 'enum')) {
+                const options = await getFieldOptions(subfield);
+                if (subfield.type === 'option') {
+                    const selectElement = document.getElementById(subfieldId);
+                    if (selectElement) {
+                        const optionsHtml = options.map(opt => 
+                            `<option value="${escapeHtml(opt)}" ${currentValue === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`
+                        ).join('');
+                        selectElement.innerHTML = `<option value="">-- 请选择 --</option>${optionsHtml}`;
+                    }
+                } else if (subfield.type === 'datalist') {
+                    const inputElement = document.getElementById(subfieldId);
+                    const dropdownElement = document.getElementById(`datalist-${subfieldId}`);
+                    if (inputElement && dropdownElement) {
+                        const formattedOptions = options.map(opt => typeof opt === 'string' ? { value: opt, label: '' } : opt);
+                        initCustomDatalist(inputElement, dropdownElement, formattedOptions);
+                    }
+                }
+            } else {
+                // 手动模式
+                const options = subfield.options || [];
+                if (subfield.type === 'option') {
+                    const selectElement = document.getElementById(subfieldId);
+                    if (selectElement) {
+                        const optionsHtml = options.map(opt => 
+                            `<option value="${escapeHtml(opt)}" ${currentValue === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`
+                        ).join('');
+                        selectElement.innerHTML = `<option value="">-- 请选择 --</option>${optionsHtml}`;
+                    }
+                } else if (subfield.type === 'datalist') {
+                    const inputElement = document.getElementById(subfieldId);
+                    const dropdownElement = document.getElementById(`datalist-${subfieldId}`);
+                    if (inputElement && dropdownElement) {
+                        const formattedOptions = options.map(opt => typeof opt === 'object' ? opt : { value: opt, label: '' });
+                        initCustomDatalist(inputElement, dropdownElement, formattedOptions);
                     }
                 }
             }
@@ -712,8 +777,23 @@ function createFieldInput(field, value, rowIndex) {
             `;
             break;
         
+        case 'dict':
+            inputHtml = createDictInput(field, value, rowIndex);
+            return `
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    ${inputHtml}
+                </div>
+            `;
+        
         case 'entry':
             inputHtml = createEntryInput(field, value, rowIndex);
+            return `
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    ${inputHtml}
+                </div>
+            `;
+        case 'dict':
+            inputHtml = createDictInput(field, value, rowIndex);
             return `
                 <div class="form-group" style="grid-column: 1 / -1;">
                     ${inputHtml}
@@ -746,6 +826,69 @@ function createFieldInput(field, value, rowIndex) {
         <div class="form-group">
             <label>${escapeHtml(field.label || field.name)}${field.required ? ' *' : ''} ${rawBadge}</label>
             ${inputHtml}
+        </div>
+    `;
+}
+
+function createDictInput(field, value, rowIndex) {
+    // 字典是单个对象，不是数组
+    const dictData = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
+    const subfields = field.subfields || [];
+    
+    const subfieldsHtml = subfields.map((subfield) => {
+        const subfieldValue = dictData[subfield.name] || '';
+        const subfieldId = `dict-${rowIndex}-${field.name}-${subfield.name}`;
+        let inputHtml = '';
+        
+        switch (subfield.type) {
+            case 'text':
+                inputHtml = `<input type="text" id="${subfieldId}" class="form-control" value="${escapeHtml(subfieldValue)}">`;
+                break;
+            case 'number':
+                inputHtml = `<input type="number" id="${subfieldId}" class="form-control" value="${subfieldValue}">`;
+                break;
+            case 'color':
+                const hexValue = subfieldValue ? String(subfieldValue).replace(/^0x/i, '') : 'FFFFFF';
+                const colorValue = '#' + hexValue;
+                inputHtml = `
+                    <div class="color-input-wrapper">
+                        <input type="color" id="${subfieldId}-picker" class="color-picker" value="${colorValue}" onchange="updateColorFromPicker('${subfieldId}', this.value)">
+                        <input type="text" id="${subfieldId}" class="form-control color-text-input" value="${subfieldValue || '0xFFFFFF'}" oninput="updateColorFromText('${subfieldId}', this.value)" placeholder="0xFFFFFF">
+                        <div class="color-preview" id="${subfieldId}-preview" style="background-color: ${colorValue};"></div>
+                    </div>
+                `;
+                break;
+            case 'option':
+                inputHtml = `<select id="${subfieldId}" class="form-control linked-field" data-field-name="${subfield.name}"><option value="">-- 加载中... --</option></select>`;
+                break;
+            case 'datalist':
+                const datalistId = `datalist-${subfieldId}`;
+                inputHtml = `
+                    <div class="custom-datalist-wrapper" data-datalist-id="${datalistId}">
+                        <input type="text" id="${subfieldId}" class="custom-datalist-input" value="${escapeHtml(subfieldValue)}" autocomplete="off" placeholder="请输入或选择...">
+                        <div class="custom-datalist-dropdown" id="${datalistId}"><div class="custom-datalist-empty">加载中...</div></div>
+                    </div>
+                `;
+                break;
+        }
+        
+        const rawBadge = subfield.isRaw ? '<span class="raw-badge" title="此字段Lua导出时不加引号">原始</span>' : '';
+        return `
+            <div class="dict-field-item">
+                <label>${escapeHtml(subfield.label || subfield.name)}${subfield.required ? ' *' : ''} ${rawBadge}</label>
+                ${inputHtml}
+            </div>
+        `;
+    }).join('');
+    
+    return `
+        <div class="dict-container" data-row="${rowIndex}" data-field="${field.name}">
+            <div class="dict-header">
+                <label>${escapeHtml(field.label || field.name)}</label>
+            </div>
+            <div class="dict-fields">
+                ${subfieldsHtml}
+            </div>
         </div>
     `;
 }
@@ -1282,7 +1425,15 @@ function collectData() {
         const fields = currentSchema.fields || [];
 
         fields.forEach(field => {
-            if (field.type === 'entry' || field.type === 'list') {
+            if (field.type === 'dict') {
+                const selector = `.dict-container[data-row="${rowIndex}"][data-field="${field.name}"]`;
+                const container = document.querySelector(selector);
+                if (container) {
+                    setFieldValue(rowData, field.name, collectDictDataFromContainer(container, field));
+                } else {
+                    setFieldValue(rowData, field.name, getFieldValue(dataRow.data, field.name) || {});
+                }
+            } else if (field.type === 'entry' || field.type === 'list') {
                 const selector = field.type === 'entry' ?
                     `.entry-container[data-row="${rowIndex}"][data-field="${field.name}"]` :
                     `.list-container[data-row="${rowIndex}"][data-field="${field.name}"]`;
@@ -1306,6 +1457,21 @@ function collectData() {
     });
 
     return data;
+}
+
+function collectDictDataFromContainer(container, field) {
+    const dict = {};
+    const subfields = field.subfields || [];
+
+    subfields.forEach(subfield => {
+        const input = container.querySelector(`input[id*="${subfield.name}"], select[id*="${subfield.name}"]`);
+        if (input) {
+            // 使用工具函数设置字段值，如果字段名是纯数字则使用数字键
+            setFieldValue(dict, subfield.name, input.value);
+        }
+    });
+
+    return dict;
 }
 
 function collectEntryDataFromContainer(container, field) {
@@ -1605,6 +1771,8 @@ function getCsvType(field) {
                 // 其他类型统一为ListBool（实际可能是boolean等）
                 return 'ListBool';
             }
+        case 'dict':
+            return 'Entry'; // 字典和条目在CSV中都表示为Entry
         case 'entry':
             return 'Entry';
         case 'flags':
@@ -1649,6 +1817,14 @@ function formatCsvValue(value, field) {
         return `"[${formattedItems.join(', ')}]"`;
     }
     
+    // dict类型转换为JSON字符串（单个对象）
+    if (field.type === 'dict' && value && typeof value === 'object' && !Array.isArray(value)) {
+        // 生成紧凑的JSON字符串
+        const jsonStr = JSON.stringify(value);
+        // CSV中的引号需要双倍转义
+        return `"${jsonStr.replace(/"/g, '""')}"`;
+    }
+    
     // entry类型转换为JSON字符串（紧凑格式，无空格）
     if (field.type === 'entry' && Array.isArray(value)) {
         // 生成紧凑的JSON字符串
@@ -1684,10 +1860,26 @@ function generateTypeDefinition(schema, schemaName) {
     let code = '';
     const mainTypeName = toPascalCase(schemaName);
     
-    // 先生成所有 entry 类型的子类定义
+    // 先生成所有 dict 和 entry 类型的子类定义
     const fields = schema.fields || [];
     fields.forEach(field => {
-        if (field.type === 'entry' && field.subfields && field.subfields.length > 0) {
+        if (field.type === 'dict' && field.subfields && field.subfields.length > 0) {
+            // 如果设置了自定义 luaType，使用它；否则使用字段名生成
+            const dictTypeName = (field.luaType && field.luaType.trim()) 
+                ? field.luaType.trim()
+                : toPascalCase(field.name);
+            code += `---@class (exact) ${dictTypeName}\n`;
+            field.subfields.forEach(subfield => {
+                const subfieldType = getLuaType(subfield);
+                const comment = subfield.label || subfield.name;
+                // 如果字段名不是合法的 Lua 标识符（比如纯数字），使用 [fieldName] 格式
+                const fieldName = isValidLuaIdentifier(subfield.name) ? subfield.name : `[${subfield.name}]`;
+                // 非必填字段添加 ? 标记
+                const optionalMark = subfield.required ? '' : '?';
+                code += `---@field ${fieldName} ${subfieldType}${optionalMark} ${comment}\n`;
+            });
+            code += '\n';
+        } else if (field.type === 'entry' && field.subfields && field.subfields.length > 0) {
             // 如果设置了自定义 luaType，使用它；否则使用字段名生成
             const entryTypeName = (field.luaType && field.luaType.trim()) 
                 ? field.luaType.trim().replace(/\[\]$/, '') // 移除可能的 []
@@ -1745,6 +1937,16 @@ function getLuaType(field, parentName = '') {
             return 'string';
         case 'datalist':
             return 'string';
+        case 'dict':
+            // 对于字典类型，使用字段名生成类型名（单个对象，不是数组）
+            if (field.luaType && field.luaType.trim()) {
+                return field.luaType.trim();
+            }
+            if (field.name) {
+                const dictTypeName = toPascalCase(field.name);
+                return dictTypeName;
+            }
+            return 'table';
         case 'entry':
             // 对于条目类型，如果设置了 luaType 就直接使用（可能已包含[]），否则使用字段名生成
             if (field.luaType && field.luaType.trim()) {
@@ -1833,7 +2035,10 @@ function generateLuaFields(row, schema, indent) {
             code += `${indent}["${field.name}"] = `;
         }
         
-        if (field.type === 'entry' && Array.isArray(value)) {
+        if (field.type === 'dict' && value && typeof value === 'object' && !Array.isArray(value)) {
+            // 字典类型导出为单个对象
+            code += formatLuaEntry(value, field);
+        } else if (field.type === 'entry' && Array.isArray(value)) {
             code += '{\n';
             value.forEach((entry, entryIndex) => {
                 code += `${indent}    `;
@@ -2357,6 +2562,15 @@ function parseCSVValue(value, field) {
             }
             return [];
         
+        case 'dict':
+            // 解析JSON字符串（单个对象）
+            try {
+                const parsed = JSON.parse(value);
+                return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {};
+            } catch {
+                return {};
+            }
+        
         case 'entry':
             // 解析JSON字符串
             try {
@@ -2645,7 +2859,7 @@ function extractLuaFieldValue(entryContent, fieldName) {
 // 解析Lua值根据字段类型
 function parseLuaValue(value, field) {
     if (!value || value === 'nil') {
-        return field.type === 'list' || field.type === 'entry' ? [] : '';
+        return field.type === 'list' || field.type === 'entry' ? [] : (field.type === 'dict' ? {} : '');
     }
     
     value = value.trim();
@@ -2682,6 +2896,31 @@ function parseLuaValue(value, field) {
                 });
             }
             return [];
+        
+        case 'dict':
+            // 解析单个对象: { field1 = val1, field2 = val2 }
+            if (value.startsWith('{') && value.endsWith('}')) {
+                const dictContent = value.slice(1, -1).trim();
+                
+                // 空对象 {}
+                if (!dictContent) return {};
+                
+                const dictObj = {};
+                
+                // 解析dict的subfields
+                if (field.subfields && field.subfields.length > 0) {
+                    field.subfields.forEach(subfield => {
+                        const subfieldValue = extractLuaFieldValue(dictContent, subfield.name);
+                        if (subfieldValue !== null) {
+                            const parsedValue = parseLuaValue(subfieldValue, subfield);
+                            setFieldValue(dictObj, subfield.name, parsedValue);
+                        }
+                    });
+                }
+                
+                return dictObj;
+            }
+            return {};
         
         case 'entry':
             // 解析嵌套table: { { field1 = val1, field2 = val2 }, ... } 或单个 {}

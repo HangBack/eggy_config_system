@@ -119,6 +119,9 @@ function initializeApp() {
     // 绑定模态框事件
     document.getElementById('cancel-delete-btn').addEventListener('click', closeModal);
 
+    // 加载Lua ValueType数据
+    loadLuaValueTypes();
+    
     // 加载Schema列表
     loadSchemas();
 }

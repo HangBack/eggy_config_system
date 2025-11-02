@@ -135,6 +135,8 @@
 }
 
 /* 条目字段子项配置 */
+/* 字典和条目子字段样式 */
+.dict-subfields,
 .entry-subfields {
     background: white;
     border: 1px solid #dee2e6;
@@ -143,6 +145,7 @@
     margin-top: 10px;
 }
 
+.dict-subfields-header,
 .entry-subfields-header {
     display: flex;
     justify-content: space-between;
@@ -150,6 +153,7 @@
     margin-bottom: 10px;
 }
 
+.dict-subfields-header h6,
 .entry-subfields-header h6 {
     font-size: 13px;
     color: #495057;
@@ -229,6 +233,56 @@
 
 
 /* 条目类型特殊样式 */
+/* 字典容器样式 */
+.dict-container {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 15px;
+    background: #f8f9fa;
+}
+
+.dict-header {
+    margin-bottom: 15px;
+}
+
+.dict-header label {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.dict-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 15px;
+}
+
+.dict-field-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.dict-field-item label {
+    display: block;
+    font-size: 13px;
+    color: #495057;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.dict-field-item input,
+.dict-field-item select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+/* 条目容器样式 */
 .entry-container {
     border: 1px solid #dee2e6;
     border-radius: 6px;
