@@ -1,5 +1,25 @@
 ﻿/* 配表数据管理样式 */
 
+/* 数据行搜索框 */
+.data-rows-search-container {
+    position: relative;
+    padding: 10px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.data-rows-search-container input {
+    padding-right: 35px;
+}
+
+.data-rows-search-container .search-icon {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #95a5a6;
+    pointer-events: none;
+}
+
 .data-rows-list {
     flex: 1;
     overflow-y: auto;

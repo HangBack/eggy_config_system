@@ -88,6 +88,14 @@ function initializeApp() {
     document.getElementById('save-data-btn').addEventListener('click', saveData);
     document.getElementById('preview-data-btn').addEventListener('click', previewData);
     document.getElementById('export-lua-btn').addEventListener('click', exportToLua);
+    
+    // 绑定数据行搜索事件
+    const dataRowsSearch = document.getElementById('data-rows-search');
+    if (dataRowsSearch) {
+        dataRowsSearch.addEventListener('input', () => {
+            renderDataRowsList();
+        });
+    }
 
     // 绑定导出Lua模态框事件
     document.getElementById('copy-lua-btn').addEventListener('click', copyLuaCode);

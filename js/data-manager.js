@@ -81,6 +81,13 @@ async function loadDataForSchema() {
         }
 
         selectedDataRowIndex = -1;
+        
+        // 清空搜索框
+        const searchInput = document.getElementById('data-rows-search');
+        if (searchInput) {
+            searchInput.value = '';
+        }
+        
         renderDataRowsList();
         document.getElementById('data-row-editor-container').innerHTML = 
             '<div class="empty-state"><i class="fas fa-hand-pointer"></i><p>请从左侧选择或添加数据行</p></div>';
@@ -98,13 +105,29 @@ function renderDataRowsList() {
     const container = document.getElementById('data-rows-list');
     container.innerHTML = '';
 
-    dataRows.forEach((dataRow, index) => {
+    // 获取搜索关键词
+    const searchInput = document.getElementById('data-rows-search');
+    const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+    // 过滤数据行
+    const filteredRows = dataRows.filter((dataRow, index) => {
+        if (!searchTerm) return true;
+        return dataRow.name.toLowerCase().includes(searchTerm);
+    });
+
+    // 渲染过滤后的数据行
+    filteredRows.forEach((dataRow) => {
+        const index = dataRows.indexOf(dataRow);
         const item = createDataRowListItem(dataRow, index);
         container.appendChild(item);
     });
 
-    if (dataRows.length === 0) {
-        container.innerHTML = '<p style="color: #95a5a6; text-align: center; padding: 20px;">暂无数据</p>';
+    if (filteredRows.length === 0) {
+        if (searchTerm) {
+            container.innerHTML = '<p style="color: #95a5a6; text-align: center; padding: 20px;">未找到匹配的数据</p>';
+        } else {
+            container.innerHTML = '<p style="color: #95a5a6; text-align: center; padding: 20px;">暂无数据</p>';
+        }
     }
 }
 

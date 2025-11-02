@@ -140,7 +140,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label>Namespace</label>
+                        <label>命名空间</label>
                         <input type="text" id="enum-namespace-input" class="form-control" placeholder="Enum" value="Enum">
                     </div>
                     
@@ -174,7 +174,7 @@
             <div class="panel-header">
                 <h2>配表编辑</h2>
                 <div class="schema-selector">
-                    <label>选择Schema：</label>
+                    <label>Schema</label>
                     <div class="custom-datalist-wrapper" style="max-width: 300px;">
                         <input type="text" 
                                id="data-schema-select" 
@@ -216,6 +216,14 @@
                                     <i class="fas fa-plus"></i>
                                 </button>
                             </div>
+                        </div>
+                        <div class="data-rows-search-container">
+                            <input type="text" 
+                                   id="data-rows-search" 
+                                   class="form-control" 
+                                   placeholder="搜索数据行..."
+                                   autocomplete="off">
+                            <i class="fas fa-search search-icon"></i>
                         </div>
                         <div id="data-rows-list" class="data-rows-list">
                             <!-- 数据行列表将动态添加 -->
