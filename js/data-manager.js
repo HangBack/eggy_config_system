@@ -93,6 +93,7 @@ async function loadDataForSchema() {
             '<div class="empty-state"><i class="fas fa-hand-pointer"></i><p>请从左侧选择或添加数据行</p></div>';
         document.getElementById('data-editor').style.display = 'block';
         document.getElementById('data-table-title').textContent = `${schemaName} - 配表数据`;
+        document.getElementById('import-data-btn').style.display = 'inline-flex';
         document.getElementById('preview-data-btn').style.display = 'inline-flex';
         document.getElementById('export-lua-btn').style.display = 'inline-flex';
     } catch (error) {
@@ -1380,7 +1381,19 @@ function exportToLua() {
 function toggleTableKeyTypeVisibility() {
     const format = document.getElementById('export-format-select').value;
     const keyTypeGroup = document.getElementById('table-key-type-group');
-    keyTypeGroup.style.display = format === 'table' ? 'block' : 'none';
+    const requireListGroup = document.getElementById('require-list').parentElement;
+    const namespaceGroup = document.getElementById('export-namespace').parentElement;
+    
+    // CSV格式隐藏Lua特有的配置项
+    if (format === 'csv') {
+        keyTypeGroup.style.display = 'none';
+        requireListGroup.style.display = 'none';
+        namespaceGroup.style.display = 'none';
+    } else {
+        keyTypeGroup.style.display = format === 'table' ? 'block' : 'none';
+        requireListGroup.style.display = 'block';
+        namespaceGroup.style.display = 'block';
+    }
 }
 
 function saveExportConfigToSchema() {
@@ -1472,11 +1485,18 @@ async function saveSchemaExportConfig() {
 
 function updateLuaExport() {
     const format = document.getElementById('export-format-select').value;
-    const namespace = document.getElementById('export-namespace').value.trim() || 'Tile';
-    const tableKeyType = document.getElementById('export-table-key-type').value.trim() || 'string';
     const data = collectData();
-    const luaCode = generateLuaCode(data, format, namespace, tableKeyType);
-    document.getElementById('lua-code-output').textContent = luaCode;
+    
+    let code;
+    if (format === 'csv') {
+        code = generateCsvCode(data);
+    } else {
+        const namespace = document.getElementById('export-namespace').value.trim() || 'Tile';
+        const tableKeyType = document.getElementById('export-table-key-type').value.trim() || 'string';
+        code = generateLuaCode(data, format, namespace, tableKeyType);
+    }
+    
+    document.getElementById('lua-code-output').textContent = code;
 }
 
 function generateLuaCode(data, format, namespace, tableKeyType) {
@@ -1516,6 +1536,148 @@ function generateLuaCode(data, format, namespace, tableKeyType) {
     code += `\nreturn result\n`;
     
     return code;
+}
+
+function generateCsvCode(data) {
+    const schema = currentSchema;
+    const fields = schema.fields || [];
+    
+    // 第一列是固定的
+    const headerRow1 = ['key'];
+    const headerRow2 = ['Int'];
+    
+    // 添加所有字段的标签
+    fields.forEach(field => {
+        headerRow1.push(field.label || field.name);
+        
+        // 确定类型名称
+        let typeName = getCsvType(field);
+        headerRow2.push(typeName);
+    });
+    
+    // 生成CSV行
+    const csvRows = [];
+    csvRows.push(headerRow1.join(','));
+    csvRows.push(headerRow2.join(','));
+    
+    // 添加数据行
+    dataRows.forEach((dataRow, rowIndex) => {
+        const row = data[rowIndex];
+        const csvRow = [(rowIndex + 1).toString()]; // key列是行号
+        
+        fields.forEach(field => {
+            const value = getFieldValue(row, field.name);
+            const csvValue = formatCsvValue(value, field);
+            csvRow.push(csvValue);
+        });
+        
+        csvRows.push(csvRow.join(','));
+    });
+    
+    return csvRows.join('\n');
+}
+
+function getCsvType(field) {
+    // 如果设置了自定义的 Lua 类型，优先使用
+    if (field.luaType && field.luaType.trim()) {
+        return field.luaType.trim();
+    }
+    
+    switch (field.type) {
+        case 'number':
+            return 'Int';
+        case 'text':
+            return 'Str';
+        case 'color':
+            return 'ImageKey';
+        case 'option':
+            return 'Str';
+        case 'datalist':
+            return 'Str';
+        case 'list':
+            // 列表类型根据元素类型决定
+            const elemType = field.elementType || 'text';
+            if (elemType === 'number') {
+                return 'ListInt';
+            } else if (elemType === 'text' || elemType === 'option' || elemType === 'datalist') {
+                return 'ListStr';
+            } else {
+                // 其他类型统一为ListBool（实际可能是boolean等）
+                return 'ListBool';
+            }
+        case 'entry':
+            return 'Entry';
+        case 'flags':
+            return 'Int';
+        default:
+            return 'Str';
+    }
+}
+
+function formatCsvValue(value, field) {
+    if (value === null || value === undefined || value === '') {
+        return '';
+    }
+    
+    // 列表类型需要用[]包裹，模仿Python列表格式
+    if (field.type === 'list' && Array.isArray(value)) {
+        // 根据元素类型格式化
+        const elemType = field.elementType || 'text';
+        let formattedItems;
+        
+        if (elemType === 'number') {
+            // 数字直接输出
+            formattedItems = value.map(v => String(v));
+        } else if (elemType === 'text' || elemType === 'option' || elemType === 'datalist') {
+            // 字符串需要转义并加引号 (Python单引号风格不适用，CSV用双引号)
+            formattedItems = value.map(v => {
+                // CSV中的引号需要加倍转义
+                const escaped = String(v).replace(/"/g, '""');
+                return `"${escaped}"`;
+            });
+        } else {
+            // 其他类型（如布尔值）使用Python格式: True/False
+            formattedItems = value.map(v => {
+                if (typeof v === 'boolean') {
+                    return v ? 'True' : 'False';
+                }
+                return String(v);
+            });
+        }
+        
+        // 整个列表用引号包裹（因为包含逗号），内容用Python列表风格
+        return `"[${formattedItems.join(', ')}]"`;
+    }
+    
+    // entry类型转换为JSON字符串（紧凑格式，无空格）
+    if (field.type === 'entry' && Array.isArray(value)) {
+        // 生成紧凑的JSON字符串
+        const jsonStr = JSON.stringify(value);
+        // CSV中的引号需要双倍转义
+        return `"${jsonStr.replace(/"/g, '""')}"`;
+    }
+    
+    // 数字类型直接输出
+    if (field.type === 'number' || field.type === 'flags') {
+        return String(value);
+    }
+    
+    // 颜色类型作为ImageKey输出（数字）
+    if (field.type === 'color') {
+        // 移除0x前缀，转换为十进制数字
+        const hex = String(value).replace(/^0x/i, '');
+        const decimal = parseInt(hex, 16);
+        return isNaN(decimal) ? '0' : String(decimal);
+    }
+    
+    // 字符串类型
+    const str = String(value);
+    // 如果包含逗号、换行或引号，需要用引号包裹并转义
+    if (str.includes(',') || str.includes('\n') || str.includes('"')) {
+        return `"${str.replace(/"/g, '""')}"`;
+    }
+    
+    return str;
 }
 
 function generateTypeDefinition(schema, schemaName) {
@@ -1830,6 +1992,85 @@ async function copyLuaCode() {
     }
 }
 
+function downloadExportFile() {
+    const codeElement = document.getElementById('lua-code-output');
+    const code = codeElement.textContent;
+    const format = document.getElementById('export-format-select').value;
+    
+    // 确定文件名和扩展名
+    let fileName = currentSchemaName || 'export';
+    let extension, mimeType;
+    
+    if (format === 'csv') {
+        extension = 'csv';
+        mimeType = 'text/csv;charset=utf-8;';
+    } else {
+        extension = 'lua';
+        mimeType = 'text/plain;charset=utf-8;';
+    }
+    
+    // 创建Blob并下载
+    const blob = new Blob([code], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${fileName}.${extension}`;
+    link.style.display = 'none';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // 释放URL对象
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+    
+    // 显示下载成功提示
+    const btn = document.getElementById('download-export-btn');
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-check"></i> 已下载';
+    btn.disabled = true;
+    
+    setTimeout(() => {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+    }, 2000);
+}
+
+function downloadPreviewCsv() {
+    // 从预览表格生成CSV
+    const data = collectData();
+    const csvCode = generateCsvCode(data);
+    
+    // 确定文件名
+    const fileName = currentSchemaName || 'preview';
+    
+    // 创建Blob并下载
+    const blob = new Blob([csvCode], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${fileName}_preview.csv`;
+    link.style.display = 'none';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // 释放URL对象
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+    
+    // 显示下载成功提示
+    const btn = document.getElementById('download-preview-btn');
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-check"></i> 已下载';
+    btn.disabled = true;
+    
+    setTimeout(() => {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+    }, 2000);
+}
+
 // ========== 标志组合模态框 ==========
 
 let currentFlagsRowIndex = -1;
@@ -1917,6 +2158,746 @@ function closeFlagsModal() {
     currentFlagsRowIndex = -1;
     currentFlagsFieldName = '';
     currentFlagsEnum = null;
+}
+
+// ========== 导入数据功能 ==========
+
+let importedData = null;
+
+function openImportDataModal() {
+    if (!currentSchema) {
+        alert('请先选择一个Schema');
+        return;
+    }
+    
+    document.getElementById('import-data-modal').classList.add('show');
+    document.getElementById('import-file-input').value = '';
+    document.getElementById('import-preview').style.display = 'none';
+    document.getElementById('confirm-import-btn').disabled = true;
+    importedData = null;
+}
+
+function closeImportDataModal() {
+    document.getElementById('import-data-modal').classList.remove('show');
+    importedData = null;
+}
+
+// 监听文件选择
+function onImportFileSelected(event) {
+    const file = event.target.files[0];
+    if (!file) {
+        document.getElementById('import-preview').style.display = 'none';
+        document.getElementById('confirm-import-btn').disabled = true;
+        return;
+    }
+    
+    const fileType = document.getElementById('import-file-type').value;
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        const content = e.target.result;
+        try {
+            if (fileType === 'csv') {
+                importedData = parseCSVImport(content);
+            } else {
+                importedData = parseLuaImport(content);
+            }
+            
+            if (importedData && importedData.length > 0) {
+                showImportPreview(importedData);
+                document.getElementById('confirm-import-btn').disabled = false;
+            } else {
+                showImportError('未能解析到有效数据');
+                document.getElementById('confirm-import-btn').disabled = true;
+            }
+        } catch (error) {
+            console.error('解析文件失败:', error);
+            showImportError('文件解析失败: ' + error.message);
+            document.getElementById('confirm-import-btn').disabled = true;
+        }
+    };
+    
+    reader.readAsText(file, 'UTF-8');
+}
+
+// 解析CSV导入（蛋仔表格格式）
+function parseCSVImport(content) {
+    const lines = content.trim().split('\n');
+    if (lines.length < 3) {
+        throw new Error('CSV文件格式不正确，至少需要3行（标题、类型、数据）');
+    }
+    
+    // 解析CSV行（处理引号包裹的字段）
+    function parseCSVLine(line) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            const nextChar = line[i + 1];
+            
+            if (char === '"') {
+                if (inQuotes && nextChar === '"') {
+                    // 双引号转义
+                    current += '"';
+                    i++;
+                } else {
+                    // 切换引号状态
+                    inQuotes = !inQuotes;
+                }
+            } else if (char === ',' && !inQuotes) {
+                // 字段分隔符
+                result.push(current.trim());
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        result.push(current.trim());
+        return result;
+    }
+    
+    // 第一行：key + 字段标签
+    const headers = parseCSVLine(lines[0]);
+    headers.shift(); // 移除 "key" 列
+    
+    // 第二行：Int + 字段类型（暂不使用，以schema为准）
+    // const types = parseCSVLine(lines[1]);
+    
+    // 解析数据行
+    const dataRows = [];
+    for (let i = 2; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        
+        const values = parseCSVLine(lines[i]);
+        const rowKey = values[0]; // 行号或key
+        
+        const rowData = {
+            name: `row_${rowKey}`,
+            isRaw: false,
+            data: {}
+        };
+        
+        // 根据schema字段匹配数据
+        currentSchema.fields.forEach((field, fieldIndex) => {
+            const value = values[fieldIndex + 1]; // +1 因为第一列是key
+            if (value !== undefined && value !== '') {
+                const parsedValue = parseCSVValue(value, field);
+                setFieldValue(rowData.data, field.name, parsedValue);
+            }
+        });
+        
+        dataRows.push(rowData);
+    }
+    
+    return dataRows;
+}
+
+// 解析CSV值根据字段类型
+function parseCSVValue(value, field) {
+    if (value === '' || value === null || value === undefined) {
+        return '';
+    }
+    
+    switch (field.type) {
+        case 'number':
+        case 'flags':
+            return String(parseInt(value) || 0);
+        
+        case 'color':
+            // CSV中是十进制数字，转换为十六进制
+            const decimal = parseInt(value);
+            if (!isNaN(decimal)) {
+                return '0x' + decimal.toString(16).toUpperCase().padStart(6, '0');
+            }
+            return value;
+        
+        case 'list':
+            // 解析 "[元素1, 元素2, ...]" 格式
+            if (value.startsWith('[') && value.endsWith(']')) {
+                const listContent = value.slice(1, -1).trim();
+                if (!listContent) return [];
+                
+                // 简单分割（处理引号包裹的元素）
+                const elements = [];
+                let current = '';
+                let inQuotes = false;
+                
+                for (let i = 0; i < listContent.length; i++) {
+                    const char = listContent[i];
+                    
+                    if (char === '"' && listContent[i - 1] !== '\\') {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        elements.push(current.trim().replace(/^"|"$/g, ''));
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                if (current.trim()) {
+                    elements.push(current.trim().replace(/^"|"$/g, ''));
+                }
+                
+                // 根据elementType转换
+                if (field.elementType === 'number') {
+                    return elements.map(e => String(parseInt(e) || 0));
+                }
+                return elements.map(e => String(e));
+            }
+            return [];
+        
+        case 'entry':
+            // 解析JSON字符串
+            try {
+                return JSON.parse(value);
+            } catch {
+                return [];
+            }
+        
+        default:
+            return String(value);
+    }
+}
+
+// 解析Lua导入（Table和Array格式）
+function parseLuaImport(content) {
+    // 移除注释
+    const withoutComments = content.replace(/--.*$/gm, '');
+    
+    // 查找主table
+    let tableMatch = withoutComments.match(/local\s+result\s*=\s*(\{[\s\S]*\})\s*return\s+result/);
+    if (!tableMatch) {
+        tableMatch = withoutComments.match(/return\s+(\{[\s\S]*\})/);
+    }
+    
+    if (!tableMatch) {
+        throw new Error('未找到Lua table结构');
+    }
+    
+    const tableContent = tableMatch[1];
+    
+    // 判断是Table格式还是Array格式
+    // Table格式有键值对: ["key"] = { ... } 或 [key] = { ... }
+    // Array格式只有值: { ... }, { ... }
+    const isTableFormat = /\[[^\]]+\]\s*=\s*\{/.test(tableContent);
+    
+    if (isTableFormat) {
+        return parseLuaTableFormat(tableContent);
+    } else {
+        return parseLuaArrayFormat(tableContent);
+    }
+}
+
+// 解析Table格式: ["key"] = { fields... }
+function parseLuaTableFormat(tableContent) {
+    const dataRows = [];
+    
+    // 使用栈来匹配嵌套的大括号
+    let depth = 0;
+    let currentEntry = '';
+    let currentKey = '';
+    let inKey = false;
+    let i = 0;
+    
+    while (i < tableContent.length) {
+        const char = tableContent[i];
+        
+        // 查找键
+        if (char === '[' && depth === 1) {
+            inKey = true;
+            let keyEnd = i + 1;
+            while (keyEnd < tableContent.length && tableContent[keyEnd] !== ']') {
+                keyEnd++;
+            }
+            currentKey = tableContent.substring(i + 1, keyEnd).replace(/['"]/g, '').trim();
+            i = keyEnd + 1;
+            
+            // 跳过 = 号
+            while (i < tableContent.length && /[\s=]/.test(tableContent[i])) {
+                i++;
+            }
+            continue;
+        }
+        
+        if (char === '{') {
+            depth++;
+            if (depth === 2 && currentKey) {
+                currentEntry = '';
+            } else if (depth > 2) {
+                // 嵌套的大括号也要累积到entry内容中
+                currentEntry += char;
+            }
+        } else if (char === '}') {
+            if (depth > 2) {
+                // 嵌套大括号的结束也要累积
+                currentEntry += char;
+            }
+            depth--;
+            if (depth === 1 && currentKey) {
+                // 解析完成一个entry
+                const rowData = parseLuaEntry(currentKey, currentEntry, tableContent.substring(i - currentEntry.length - 1, i + 1));
+                if (rowData) {
+                    dataRows.push(rowData);
+                }
+                currentKey = '';
+                currentEntry = '';
+            }
+        } else if (depth >= 2) {
+            // 只要在entry内部（depth >= 2），都累积内容
+            currentEntry += char;
+        }
+        
+        i++;
+    }
+    
+    return dataRows;
+}
+
+// 解析Array格式: { { fields... }, { fields... } }
+function parseLuaArrayFormat(tableContent) {
+    const dataRows = [];
+    
+    // 使用栈来匹配嵌套的大括号
+    let depth = 0;
+    let currentEntry = '';
+    let entryIndex = 0;
+    
+    for (let i = 0; i < tableContent.length; i++) {
+        const char = tableContent[i];
+        
+        if (char === '{') {
+            depth++;
+            if (depth === 2) {
+                currentEntry = '';
+            } else if (depth > 2) {
+                // 嵌套的大括号也要累积到entry内容中
+                currentEntry += char;
+            }
+        } else if (char === '}') {
+            if (depth > 2) {
+                // 嵌套大括号的结束也要累积
+                currentEntry += char;
+            }
+            depth--;
+            if (depth === 1 && currentEntry.trim()) {
+                // 解析完成一个entry
+                const rowData = parseLuaEntry(`row_${entryIndex + 1}`, currentEntry, null);
+                if (rowData) {
+                    dataRows.push(rowData);
+                    entryIndex++;
+                }
+                currentEntry = '';
+            }
+        } else if (depth >= 2) {
+            // 只要在entry内部（depth >= 2），都累积内容
+            currentEntry += char;
+        }
+    }
+    
+    return dataRows;
+}
+
+// 解析单个Lua entry
+function parseLuaEntry(key, entryContent, fullEntry) {
+    const rowData = {
+        name: key,
+        isRaw: false, // 默认不是原始文本
+        data: {}
+    };
+    
+    // 如果有完整entry，检查key是否有引号来判断isRaw
+    if (fullEntry) {
+        const keyMatch = fullEntry.match(/\[([^\]]+)\]/);
+        if (keyMatch) {
+            rowData.isRaw = !/['"]/.test(keyMatch[1]);
+        }
+    }
+    
+    // 解析entry中的字段
+    currentSchema.fields.forEach(field => {
+        const value = extractLuaFieldValue(entryContent, field.name);
+        if (value !== null) {
+            const parsedValue = parseLuaValue(value, field);
+            setFieldValue(rowData.data, field.name, parsedValue);
+        }
+    });
+    
+    return rowData;
+}
+
+// 从Lua entry内容中提取字段值
+function extractLuaFieldValue(entryContent, fieldName) {
+    // 转义字段名中的特殊字符
+    const escapedFieldName = fieldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    
+    // 尝试多种匹配模式
+    const patterns = [
+        // fieldName = value
+        new RegExp(`\\b${escapedFieldName}\\s*=\\s*`, 'i'),
+        // ["fieldName"] = value
+        new RegExp(`\\["${escapedFieldName}"\\]\\s*=\\s*`, 'i'),
+        // [fieldName] = value
+        new RegExp(`\\[${escapedFieldName}\\]\\s*=\\s*`, 'i')
+    ];
+    
+    for (const pattern of patterns) {
+        const match = pattern.exec(entryContent);
+        if (match) {
+            const startPos = match.index + match[0].length;
+            let remainingContent = entryContent.substring(startPos);
+            
+            // 如果值以 { 开始，需要找到匹配的 }
+            if (remainingContent.trim().startsWith('{')) {
+                let depth = 0;
+                let endPos = 0;
+                let inString = false;
+                let stringChar = '';
+                
+                for (let i = 0; i < remainingContent.length; i++) {
+                    const char = remainingContent[i];
+                    
+                    // 检查字符串
+                    if ((char === '"' || char === "'") && (i === 0 || remainingContent[i - 1] !== '\\')) {
+                        if (!inString) {
+                            inString = true;
+                            stringChar = char;
+                        } else if (char === stringChar) {
+                            inString = false;
+                        }
+                    }
+                    
+                    if (!inString) {
+                        if (char === '{') depth++;
+                        if (char === '}') {
+                            depth--;
+                            if (depth === 0) {
+                                endPos = i + 1;
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                if (endPos > 0) {
+                    return remainingContent.substring(0, endPos).trim();
+                }
+            } else {
+                // 非大括号的值，找到下一个字段或结束
+                let endPos = remainingContent.length;
+                let inString = false;
+                let stringChar = '';
+                
+                for (let i = 0; i < remainingContent.length; i++) {
+                    const char = remainingContent[i];
+                    const nextChar = i < remainingContent.length - 1 ? remainingContent[i + 1] : '';
+                    
+                    // 检查字符串
+                    if ((char === '"' || char === "'") && (i === 0 || remainingContent[i - 1] !== '\\')) {
+                        if (!inString) {
+                            inString = true;
+                            stringChar = char;
+                        } else if (char === stringChar) {
+                            inString = false;
+                        }
+                    }
+                    
+                    if (!inString) {
+                        // 遇到逗号
+                        if (char === ',') {
+                            endPos = i;
+                            break;
+                        }
+                        // 遇到注释
+                        if (char === '-' && nextChar === '-') {
+                            endPos = i;
+                            break;
+                        }
+                        // 遇到换行后是新字段（下一行）
+                        if (char === '\n') {
+                            const afterNewline = remainingContent.substring(i + 1).trim();
+                            if (/^\w+\s*=/.test(afterNewline) || afterNewline.startsWith('}')) {
+                                endPos = i;
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                return remainingContent.substring(0, endPos).trim().replace(/,\s*$/, '');
+            }
+        }
+    }
+    
+    return null;
+}
+
+// 解析Lua值根据字段类型
+function parseLuaValue(value, field) {
+    if (!value || value === 'nil') {
+        return field.type === 'list' || field.type === 'entry' ? [] : '';
+    }
+    
+    value = value.trim();
+    
+    switch (field.type) {
+        case 'number':
+        case 'flags':
+            return String(parseInt(value) || 0);
+        
+        case 'color':
+            // 保持十六进制格式
+            if (value.startsWith('0x') || value.startsWith('0X')) {
+                return value.toUpperCase();
+            }
+            return value;
+        
+        case 'list':
+            // 解析 { 元素1, 元素2, ... } 格式
+            if (value.startsWith('{') && value.endsWith('}')) {
+                const listContent = value.slice(1, -1).trim();
+                if (!listContent) return [];
+                
+                // 智能分割（处理嵌套的大括号和引号）
+                const elements = smartSplitLuaList(listContent);
+                
+                return elements.map(e => {
+                    e = e.trim();
+                    // 移除引号
+                    if ((e.startsWith('"') && e.endsWith('"')) || 
+                        (e.startsWith("'") && e.endsWith("'"))) {
+                        return e.slice(1, -1);
+                    }
+                    return e;
+                });
+            }
+            return [];
+        
+        case 'entry':
+            // 解析嵌套table: { { field1 = val1, field2 = val2 }, ... }
+            if (value.startsWith('{') && value.endsWith('}')) {
+                const listContent = value.slice(1, -1).trim();
+                if (!listContent) return [];
+                
+                // 分割出各个entry
+                const entries = smartSplitLuaList(listContent);
+                const result = [];
+                
+                entries.forEach(entryStr => {
+                    entryStr = entryStr.trim();
+                    if (entryStr.startsWith('{') && entryStr.endsWith('}')) {
+                        const entryContent = entryStr.slice(1, -1);
+                        const entryObj = {};
+                        
+                        // 解析entry的subfields
+                        if (field.subfields && field.subfields.length > 0) {
+                            field.subfields.forEach(subfield => {
+                                const subfieldValue = extractLuaFieldValue(entryContent, subfield.name);
+                                if (subfieldValue !== null) {
+                                    // 递归解析subfield的值
+                                    const parsedValue = parseLuaValue(subfieldValue, subfield);
+                                    setFieldValue(entryObj, subfield.name, parsedValue);
+                                }
+                            });
+                        }
+                        
+                        result.push(entryObj);
+                    }
+                });
+                
+                return result;
+            }
+            return [];
+        
+        case 'text':
+        case 'option':
+        case 'datalist':
+            // 移除引号
+            if ((value.startsWith('"') && value.endsWith('"')) || 
+                (value.startsWith("'") && value.endsWith("'"))) {
+                return value.slice(1, -1);
+            }
+            return value;
+        
+        default:
+            return String(value);
+    }
+}
+
+// 智能分割Lua列表（处理嵌套结构）
+function smartSplitLuaList(content) {
+    const elements = [];
+    let current = '';
+    let depth = 0;
+    let inString = false;
+    let stringChar = '';
+    let inComment = false;
+    
+    for (let i = 0; i < content.length; i++) {
+        const char = content[i];
+        const prevChar = i > 0 ? content[i - 1] : '';
+        const nextChar = i < content.length - 1 ? content[i + 1] : '';
+        
+        // 处理注释
+        if (char === '-' && nextChar === '-' && !inString) {
+            inComment = true;
+        }
+        if (inComment) {
+            if (char === '\n') {
+                inComment = false;
+            }
+            current += char;
+            continue;
+        }
+        
+        // 处理字符串
+        if ((char === '"' || char === "'") && prevChar !== '\\') {
+            if (!inString) {
+                inString = true;
+                stringChar = char;
+            } else if (char === stringChar) {
+                inString = false;
+            }
+        }
+        
+        if (!inString) {
+            if (char === '{') {
+                depth++;
+            } else if (char === '}') {
+                depth--;
+            } else if (char === ',' && depth === 0) {
+                const trimmed = current.trim();
+                // 移除注释
+                const withoutComment = trimmed.replace(/\s*--.*$/, '').trim();
+                if (withoutComment) {
+                    elements.push(withoutComment);
+                }
+                current = '';
+                continue;
+            }
+        }
+        
+        current += char;
+    }
+    
+    const trimmed = current.trim();
+    // 移除注释
+    const withoutComment = trimmed.replace(/\s*--.*$/, '').trim();
+    if (withoutComment) {
+        elements.push(withoutComment);
+    }
+    
+    return elements;
+}
+
+// 显示导入预览
+function showImportPreview(data) {
+    const previewDiv = document.getElementById('import-preview');
+    const contentDiv = document.getElementById('import-preview-content');
+    
+    let html = `<div class="import-preview-stats">
+        准备导入 ${data.length} 行数据
+    </div>`;
+    
+    // 显示前5行的预览
+    html += '<table class="import-preview-table">';
+    html += '<thead><tr><th>数据行名称</th>';
+    
+    currentSchema.fields.forEach(field => {
+        html += `<th>${escapeHtml(field.label || field.name)}</th>`;
+    });
+    html += '</tr></thead><tbody>';
+    
+    const previewCount = Math.min(5, data.length);
+    for (let i = 0; i < previewCount; i++) {
+        const row = data[i];
+        html += `<tr><td>${escapeHtml(row.name)}</td>`;
+        
+        currentSchema.fields.forEach(field => {
+            let value = getFieldValue(row.data, field.name);
+            if (Array.isArray(value)) {
+                value = `[${value.length}项]`;
+            } else if (value === '' || value === null || value === undefined) {
+                value = '<em>空</em>';
+            }
+            html += `<td>${escapeHtml(String(value))}</td>`;
+        });
+        
+        html += '</tr>';
+    }
+    
+    html += '</tbody></table>';
+    
+    if (data.length > 5) {
+        html += `<p style="text-align: center; color: #666; margin-top: 10px;">... 还有 ${data.length - 5} 行数据</p>`;
+    }
+    
+    contentDiv.innerHTML = html;
+    previewDiv.style.display = 'block';
+}
+
+// 显示导入错误
+function showImportError(message) {
+    const previewDiv = document.getElementById('import-preview');
+    const contentDiv = document.getElementById('import-preview-content');
+    
+    contentDiv.innerHTML = `<div class="import-preview-error">
+        <i class="fas fa-exclamation-triangle"></i> ${escapeHtml(message)}
+    </div>`;
+    
+    previewDiv.style.display = 'block';
+}
+
+// 导入文件类型变化时更新文件选择器
+function onImportFileTypeChange() {
+    const fileTypeSelect = document.getElementById('import-file-type');
+    const fileInput = document.getElementById('import-file-input');
+    const previewDiv = document.getElementById('import-preview');
+    
+    // 清空已选择的文件和预览
+    fileInput.value = '';
+    previewDiv.style.display = 'none';
+    importedData = null;
+    
+    // 根据选择的类型设置accept属性
+    if (fileTypeSelect.value === 'csv') {
+        fileInput.accept = '.csv';
+    } else if (fileTypeSelect.value === 'lua') {
+        fileInput.accept = '.lua,.txt';
+    }
+}
+
+// 确认导入
+function confirmImport() {
+    if (!importedData || importedData.length === 0) {
+        alert('没有可导入的数据');
+        return;
+    }
+    
+    const clearExisting = document.getElementById('import-clear-existing').checked;
+    
+    if (clearExisting) {
+        // 清空现有数据
+        dataRows = [...importedData];
+    } else {
+        // 追加数据
+        dataRows = dataRows.concat(importedData);
+    }
+    
+    // 刷新界面
+    renderDataRowsList();
+    
+    // 显示导入的第一行
+    if (dataRows.length > 0) {
+        selectedDataRowIndex = 0;
+        renderDataRowEditor(0);
+    }
+    
+    // 关闭模态框
+    closeImportDataModal();
+    
+    alert(`成功导入 ${importedData.length} 行数据`);
 }
 
 // ========== 工具函数 ==========

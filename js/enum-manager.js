@@ -330,21 +330,84 @@ function exportEnumToLua() {
     luaCode += `${namespace}.${enumName} = ${enumName}\n`;
     luaCode += `return ${enumName}\n`;
 
-    // 创建临时 textarea 并复制
-    const textarea = document.createElement('textarea');
-    textarea.value = luaCode;
-    document.body.appendChild(textarea);
-    textarea.select();
+    // 显示模态框
+    document.getElementById('enum-lua-code-output').textContent = luaCode;
+    document.getElementById('enum-export-lua-modal').classList.add('show');
+}
+
+function closeEnumExportModal() {
+    document.getElementById('enum-export-lua-modal').classList.remove('show');
+}
+
+async function copyEnumLuaCode() {
+    const codeElement = document.getElementById('enum-lua-code-output');
+    const code = codeElement.textContent;
     
     try {
-        document.execCommand('copy');
-        alert('Lua代码已复制到剪贴板');
-    } catch (err) {
-        console.error('复制失败:', err);
-        alert('复制失败，请手动复制:\n\n' + luaCode);
+        await navigator.clipboard.writeText(code);
+        
+        // 显示复制成功提示
+        const btn = document.getElementById('copy-enum-lua-btn');
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i> 已复制';
+        btn.disabled = true;
+        
+        setTimeout(() => {
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
+        }, 2000);
+    } catch (error) {
+        console.error('复制失败:', error);
+        
+        // 降级方案
+        const textArea = document.createElement('textarea');
+        textArea.value = code;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        
+        try {
+            document.execCommand('copy');
+            alert('代码已复制到剪贴板');
+        } catch (err) {
+            alert('复制失败，请手动复制代码');
+        }
+        
+        document.body.removeChild(textArea);
     }
+}
+
+function downloadEnumLuaFile() {
+    const codeElement = document.getElementById('enum-lua-code-output');
+    const code = codeElement.textContent;
+    const fileName = currentEnum ? currentEnum.name : 'enum';
     
-    document.body.removeChild(textarea);
+    // 创建Blob并下载
+    const blob = new Blob([code], { type: 'text/plain;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${fileName}.lua`;
+    link.style.display = 'none';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // 释放URL对象
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+    
+    // 显示下载成功提示
+    const btn = document.getElementById('download-enum-btn');
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-check"></i> 已下载';
+    btn.disabled = true;
+    
+    setTimeout(() => {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+    }, 2000);
 }
 
 // 枚举类型改变时的处理

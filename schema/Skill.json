@@ -2,7 +2,8 @@
   "description": "技能配置表",
   "exportConfig": {
     "namespace": "Tile",
-    "requires": []
+    "requires": [],
+    "tableKeyType": "string"
   },
   "fields": [
     {
@@ -62,10 +63,10 @@
     {
       "defaultValue": "0x00FF00",
       "label": "特效颜色",
+      "luaType": "",
       "name": "effectColor",
       "required": false,
-      "type": "color",
-      "luaType": ""
+      "type": "color"
     },
     {
       "dataSource": {

@@ -925,4 +925,67 @@
     text-align: center;
 }
 
+/* 导入数据模态框 */
+.import-preview {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    max-height: 300px;
+    overflow: auto;
+}
+
+.import-preview h4 {
+    margin: 0 0 15px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.import-preview-content {
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.import-preview-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.import-preview-table th,
+.import-preview-table td {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+
+.import-preview-table th {
+    background: #ecf0f1;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.import-preview-table td {
+    background: white;
+}
+
+.import-preview-stats {
+    padding: 10px;
+    background: #e8f5e9;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    color: #2e7d32;
+}
+
+.import-preview-error {
+    padding: 10px;
+    background: #ffebee;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    color: #c62828;
+}
+
 /* 枚举管理面板 */

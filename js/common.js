@@ -81,11 +81,16 @@ function initializeApp() {
     document.getElementById('confirm-fill-enum-btn').addEventListener('click', confirmFillFromEnum);
     document.getElementById('cancel-fill-enum-btn').addEventListener('click', closeFillEnumModal);
     document.getElementById('close-enum-preview-btn').addEventListener('click', closeEnumPreviewModal);
+    
+    // 绑定枚举导出模态框事件
+    document.getElementById('copy-enum-lua-btn').addEventListener('click', copyEnumLuaCode);
+    document.getElementById('download-enum-btn').addEventListener('click', downloadEnumLuaFile);
 
     // 绑定配表面板事件
     document.getElementById('data-schema-select').addEventListener('change', loadDataForSchema);
     document.getElementById('add-data-row-btn').addEventListener('click', addDataRow);
     document.getElementById('save-data-btn').addEventListener('click', saveData);
+    document.getElementById('import-data-btn').addEventListener('click', openImportDataModal);
     document.getElementById('preview-data-btn').addEventListener('click', previewData);
     document.getElementById('export-lua-btn').addEventListener('click', exportToLua);
     
@@ -99,9 +104,17 @@ function initializeApp() {
 
     // 绑定导出Lua模态框事件
     document.getElementById('copy-lua-btn').addEventListener('click', copyLuaCode);
+    document.getElementById('download-export-btn').addEventListener('click', downloadExportFile);
     document.getElementById('export-format-select').addEventListener('change', updateLuaExport);
     document.getElementById('export-namespace').addEventListener('input', updateLuaExport);
     document.getElementById('export-table-key-type').addEventListener('input', updateLuaExport);
+    
+    // 绑定预览下载按钮
+    document.getElementById('download-preview-btn').addEventListener('click', downloadPreviewCsv);
+    
+    // 绑定导入模态框事件
+    document.getElementById('import-file-input').addEventListener('change', onImportFileSelected);
+    document.getElementById('confirm-import-btn').addEventListener('click', confirmImport);
 
     // 绑定模态框事件
     document.getElementById('cancel-delete-btn').addEventListener('click', closeModal);
