@@ -4,7 +4,8 @@ const API_BASE = 'http://localhost:5001/api';
 const API = {
     SCHEMA: `${API_BASE}/schema`,
     ENUM: `${API_BASE}/enum`,
-    DATA: `${API_BASE}/data`
+    DATA: `${API_BASE}/data`,
+    LUA_TYPES: `${API_BASE}/lua-types`
 };
 
 // 工具函数：将纯数字字符串转换为数字键，用于对象访问
@@ -119,11 +120,15 @@ function initializeApp() {
     // 绑定模态框事件
     document.getElementById('cancel-delete-btn').addEventListener('click', closeModal);
 
-    // 加载Lua ValueType数据
-    loadLuaValueTypes();
-    
-    // 加载Schema列表
-    loadSchemas();
+    // 异步加载数据
+    Promise.all([
+        loadLuaValueTypes(),  // 加载Lua ValueType数据
+        loadSchemas()          // 加载Schema列表
+    ]).then(() => {
+        console.log('初始化完成');
+    }).catch(error => {
+        console.error('初始化失败:', error);
+    });
 }
 
 // ========== 标签切换 ==========

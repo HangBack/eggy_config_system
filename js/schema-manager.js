@@ -1,37 +1,159 @@
-﻿// Lua ValueType 数据列表 (从 enum.lua 中的 Enums.ValueType 提取)
+﻿// Lua ValueType 数据列表 (从后端API获取)
 const luaValueTypes = [];
+
+// 初始化自定义datalist
+function initCustomDatalist(inputElement, dropdownElement, options) {
+    const wrapper = inputElement.closest('.custom-datalist-wrapper');
+    if (!wrapper) return;
+    
+    let currentOptions = options;
+    let activeIndex = -1;
+    
+    // 渲染选项列表
+    function renderOptions(filteredOptions) {
+        if (!filteredOptions || filteredOptions.length === 0) {
+            dropdownElement.innerHTML = '<div class="custom-datalist-empty">无匹配项</div>';
+            return;
+        }
+        
+        const optionsHtml = filteredOptions.map((opt, index) => {
+            let valueText, labelText;
+            if (typeof opt === 'object') {
+                valueText = opt.value;
+                labelText = opt.label;
+            } else {
+                valueText = opt;
+                labelText = '';
+            }
+            
+            const isSelected = inputElement.value === valueText;
+            return `
+                <div class="custom-datalist-option ${isSelected ? 'selected' : ''}" data-index="${index}" data-value="${escapeHtml(valueText)}">
+                    <span class="custom-datalist-option-value">${escapeHtml(valueText)}</span>
+                    ${labelText ? `<span class="custom-datalist-option-label">${escapeHtml(labelText)}</span>` : ''}
+                </div>
+            `;
+        }).join('');
+        
+        dropdownElement.innerHTML = optionsHtml;
+    }
+    
+    // 过滤选项
+    function filterOptions(searchText) {
+        if (!searchText) return currentOptions;
+        
+        const search = searchText.toLowerCase();
+        return currentOptions.filter(opt => {
+            if (typeof opt === 'object') {
+                return opt.value.toLowerCase().includes(search) || 
+                       (opt.label && opt.label.toLowerCase().includes(search));
+            }
+            return opt.toLowerCase().includes(search);
+        });
+    }
+    
+    // 显示下拉列表
+    function showDropdown() {
+        const filtered = filterOptions(inputElement.value);
+        renderOptions(filtered);
+        dropdownElement.classList.add('show');
+        activeIndex = -1;
+    }
+    
+    // 隐藏下拉列表
+    function hideDropdown() {
+        dropdownElement.classList.remove('show');
+        activeIndex = -1;
+    }
+    
+    // 选择选项
+    function selectOption(value) {
+        inputElement.value = value;
+        hideDropdown();
+        // 同步触发事件，确保值立即更新
+        inputElement.dispatchEvent(new Event('change', { bubbles: true }));
+        inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    
+    // 高亮活动选项
+    function setActiveOption(index) {
+        const options = dropdownElement.querySelectorAll('.custom-datalist-option');
+        options.forEach(opt => opt.classList.remove('active'));
+        
+        if (index >= 0 && index < options.length) {
+            options[index].classList.add('active');
+            options[index].scrollIntoView({ block: 'nearest' });
+            activeIndex = index;
+        }
+    }
+    
+    // 输入事件
+    inputElement.addEventListener('focus', () => {
+        showDropdown();
+    });
+    
+    inputElement.addEventListener('input', () => {
+        showDropdown();
+    });
+    
+    // 键盘导航
+    inputElement.addEventListener('keydown', (e) => {
+        if (!dropdownElement.classList.contains('show')) return;
+        
+        const options = dropdownElement.querySelectorAll('.custom-datalist-option');
+        
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setActiveOption(Math.min(activeIndex + 1, options.length - 1));
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setActiveOption(Math.max(activeIndex - 1, 0));
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (activeIndex >= 0 && activeIndex < options.length) {
+                const value = options[activeIndex].getAttribute('data-value');
+                selectOption(value);
+            }
+        } else if (e.key === 'Escape') {
+            hideDropdown();
+        }
+    });
+    
+    // 点击选项
+    dropdownElement.addEventListener('click', (e) => {
+        const option = e.target.closest('.custom-datalist-option');
+        if (option) {
+            const value = option.getAttribute('data-value');
+            selectOption(value);
+        }
+    });
+    
+    // 点击外部关闭
+    document.addEventListener('click', (e) => {
+        if (!wrapper.contains(e.target)) {
+            hideDropdown();
+        }
+    });
+    
+    // 初始渲染
+    renderOptions(currentOptions);
+}
 
 async function loadLuaValueTypes() {
     try {
-        const response = await fetch('enum.lua');
-        const text = await response.text();
+        const response = await fetch(API.LUA_TYPES);
+        const result = await response.json();
         
-        // 解析 enum.lua 中的 ValueType
-        const lines = text.split('\n');
-        let inValueType = false;
-        
-        for (const line of lines) {
-            if (line.includes('Enums.ValueType')) {
-                inValueType = true;
-                continue;
-            }
-            if (inValueType && line.includes('}')) {
-                break;
-            }
-            if (inValueType) {
-                // 匹配格式: TypeName = 'TypeName', ---描述
-                const match = line.match(/\s*(\w+)\s*=\s*'(\w+)',\s*---(.+)/);
-                if (match) {
-                    const typeName = match[1];
-                    const description = match[3].trim();
-                    luaValueTypes.push({ value: typeName, label: description });
-                }
-            }
+        if (result.success && result.data) {
+            // 清空并填充数据
+            luaValueTypes.length = 0;
+            luaValueTypes.push(...result.data);
+            console.log(`已加载 ${luaValueTypes.length} 个Lua值类型`);
+        } else {
+            console.error('加载Lua值类型失败:', result.error || '未知错误');
         }
-        
-        console.log(`已加载 ${luaValueTypes.length} 个Lua值类型`);
     } catch (error) {
-        console.error('加载enum.lua失败:', error);
+        console.error('加载Lua值类型失败:', error);
     }
 }
 
@@ -101,6 +223,17 @@ async function addNewSchema() {
         fields: []
     };
 
+    // 初始化导出配置的 require 包列表为空
+    if (typeof requireItems !== 'undefined') {
+        requireItems.length = 0;
+    }
+    
+    // 初始化导出配置的命名空间为默认值
+    const namespaceInput = document.getElementById('export-namespace');
+    if (namespaceInput) {
+        namespaceInput.value = 'Tile';
+    }
+
     document.getElementById('schema-editor-title').textContent = '新建Schema';
     document.getElementById('schema-name-input').value = '';
     document.getElementById('schema-name-input').disabled = false;
@@ -130,6 +263,24 @@ async function editSchema(schemaName) {
             document.getElementById('schema-name-input').value = schemaName;
             document.getElementById('schema-name-input').disabled = true;
             document.getElementById('schema-desc-input').value = currentSchema.description || '';
+            
+            // 初始化导出配置的 require 包列表
+            if (typeof requireItems !== 'undefined') {
+                if (currentSchema.exportConfig && currentSchema.exportConfig.requires) {
+                    requireItems.length = 0;
+                    requireItems.push(...currentSchema.exportConfig.requires);
+                } else {
+                    requireItems.length = 0;
+                }
+            }
+            
+            // 初始化导出配置的命名空间
+            if (currentSchema.exportConfig && currentSchema.exportConfig.namespace) {
+                const namespaceInput = document.getElementById('export-namespace');
+                if (namespaceInput) {
+                    namespaceInput.value = currentSchema.exportConfig.namespace;
+                }
+            }
             
             renderFieldsList();
             document.getElementById('field-editor-container').innerHTML = '<div class="empty-state"><i class="fas fa-hand-pointer"></i><p>请从左侧选择字段</p></div>';
@@ -675,6 +826,9 @@ async function renderFieldEditor(index) {
         await loadEnums();
     }
     
+    // 调试信息：检查luaValueTypes是否已加载
+    console.log('renderFieldEditor - luaValueTypes数量:', luaValueTypes.length);
+    
     const container = document.getElementById('field-editor-container');
     const field = currentSchema.fields[index];
     
@@ -736,8 +890,10 @@ function createFieldEditorHTML(field, index) {
         <div class="field-compact-row">
             <div class="form-group">
                 <label>Lua注解类型（可选）</label>
-                <input type="text" id="field-luatype-${index}" class="form-control datalist-input" value="${escapeHtml(field.luaType || '')}" placeholder="留空使用默认类型，如: ConfigType" list="lua-types-datalist-${index}">
-                <datalist id="lua-types-datalist-${index}"></datalist>
+                <div class="custom-datalist-wrapper">
+                    <input type="text" id="field-luatype-${index}" class="custom-datalist-input" value="${escapeHtml(field.luaType || '')}" placeholder="留空使用默认类型，如: ConfigType" autocomplete="off">
+                    <div class="custom-datalist-dropdown" id="field-luatype-dropdown-${index}"></div>
+                </div>
             </div>
         </div>
         
@@ -768,12 +924,11 @@ function bindFieldEditorEvents(index) {
     const requiredCheckbox = document.getElementById(`field-required-${index}`);
     const rawCheckbox = document.getElementById(`field-raw-${index}`);
     
-    // 填充Lua类型数据列表
-    const datalist = document.getElementById(`lua-types-datalist-${index}`);
-    if (datalist && luaValueTypes.length > 0) {
-        datalist.innerHTML = luaValueTypes.map(type => 
-            `<option value="${escapeHtml(type.value)}">${escapeHtml(type.label)}</option>`
-        ).join('');
+    // 先初始化自定义数据列表，在添加事件监听器之前
+    // 1. 初始化 Lua 注解类型数据列表
+    const luaTypeDropdown = document.getElementById(`field-luatype-dropdown-${index}`);
+    if (luaTypeInput && luaTypeDropdown) {
+        initCustomDatalist(luaTypeInput, luaTypeDropdown, luaValueTypes);
     }
     
     const updateField = () => {
@@ -793,6 +948,7 @@ function bindFieldEditorEvents(index) {
     labelInput.addEventListener('input', updateField);
     defaultInput.addEventListener('input', updateField);
     luaTypeInput.addEventListener('input', updateField);
+    luaTypeInput.addEventListener('change', updateField); // 同时监听 change 事件
     requiredCheckbox.addEventListener('change', updateField);
     if (rawCheckbox) {
         rawCheckbox.addEventListener('change', updateField);
@@ -803,6 +959,55 @@ function bindFieldEditorEvents(index) {
         renderFieldsList();
         renderFieldEditor(index);
     });
+    
+    // 2. 根据字段类型和数据源类型初始化关联配表/枚举数据列表
+    const field = currentSchema.fields[index];
+    if ((field.type === 'option' || field.type === 'datalist') && field.dataSource) {
+        if (field.dataSource.type === 'linked') {
+            // 关联配表数据列表
+            const schemaInput = document.getElementById(`field-linked-schema-${index}`);
+            const schemaDropdown = document.getElementById(`field-linked-schema-dropdown-${index}`);
+            if (schemaInput && schemaDropdown) {
+                const schemaOptions = schemas.map(s => ({
+                    value: s.name,
+                    label: s.description || s.name
+                }));
+                initCustomDatalist(schemaInput, schemaDropdown, schemaOptions);
+                
+                // 监听关联配表输入变化
+                schemaInput.addEventListener('input', () => {
+                    currentSchema.fields[index].dataSource.schema = schemaInput.value.trim();
+                    renderFieldsList();
+                });
+            }
+        } else if (field.dataSource.type === 'enum') {
+            // 关联枚举数据列表
+            const enumInput = document.getElementById(`field-linked-enum-${index}`);
+            const enumDropdown = document.getElementById(`field-linked-enum-dropdown-${index}`);
+            if (enumInput && enumDropdown) {
+                const enumOptions = enums.map(e => ({
+                    value: e.name,
+                    label: e.description || e.name
+                }));
+                initCustomDatalist(enumInput, enumDropdown, enumOptions);
+                
+                // 监听关联枚举输入变化
+                enumInput.addEventListener('input', () => {
+                    currentSchema.fields[index].dataSource.enum = enumInput.value.trim();
+                    renderFieldsList();
+                });
+            }
+            
+            // 监听枚举前缀变化
+            const enumPrefixInput = document.getElementById(`field-enum-prefix-${index}`);
+            if (enumPrefixInput) {
+                enumPrefixInput.addEventListener('input', () => {
+                    currentSchema.fields[index].dataSource.enumPrefix = enumPrefixInput.value.trim();
+                    renderFieldsList();
+                });
+            }
+        }
+    }
 }
 
 function renderFieldTypeSpecific(field, index) {
@@ -828,18 +1033,18 @@ function renderFieldTypeSpecific(field, index) {
                 ` : dataSourceType === 'linked' ? `
                     <div class="form-group">
                         <label>关联的配表</label>
-                        <select id="field-linked-schema-${index}" class="form-control">
-                            <option value="">-- 请选择配表 --</option>
-                            ${schemas.map(s => `<option value="${s.name}" ${linkedSchema === s.name ? 'selected' : ''}>${s.name}</option>`).join('')}
-                        </select>
+                        <div class="custom-datalist-wrapper">
+                            <input type="text" id="field-linked-schema-${index}" class="custom-datalist-input" value="${escapeHtml(linkedSchema)}" placeholder="请输入或选择配表..." autocomplete="off">
+                            <div class="custom-datalist-dropdown" id="field-linked-schema-dropdown-${index}"></div>
+                        </div>
                     </div>
                 ` : `
                     <div class="form-group">
                         <label>关联的枚举</label>
-                        <select id="field-linked-enum-${index}" class="form-control">
-                            <option value="">-- 请选择枚举 --</option>
-                            ${enums.map(e => `<option value="${e.name}" ${linkedEnum === e.name ? 'selected' : ''}>${e.name}</option>`).join('')}
-                        </select>
+                        <div class="custom-datalist-wrapper">
+                            <input type="text" id="field-linked-enum-${index}" class="custom-datalist-input" value="${escapeHtml(linkedEnum)}" placeholder="请输入或选择枚举..." autocomplete="off">
+                            <div class="custom-datalist-dropdown" id="field-linked-enum-dropdown-${index}"></div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>枚举前缀（可选）</label>
@@ -871,18 +1076,18 @@ function renderFieldTypeSpecific(field, index) {
                 ` : dataSourceType === 'linked' ? `
                     <div class="form-group">
                         <label>关联的配表</label>
-                        <select id="field-linked-schema-${index}" class="form-control">
-                            <option value="">-- 请选择配表 --</option>
-                            ${schemas.map(s => `<option value="${s.name}" ${linkedSchema === s.name ? 'selected' : ''}>${s.name}</option>`).join('')}
-                        </select>
+                        <div class="custom-datalist-wrapper">
+                            <input type="text" id="field-linked-schema-${index}" class="custom-datalist-input" value="${escapeHtml(linkedSchema)}" placeholder="请输入或选择配表..." autocomplete="off">
+                            <div class="custom-datalist-dropdown" id="field-linked-schema-dropdown-${index}"></div>
+                        </div>
                     </div>
                 ` : `
                     <div class="form-group">
                         <label>关联的枚举</label>
-                        <select id="field-linked-enum-${index}" class="form-control">
-                            <option value="">-- 请选择枚举 --</option>
-                            ${enums.map(e => `<option value="${e.name}" ${linkedEnum === e.name ? 'selected' : ''}>${e.name}</option>`).join('')}
-                        </select>
+                        <div class="custom-datalist-wrapper">
+                            <input type="text" id="field-linked-enum-${index}" class="custom-datalist-input" value="${escapeHtml(linkedEnum)}" placeholder="请输入或选择枚举..." autocomplete="off">
+                            <div class="custom-datalist-dropdown" id="field-linked-enum-dropdown-${index}"></div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>枚举前缀（可选）</label>
@@ -1042,10 +1247,10 @@ function renderSubfields(subfields, parentIndex) {
             <div class="field-compact-row">
                 <div class="form-group">
                     <label>Lua注解类型（可选）</label>
-                    <input type="text" class="form-control subfield-luatype datalist-input" value="${escapeHtml(subfield.luaType || '')}" placeholder="留空使用默认类型" list="lua-types-datalist-subfield-${parentIndex}-${subIndex}">
-                    <datalist id="lua-types-datalist-subfield-${parentIndex}-${subIndex}">
-                        ${luaValueTypes.map(type => `<option value="${escapeHtml(type.value)}">${escapeHtml(type.label)}</option>`).join('')}
-                    </datalist>
+                    <div class="custom-datalist-wrapper">
+                        <input type="text" class="custom-datalist-input subfield-luatype" value="${escapeHtml(subfield.luaType || '')}" placeholder="留空使用默认类型" autocomplete="off" id="subfield-luatype-${parentIndex}-${subIndex}">
+                        <div class="custom-datalist-dropdown" id="subfield-luatype-dropdown-${parentIndex}-${subIndex}"></div>
+                    </div>
                 </div>
             </div>
             <div class="field-options-row">
@@ -1086,18 +1291,18 @@ function renderSubfieldTypeSpecific(subfield, parentIndex, subIndex) {
                 ` : dataSourceType === 'linked' ? `
                     <div class="form-group">
                         <label>关联的配表</label>
-                        <select class="form-control subfield-linked-schema">
-                            <option value="">-- 请选择配表 --</option>
-                            ${schemas.map(s => `<option value="${s.name}" ${linkedSchema === s.name ? 'selected' : ''}>${s.name}</option>`).join('')}
-                        </select>
+                        <div class="custom-datalist-wrapper">
+                            <input type="text" class="custom-datalist-input subfield-linked-schema" value="${escapeHtml(linkedSchema)}" placeholder="请输入或选择配表..." autocomplete="off" id="subfield-linked-schema-${parentIndex}-${subIndex}">
+                            <div class="custom-datalist-dropdown" id="subfield-linked-schema-dropdown-${parentIndex}-${subIndex}"></div>
+                        </div>
                     </div>
                 ` : `
                     <div class="form-group">
                         <label>关联的枚举</label>
-                        <select class="form-control subfield-linked-enum">
-                            <option value="">-- 请选择枚举 --</option>
-                            ${enums.map(e => `<option value="${e.name}" ${linkedEnum === e.name ? 'selected' : ''}>${e.name}</option>`).join('')}
-                        </select>
+                        <div class="custom-datalist-wrapper">
+                            <input type="text" class="custom-datalist-input subfield-linked-enum" value="${escapeHtml(linkedEnum)}" placeholder="请输入或选择枚举..." autocomplete="off" id="subfield-linked-enum-${parentIndex}-${subIndex}">
+                            <div class="custom-datalist-dropdown" id="subfield-linked-enum-dropdown-${parentIndex}-${subIndex}"></div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>枚举前缀（可选）</label>
@@ -1129,17 +1334,18 @@ function renderSubfieldTypeSpecific(subfield, parentIndex, subIndex) {
                 ` : dataSourceType === 'linked' ? `
                     <div class="form-group">
                         <label>关联的配表</label>
-                        <select class="form-control subfield-linked-schema">
-                            <option value="">-- 请选择配表 --</option>
-                            ${schemas.map(s => `<option value="${s.name}" ${linkedSchema === s.name ? 'selected' : ''}>${s.name}</option>`).join('')}
-                        </select>
+                        <div class="custom-datalist-wrapper">
+                            <input type="text" class="custom-datalist-input subfield-linked-schema" value="${escapeHtml(linkedSchema)}" placeholder="请输入或选择配表..." autocomplete="off" id="subfield-linked-schema-${parentIndex}-${subIndex}">
+                            <div class="custom-datalist-dropdown" id="subfield-linked-schema-dropdown-${parentIndex}-${subIndex}"></div>
+                        </div>
+                    </div>
                 ` : `
                     <div class="form-group">
                         <label>关联的枚举</label>
-                        <select class="form-control subfield-linked-enum">
-                            <option value="">-- 请选择枚举 --</option>
-                            ${enums.map(e => `<option value="${e.name}" ${linkedEnum === e.name ? 'selected' : ''}>${e.name}</option>`).join('')}
-                        </select>
+                        <div class="custom-datalist-wrapper">
+                            <input type="text" class="custom-datalist-input subfield-linked-enum" value="${escapeHtml(linkedEnum)}" placeholder="请输入或选择枚举..." autocomplete="off" id="subfield-linked-enum-${parentIndex}-${subIndex}">
+                            <div class="custom-datalist-dropdown" id="subfield-linked-enum-dropdown-${parentIndex}-${subIndex}"></div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>枚举前缀（可选）</label>
@@ -1356,6 +1562,31 @@ function updateSubfieldType(parentIndex, subIndex, type) {
     const container = document.querySelector(`.subfield-type-specific-${parentIndex}-${subIndex}`);
     if (container) {
         container.innerHTML = renderSubfieldTypeSpecific(subfield, parentIndex, subIndex);
+        
+        // 如果是 option 或 datalist 类型，初始化自定义数据列表
+        if ((type === 'option' || type === 'datalist') && subfield.dataSource) {
+            if (subfield.dataSource.type === 'linked') {
+                const schemaInput = document.getElementById(`subfield-linked-schema-${parentIndex}-${subIndex}`);
+                const schemaDropdown = document.getElementById(`subfield-linked-schema-dropdown-${parentIndex}-${subIndex}`);
+                if (schemaInput && schemaDropdown) {
+                    const schemaOptions = schemas.map(s => ({
+                        value: s.name,
+                        label: s.description || s.name
+                    }));
+                    initCustomDatalist(schemaInput, schemaDropdown, schemaOptions);
+                }
+            } else if (subfield.dataSource.type === 'enum') {
+                const enumInput = document.getElementById(`subfield-linked-enum-${parentIndex}-${subIndex}`);
+                const enumDropdown = document.getElementById(`subfield-linked-enum-dropdown-${parentIndex}-${subIndex}`);
+                if (enumInput && enumDropdown) {
+                    const enumOptions = enums.map(e => ({
+                        value: e.name,
+                        label: e.description || e.name
+                    }));
+                    initCustomDatalist(enumInput, enumDropdown, enumOptions);
+                }
+            }
+        }
     }
     
     // 更新原始文本复选框的显示
@@ -1377,28 +1608,67 @@ function updateSubfieldDataSourceType(parentIndex, subIndex, type) {
     }
     subfield.dataSource.type = type;
     
+    const linkedSchema = subfield.dataSource?.schema || '';
+    const linkedEnum = subfield.dataSource?.enum || '';
+    
     // 重新渲染子字段特定区域
     document.querySelector(`.subfield-datasource-config-${parentIndex}-${subIndex}`).innerHTML = 
         type === 'manual' ? 
         (subfield.type === 'option' ? `
             <div class="form-group">
-                <label>选项列表（每行一个）</label>
-                <textarea class="form-control subfield-options" rows="3" placeholder="选项1&#10;选项2&#10;选项3">${(subfield.options || []).join('\n')}</textarea>
+                <label>数据列表配置（格式: value|label，每行一个）</label>
+                <textarea class="form-control subfield-options" rows="3" placeholder="value1|标签1&#10;value2|标签2">${formatDatalist(subfield.options || [])}</textarea>
             </div>
         ` : `
             <div class="form-group">
                 <label>数据列表配置（格式: value|label，每行一个）</label>
                 <textarea class="form-control subfield-datalist" rows="3" placeholder="value1|标签1&#10;value2|标签2">${formatDatalist(subfield.options || [])}</textarea>
             </div>
-        `) : `
+        `) : type === 'linked' ? `
             <div class="form-group">
                 <label>关联的配表</label>
-                <select class="form-control subfield-linked-schema">
-                    <option value="">-- 请选择配表 --</option>
-                    ${schemas.map(s => `<option value="${s.name}">${s.name}</option>`).join('')}
-                </select>
+                <div class="custom-datalist-wrapper">
+                    <input type="text" class="custom-datalist-input subfield-linked-schema" value="${escapeHtml(linkedSchema)}" placeholder="请输入或选择配表..." autocomplete="off" id="subfield-linked-schema-${parentIndex}-${subIndex}">
+                    <div class="custom-datalist-dropdown" id="subfield-linked-schema-dropdown-${parentIndex}-${subIndex}"></div>
+                </div>
+            </div>
+        ` : `
+            <div class="form-group">
+                <label>关联的枚举</label>
+                <div class="custom-datalist-wrapper">
+                    <input type="text" class="custom-datalist-input subfield-linked-enum" value="${escapeHtml(linkedEnum)}" placeholder="请输入或选择枚举..." autocomplete="off" id="subfield-linked-enum-${parentIndex}-${subIndex}">
+                    <div class="custom-datalist-dropdown" id="subfield-linked-enum-dropdown-${parentIndex}-${subIndex}"></div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>枚举前缀（可选）</label>
+                <input type="text" class="form-control subfield-enum-prefix" value="${escapeHtml(subfield.dataSource?.enumPrefix || '')}" placeholder="例如: ConfigType">
+                <small class="form-text text-muted">导出时为 前缀.枚举值，留空则直接使用枚举值</small>
             </div>
         `;
+    
+    // 初始化新创建的自定义数据列表
+    if (type === 'linked') {
+        const schemaInput = document.getElementById(`subfield-linked-schema-${parentIndex}-${subIndex}`);
+        const schemaDropdown = document.getElementById(`subfield-linked-schema-dropdown-${parentIndex}-${subIndex}`);
+        if (schemaInput && schemaDropdown) {
+            const schemaOptions = schemas.map(s => ({
+                value: s.name,
+                label: s.description || s.name
+            }));
+            initCustomDatalist(schemaInput, schemaDropdown, schemaOptions);
+        }
+    } else if (type === 'enum') {
+        const enumInput = document.getElementById(`subfield-linked-enum-${parentIndex}-${subIndex}`);
+        const enumDropdown = document.getElementById(`subfield-linked-enum-dropdown-${parentIndex}-${subIndex}`);
+        if (enumInput && enumDropdown) {
+            const enumOptions = enums.map(e => ({
+                value: e.name,
+                label: e.description || e.name
+            }));
+            initCustomDatalist(enumInput, enumDropdown, enumOptions);
+        }
+    }
 }
 
 function addSubfield(parentIndex) {
@@ -1417,6 +1687,41 @@ function addSubfield(parentIndex) {
     // 重新渲染字段特定区域
     document.getElementById(`field-type-specific-${parentIndex}`).innerHTML = 
         renderFieldTypeSpecific(field, parentIndex);
+    
+    // 为所有子字段初始化自定义数据列表
+    field.subfields.forEach((subfield, subIndex) => {
+        // 初始化 Lua 注解类型数据列表
+        const luaTypeInput = document.getElementById(`subfield-luatype-${parentIndex}-${subIndex}`);
+        const luaTypeDropdown = document.getElementById(`subfield-luatype-dropdown-${parentIndex}-${subIndex}`);
+        if (luaTypeInput && luaTypeDropdown) {
+            initCustomDatalist(luaTypeInput, luaTypeDropdown, luaValueTypes);
+        }
+        
+        // 根据子字段类型和数据源类型初始化关联配表/枚举数据列表
+        if ((subfield.type === 'option' || subfield.type === 'datalist') && subfield.dataSource) {
+            if (subfield.dataSource.type === 'linked') {
+                const schemaInput = document.getElementById(`subfield-linked-schema-${parentIndex}-${subIndex}`);
+                const schemaDropdown = document.getElementById(`subfield-linked-schema-dropdown-${parentIndex}-${subIndex}`);
+                if (schemaInput && schemaDropdown) {
+                    const schemaOptions = schemas.map(s => ({
+                        value: s.name,
+                        label: s.description || s.name
+                    }));
+                    initCustomDatalist(schemaInput, schemaDropdown, schemaOptions);
+                }
+            } else if (subfield.dataSource.type === 'enum') {
+                const enumInput = document.getElementById(`subfield-linked-enum-${parentIndex}-${subIndex}`);
+                const enumDropdown = document.getElementById(`subfield-linked-enum-dropdown-${parentIndex}-${subIndex}`);
+                if (enumInput && enumDropdown) {
+                    const enumOptions = enums.map(e => ({
+                        value: e.name,
+                        label: e.description || e.name
+                    }));
+                    initCustomDatalist(enumInput, enumDropdown, enumOptions);
+                }
+            }
+        }
+    });
 }
 
 function removeSubfield(parentIndex, subIndex) {

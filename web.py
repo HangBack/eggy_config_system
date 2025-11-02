@@ -16,6 +16,81 @@ os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(SCHEMA_DIR, exist_ok=True)
 os.makedirs(ENUM_DIR, exist_ok=True)
 
+# Lua ValueType 缓存
+lua_value_types = []
+
+
+def parse_enum_lua():
+    """解析 enum.lua 文件，提取 ValueType"""
+    global lua_value_types
+    lua_value_types = []
+    
+    enum_lua_path = 'enum.lua'
+    abs_path = os.path.abspath(enum_lua_path)
+    print(f'尝试读取文件: {abs_path}')
+    print(f'文件是否存在: {os.path.exists(enum_lua_path)}')
+    
+    if not os.path.exists(enum_lua_path):
+        print(f'警告: {enum_lua_path} 文件不存在')
+        return
+    
+    try:
+        # 检查文件大小
+        file_size = os.path.getsize(enum_lua_path)
+        print(f'文件大小: {file_size} 字节')
+        
+        with open(enum_lua_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+            lines = content.splitlines()
+        
+        print(f'读取到 {len(lines)} 行')
+        
+        import re
+        in_value_type = False
+        line_count = 0
+        match_count = 0
+        
+        for idx, line in enumerate(lines, 1):
+            # 打印前5行用于调试
+            if idx <= 5:
+                print(f'行 {idx}: {repr(line[:60])}')
+            
+            # 寻找 "Enums.ValueType = {" 这一行开始
+            if 'Enums.ValueType' in line and '=' in line and '{' in line:
+                in_value_type = True
+                print(f'找到 Enums.ValueType 开始标记 (行 {idx})')
+                continue
+            
+            if in_value_type and '}' in line:
+                print(f'找到结束标记，共处理 {line_count} 行，匹配 {match_count} 个类型')
+                break
+            
+            if in_value_type:
+                line_count += 1
+                # 匹配格式: \tTypeName = 'TypeName',  ---描述
+                # 注意: 使用\t或\s+匹配缩进，逗号后有两个空格
+                match = re.match(r'[\s\t]*(\w+)\s*=\s*[\'"](\w+)[\'"]\s*,\s*---(.+)', line)
+                if match:
+                    match_count += 1
+                    type_name = match.group(1)
+                    description = match.group(3).strip()
+                    lua_value_types.append({
+                        'value': type_name,
+                        'label': description
+                    })
+                    if match_count <= 3:  # 只打印前3个
+                        print(f'  匹配: {type_name} -> {description}')
+                else:
+                    # 调试：打印未匹配的行（前3行）
+                    if line_count <= 3 and line.strip():
+                        print(f'  未匹配行 {line_count}: {repr(line[:50])}')
+        
+        print(f'已解析 enum.lua，提取 {len(lua_value_types)} 个 ValueType')
+        if len(lua_value_types) == 0:
+            print('警告: 未能从 enum.lua 提取任何 ValueType，请检查文件格式')
+    except Exception as e:
+        print(f'解析 enum.lua 失败: {e}')
+
 
 def get_schema_path(name):
     """获取schema文件路径"""
@@ -437,6 +512,15 @@ def enum_handler():
             }), 500
 
 
+@app.route('/api/lua-types', methods=['GET'])
+def lua_types_handler():
+    """获取Lua值类型列表"""
+    return jsonify({
+        'success': True,
+        'data': lua_value_types
+    })
+
+
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """健康检查接口"""
@@ -448,9 +532,14 @@ def health_check():
 
 if __name__ == '__main__':
     print('配表系统后端服务启动中...')
-    print('服务地址: http://localhost:5000')
-    print('Schema API: http://localhost:5000/api/schema')
-    print('Enum API: http://localhost:5000/api/enum')
-    print('Data API: http://localhost:5000/api/data')
+    
+    # 解析 enum.lua
+    parse_enum_lua()
+    
+    print('服务地址: http://localhost:5001')
+    print('Schema API: http://localhost:5001/api/schema')
+    print('Enum API: http://localhost:5001/api/enum')
+    print('Data API: http://localhost:5001/api/data')
+    print('Lua Types API: http://localhost:5001/api/lua-types')
     print('按 Ctrl+C 停止服务')
     app.run(host='0.0.0.0', port=5001, debug=True)
