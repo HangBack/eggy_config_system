@@ -1,140 +1,147 @@
 {
-  "name": "Character",
   "description": "角色配置表",
+  "exportConfig": {
+    "namespace": "Tile",
+    "requires": []
+  },
   "fields": [
     {
-      "name": "id",
-      "label": "角色ID",
-      "type": "number",
       "defaultValue": "1",
+      "label": "角色ID",
+      "luaType": "",
+      "name": "id",
       "required": true,
+      "type": "number"
+    },
+    {
+      "defaultValue": "",
+      "isRaw": false,
+      "label": "角色名称",
+      "name": "name",
+      "required": true,
+      "type": "text"
+    },
+    {
+      "defaultValue": "",
+      "isRaw": false,
+      "label": "角色描述",
+      "name": "description",
+      "required": false,
+      "type": "text"
+    },
+    {
+      "defaultValue": "1",
+      "label": "初始等级",
+      "name": "level",
+      "required": true,
+      "type": "number"
+    },
+    {
+      "defaultValue": "0xFF5733",
+      "label": "主题颜色",
+      "name": "mainColor",
+      "required": false,
+      "type": "color",
       "luaType": ""
     },
     {
-      "name": "name",
-      "label": "角色名称",
-      "type": "text",
-      "defaultValue": "",
-      "required": true,
-      "isRaw": false
-    },
-    {
-      "name": "description",
-      "label": "角色描述",
-      "type": "text",
-      "defaultValue": "",
-      "required": false,
-      "isRaw": false
-    },
-    {
-      "name": "level",
-      "label": "初始等级",
-      "type": "number",
-      "defaultValue": "1",
-      "required": true
-    },
-    {
-      "name": "mainColor",
-      "label": "主题颜色",
-      "type": "color",
-      "defaultValue": "#FF5733",
-      "required": false
-    },
-    {
-      "name": "class",
-      "label": "职业",
-      "type": "option",
-      "defaultValue": "",
-      "required": true,
-      "isRaw": false,
       "dataSource": {
         "type": "manual"
       },
-      "options": ["战士", "法师", "弓箭手", "刺客", "牧师"]
-    },
-    {
-      "name": "rarity",
-      "label": "稀有度",
-      "type": "option",
       "defaultValue": "",
-      "required": true,
-      "isRaw": true,
-      "dataSource": {
-        "type": "enum",
-        "enum": "ItemRarity",
-        "enumPrefix": "Enum.ItemRarity"
-      }
-    },
-    {
-      "name": "weapon",
-      "label": "初始武器",
-      "type": "datalist",
-      "defaultValue": "",
-      "required": false,
       "isRaw": false,
-      "dataSource": {
-        "type": "linked",
-        "schema": "Weapon"
-      }
+      "label": "职业",
+      "name": "class",
+      "options": [
+        "战士",
+        "法师",
+        "弓箭手",
+        "刺客",
+        "牧师"
+      ],
+      "required": true,
+      "type": "option"
     },
     {
-      "name": "attributes",
-      "label": "基础属性",
-      "type": "entry",
+      "dataSource": {
+        "enum": "ItemRarity",
+        "enumPrefix": "Enum.ItemRarity",
+        "type": "enum"
+      },
+      "defaultValue": "",
+      "isRaw": true,
+      "label": "稀有度",
+      "name": "rarity",
+      "required": true,
+      "type": "option"
+    },
+    {
+      "dataSource": {
+        "schema": "Weapon",
+        "type": "linked"
+      },
+      "defaultValue": "",
+      "isRaw": false,
+      "label": "初始武器",
+      "name": "weapon",
+      "required": false,
+      "type": "datalist"
+    },
+    {
       "defaultValue": [],
+      "label": "基础属性",
+      "name": "attributes",
       "required": true,
       "subfields": [
         {
-          "name": "hp",
+          "defaultValue": "100",
           "label": "生命值",
-          "type": "number",
-          "defaultValue": "100"
+          "name": "hp",
+          "type": "number"
         },
         {
-          "name": "mp",
+          "defaultValue": "50",
           "label": "魔法值",
-          "type": "number",
-          "defaultValue": "50"
+          "name": "mp",
+          "type": "number"
         },
         {
-          "name": "attack",
+          "defaultValue": "10",
           "label": "攻击力",
-          "type": "number",
-          "defaultValue": "10"
+          "name": "attack",
+          "type": "number"
         },
         {
-          "name": "defense",
+          "defaultValue": "5",
           "label": "防御力",
-          "type": "number",
-          "defaultValue": "5"
+          "name": "defense",
+          "type": "number"
         }
-      ]
+      ],
+      "type": "entry"
     },
     {
-      "name": "skills",
-      "label": "技能列表",
-      "type": "list",
-      "defaultValue": [],
-      "required": false,
-      "isRaw": false,
-      "elementType": "datalist",
       "dataSource": {
-        "type": "linked",
-        "schema": "Skill"
-      }
+        "schema": "Skill",
+        "type": "linked"
+      },
+      "defaultValue": [],
+      "elementType": "datalist",
+      "isRaw": false,
+      "label": "技能列表",
+      "name": "skills",
+      "required": false,
+      "type": "list"
     },
     {
-      "name": "tags",
-      "label": "标签",
-      "type": "list",
       "defaultValue": [],
-      "required": false,
+      "elementType": "text",
       "isRaw": false,
-      "elementType": "text"
+      "label": "标签",
+      "name": "tags",
+      "required": false,
+      "type": "list"
     }
   ],
-  "exportConfig": {
-    "namespace": "Config",
-    "requires": ["Enum.ItemRarity"]
-  }
+  "name": "Character"
 }

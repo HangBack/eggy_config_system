@@ -1,112 +1,140 @@
 {
-  "name": "Skill",
   "description": "技能配置表",
+  "exportConfig": {
+    "namespace": "Tile",
+    "requires": []
+  },
   "fields": [
     {
-      "name": "id",
-      "label": "技能ID",
-      "type": "number",
       "defaultValue": "1",
-      "required": true
-    },
-    {
-      "name": "name",
-      "label": "技能名称",
-      "type": "text",
-      "defaultValue": "",
+      "label": "技能ID",
+      "name": "id",
       "required": true,
-      "isRaw": false
+      "type": "number"
     },
     {
-      "name": "category",
-      "label": "技能类别",
-      "type": "option",
       "defaultValue": "",
-      "required": true,
-      "isRaw": true,
-      "dataSource": {
-        "type": "enum",
-        "enum": "SkillCategory",
-        "enumPrefix": "Enum.SkillCategory"
-      }
-    },
-    {
-      "name": "cooldown",
-      "label": "冷却时间(秒)",
-      "type": "number",
-      "defaultValue": "5",
-      "required": true
-    },
-    {
-      "name": "manaCost",
-      "label": "魔法消耗",
-      "type": "number",
-      "defaultValue": "10",
-      "required": true
-    },
-    {
-      "name": "effectColor",
-      "label": "特效颜色",
-      "type": "color",
-      "defaultValue": "#00FF00",
-      "required": false
-    },
-    {
-      "name": "targets",
-      "label": "目标选择",
-      "type": "datalist",
-      "defaultValue": "",
-      "required": true,
       "isRaw": false,
+      "label": "技能名称",
+      "name": "name",
+      "required": true,
+      "type": "text"
+    },
+    {
+      "dataSource": {
+        "enum": "SkillCategory",
+        "enumPrefix": "Enum.SkillCategory",
+        "type": "enum"
+      },
+      "defaultValue": "",
+      "isRaw": true,
+      "label": "技能类别",
+      "name": "category",
+      "required": true,
+      "type": "option"
+    },
+    {
+      "dataSource": {
+        "enum": "SkillCategory",
+        "enumPrefix": "Enum.SkillCategory",
+        "type": "enum"
+      },
+      "defaultValue": "0",
+      "label": "技能标签",
+      "name": "tags",
+      "required": false,
+      "type": "flags"
+    },
+    {
+      "defaultValue": "5",
+      "label": "冷却时间(秒)",
+      "name": "cooldown",
+      "required": true,
+      "type": "number"
+    },
+    {
+      "defaultValue": "10",
+      "label": "魔法消耗",
+      "name": "manaCost",
+      "required": true,
+      "type": "number"
+    },
+    {
+      "defaultValue": "0x00FF00",
+      "label": "特效颜色",
+      "name": "effectColor",
+      "required": false,
+      "type": "color",
+      "luaType": ""
+    },
+    {
       "dataSource": {
         "type": "manual"
       },
-      "options": [
-        {"value": "self", "label": "自身"},
-        {"value": "single_enemy", "label": "单个敌人"},
-        {"value": "all_enemies", "label": "所有敌人"},
-        {"value": "single_ally", "label": "单个队友"},
-        {"value": "all_allies", "label": "所有队友"}
-      ]
-    },
-    {
-      "name": "damageValues",
-      "label": "伤害倍率(按等级)",
-      "type": "list",
-      "defaultValue": [],
-      "required": false,
+      "defaultValue": "",
       "isRaw": false,
-      "elementType": "number"
+      "label": "目标选择",
+      "name": "targets",
+      "options": [
+        {
+          "label": "自身",
+          "value": "self"
+        },
+        {
+          "label": "单个敌人",
+          "value": "single_enemy"
+        },
+        {
+          "label": "所有敌人",
+          "value": "all_enemies"
+        },
+        {
+          "label": "单个队友",
+          "value": "single_ally"
+        },
+        {
+          "label": "所有队友",
+          "value": "all_allies"
+        }
+      ],
+      "required": true,
+      "type": "datalist"
     },
     {
-      "name": "requirements",
-      "label": "学习条件",
-      "type": "entry",
       "defaultValue": [],
+      "elementType": "number",
+      "isRaw": false,
+      "label": "伤害倍率(按等级)",
+      "name": "damageValues",
+      "required": false,
+      "type": "list"
+    },
+    {
+      "defaultValue": [],
+      "label": "学习条件",
+      "name": "requirements",
       "required": false,
       "subfields": [
         {
-          "name": "level",
+          "defaultValue": "1",
           "label": "需求等级",
-          "type": "number",
-          "defaultValue": "1"
+          "name": "level",
+          "type": "number"
         },
         {
-          "name": "preSkill",
-          "label": "前置技能",
-          "type": "datalist",
+          "dataSource": {
+            "schema": "Skill",
+            "type": "linked"
+          },
           "defaultValue": "",
           "isRaw": false,
-          "dataSource": {
-            "type": "linked",
-            "schema": "Skill"
-          }
+          "label": "前置技能",
+          "name": "preSkill",
+          "type": "datalist"
         }
-      ]
+      ],
+      "type": "entry"
     }
   ],
-  "exportConfig": {
-    "namespace": "Config",
-    "requires": ["Enum.SkillCategory"]
-  }
+  "name": "Skill"
 }

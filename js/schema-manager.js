@@ -676,6 +676,7 @@ function createFieldEditorHTML(field, index) {
                     <option value="list" ${field.type === 'list' ? 'selected' : ''}>列表</option>
                     <option value="option" ${field.type === 'option' ? 'selected' : ''}>选项</option>
                     <option value="datalist" ${field.type === 'datalist' ? 'selected' : ''}>数据列表</option>
+                    <option value="flags" ${field.type === 'flags' ? 'selected' : ''}>标志组合</option>
                 </select>
             </div>
             <div class="form-group">
@@ -906,6 +907,27 @@ function renderFieldTypeSpecific(field, index) {
                             `}
                         </div>
                     ` : ''}
+                </div>
+            </div>
+        `;
+    } else if (field.type === 'flags') {
+        const linkedEnum = field.dataSource?.enum || '';
+        const enumPrefix = field.dataSource?.enumPrefix || '';
+        
+        return `
+            <div class="flags-config">
+                <div class="form-group">
+                    <label>关联的标志枚举</label>
+                    <select id="field-flags-enum-${index}" class="form-control">
+                        <option value="">-- 请选择标志枚举 --</option>
+                        ${enums.filter(e => e.type === 'flag').map(e => `<option value="${e.name}" ${linkedEnum === e.name ? 'selected' : ''}>${e.name}</option>`).join('')}
+                    </select>
+                    <small class="form-text text-muted">只显示标志类型的枚举</small>
+                </div>
+                <div class="form-group">
+                    <label>枚举前缀（可选）</label>
+                    <input type="text" id="field-flags-enum-prefix-${index}" class="form-control" value="${escapeHtml(enumPrefix)}" placeholder="例如: Enum.SkillCategory">
+                    <small class="form-text text-muted">用于 Lua 导出时的注释</small>
                 </div>
             </div>
         `;
@@ -1444,6 +1466,21 @@ function collectFields() {
                         field.dataSource.enumPrefix = enumPrefixInput.value.trim();
                     }
                 }
+            }
+        } else if (field.type === 'flags') {
+            // 收集标志组合类型的配置
+            const flagsEnumSelect = document.getElementById(`field-flags-enum-${index}`);
+            if (flagsEnumSelect) {
+                if (!field.dataSource) field.dataSource = {};
+                field.dataSource.type = 'enum';
+                field.dataSource.enum = flagsEnumSelect.value;
+            }
+            
+            // 收集枚举前缀
+            const enumPrefixInput = document.getElementById(`field-flags-enum-prefix-${index}`);
+            if (enumPrefixInput) {
+                if (!field.dataSource) field.dataSource = {};
+                field.dataSource.enumPrefix = enumPrefixInput.value.trim();
             }
         }
     });

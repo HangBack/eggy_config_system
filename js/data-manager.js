@@ -702,6 +702,18 @@ function createFieldInput(field, value, rowIndex) {
                     ${inputHtml}
                 </div>
             `;
+        
+        case 'flags':
+            const flagsValue = value || 0;
+            inputHtml = `
+                <div class="flags-input-wrapper">
+                    <input type="number" id="${fieldId}" class="form-control" value="${flagsValue}" readonly style="background-color: #f8f9fa;">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="openFlagsModal(${rowIndex}, '${field.name}', ${flagsValue})">
+                        <i class="fas fa-flag"></i> 选择标志
+                    </button>
+                </div>
+            `;
+            break;
     }
 
     const rawBadge = field.isRaw ? '<span class="raw-badge" title="此字段Lua导出时不加引号">原始</span>' : '';
@@ -1645,6 +1657,9 @@ function generateLuaFields(row, schema, indent) {
             const parts = value.map(v => formatLuaValue(v, elemType, field.isRaw));
             code += parts.join(', ');
             code += ' }';
+        } else if (field.type === 'flags') {
+            // 标志组合直接导出为数字
+            code += formatLuaValue(value, 'number', false);
         } else {
             // 传递 isRaw 参数
             code += formatLuaValue(value, field.type, field.isRaw);
@@ -1790,6 +1805,95 @@ async function copyLuaCode() {
         
         document.body.removeChild(textArea);
     }
+}
+
+// ========== 标志组合模态框 ==========
+
+let currentFlagsRowIndex = -1;
+let currentFlagsFieldName = '';
+let currentFlagsEnum = null;
+
+async function openFlagsModal(rowIndex, fieldName, initialValue) {
+    if (!currentSchema || !currentSchema.fields) return;
+    
+    const field = currentSchema.fields.find(f => f.name === fieldName);
+    if (!field || field.type !== 'flags' || !field.dataSource || !field.dataSource.enum) {
+        alert('标志字段配置错误');
+        return;
+    }
+    
+    currentFlagsRowIndex = rowIndex;
+    currentFlagsFieldName = fieldName;
+    
+    // 从输入框读取当前实际值，而不是使用传入的初始值
+    const fieldId = `field-${rowIndex}-${fieldName}`;
+    const input = document.getElementById(fieldId);
+    const currentValue = input ? parseInt(input.value) || 0 : (initialValue || 0);
+    
+    // 加载枚举数据
+    try {
+        const response = await fetch(`${API.ENUM}?action=get&name=${encodeURIComponent(field.dataSource.enum)}`);
+        const result = await response.json();
+        
+        if (!result.success || !result.data) {
+            alert('加载枚举数据失败');
+            return;
+        }
+        
+        currentFlagsEnum = result.data;
+        
+        // 渲染复选框列表
+        const container = document.getElementById('flags-checkboxes');
+        container.innerHTML = currentFlagsEnum.values.map(v => {
+            const bitValue = 1 << v.value; // 将位偏移转换为实际标志位值
+            const isChecked = (currentValue & bitValue) === bitValue;
+            return `
+                <label class="flags-checkbox-item">
+                    <input type="checkbox" 
+                           data-bit-offset="${v.value}"
+                           ${isChecked ? 'checked' : ''}
+                           onchange="updateFlagsValue()">
+                    <span>${v.label || v.key} (1 << ${v.value} = ${bitValue})</span>
+                </label>
+            `;
+        }).join('');
+        
+        // 更新结果值
+        updateFlagsValue();
+        
+        // 显示模态框
+        document.getElementById('flags-modal').style.display = 'flex';
+    } catch (error) {
+        console.error('加载标志枚举失败:', error);
+        alert('加载标志枚举失败');
+    }
+}
+
+function updateFlagsValue() {
+    const checkboxes = document.querySelectorAll('#flags-checkboxes input[type="checkbox"]:checked');
+    let total = 0;
+    checkboxes.forEach(cb => {
+        const bitOffset = parseInt(cb.getAttribute('data-bit-offset'));
+        total |= (1 << bitOffset); // 使用位移操作计算标志位值
+    });
+    document.getElementById('flags-result-value').value = total;
+}
+
+function confirmFlagsSelection() {
+    const value = parseInt(document.getElementById('flags-result-value').value) || 0;
+    const fieldId = `field-${currentFlagsRowIndex}-${currentFlagsFieldName}`;
+    const input = document.getElementById(fieldId);
+    if (input) {
+        input.value = value;
+    }
+    closeFlagsModal();
+}
+
+function closeFlagsModal() {
+    document.getElementById('flags-modal').style.display = 'none';
+    currentFlagsRowIndex = -1;
+    currentFlagsFieldName = '';
+    currentFlagsEnum = null;
 }
 
 // ========== 工具函数 ==========
