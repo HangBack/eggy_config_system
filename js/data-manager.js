@@ -28,10 +28,20 @@
 }
 
 async function loadDataForSchema() {
-    const schemaName = document.getElementById('data-schema-select').value;
+    const schemaName = document.getElementById('data-schema-select').value.trim();
     
     if (!schemaName) {
         document.getElementById('data-editor').style.display = 'none';
+        return;
+    }
+
+    // 验证 schema 名称是否存在于列表中（静默处理，不显示警告）
+    const schemaExists = schemas.some(s => s.name === schemaName);
+    if (!schemaExists) {
+        // 静默忽略无效输入，不做任何提示
+        document.getElementById('data-editor').style.display = 'none';
+        // 清空输入框，避免显示无效的名称
+        document.getElementById('data-schema-select').value = '';
         return;
     }
 
@@ -46,7 +56,9 @@ async function loadDataForSchema() {
         const schemaResult = await schemaResponse.json();
         
         if (!schemaResult.success) {
-            alert('加载Schema失败');
+            console.error(`加载Schema失败: ${schemaName}`, schemaResult.error);
+            // 不显示 alert，只在控制台记录错误
+            document.getElementById('data-editor').style.display = 'none';
             return;
         }
 
@@ -413,7 +425,9 @@ function initCustomDatalist(inputElement, dropdownElement, options) {
     function selectOption(value) {
         inputElement.value = value;
         hideDropdown();
+        // 同步触发事件，确保值立即更新
         inputElement.dispatchEvent(new Event('change', { bubbles: true }));
+        inputElement.dispatchEvent(new Event('input', { bubbles: true }));
     }
     
     // 高亮活动选项
