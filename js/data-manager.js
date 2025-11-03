@@ -1597,17 +1597,43 @@ async function executeScript() {
                     }
                 };
                 
-                // 将 update 函数注入到全局作用域（临时）
+                // 收集本行的所有 yield 结果
+                const yieldResults = [];
+                const yieldFunc = function(value) {
+                    yieldResults.push(value);
+                };
+                
+                // 将 update 和 yield 函数注入到全局作用域（临时）
                 const originalUpdate = window.update;
+                const originalYield = window.yield;
                 window.update = update;
+                window.yield = yieldFunc;
                 
                 try {
                     // 传入：index, data (只读), source (只读)
-                    // update 函数通过全局作用域访问
+                    // update 和 yield 函数通过全局作用域访问
                     const result = userFunction(i, deepClone(data[i]), sourceData);
                     
-                    // 如果有返回值
-                    if (result !== undefined && result !== null) {
+                    // 如果调用了 yield,使用 yield 的结果
+                    if (yieldResults.length > 0) {
+                        yieldResults.forEach(yieldValue => {
+                            // 对每个 yield 的值应用更新
+                            if (updates.has(i) && typeof yieldValue === 'object' && yieldValue !== null && !Array.isArray(yieldValue)) {
+                                const updatedFields = updates.get(i);
+                                const mergedResult = { ...yieldValue };
+                                for (const key in updatedFields) {
+                                    if (key in mergedResult) {
+                                        mergedResult[key] = updatedFields[key];
+                                    }
+                                }
+                                results.push({ index: i, value: mergedResult });
+                            } else {
+                                results.push({ index: i, value: yieldValue });
+                            }
+                        });
+                    }
+                    // 如果有返回值且没有 yield
+                    else if (result !== undefined && result !== null) {
                         // 如果当前行调用了 update(),将更新应用到返回值上
                         if (updates.has(i)) {
                             const updatedFields = updates.get(i);
@@ -1631,11 +1657,16 @@ async function executeScript() {
                         }
                     }
                 } finally {
-                    // 恢复原始的 update 函数
+                    // 恢复原始的 update 和 yield 函数
                     if (originalUpdate !== undefined) {
                         window.update = originalUpdate;
                     } else {
                         delete window.update;
+                    }
+                    if (originalYield !== undefined) {
+                        window.yield = originalYield;
+                    } else {
+                        delete window.yield;
                     }
                 }
             } catch (err) {
@@ -4085,6 +4116,7 @@ function initScriptEditor() {
 //   source - 整个表的数据数组（只读）
 // 全局函数：
 //   update(index, newData) - 更新指定行的数据
+//   yield(value) - 输出一条结果（可多次调用，一行产生多个结果）
 // 提示：输入 data. 或 source. 会自动弹出字段补全列表
 
 (index, data, source) => {
@@ -4095,7 +4127,12 @@ function initScriptEditor() {
     // update(index, { 年龄: data.年龄 + 1 });
     // return { 姓名: data.姓名, 年龄: data.年龄 };  // 查询结果会显示更新后的年龄
     
-    // 示例 3：访问其他行数据
+    // 示例 3：一行数据产生多个结果
+    // data.技能列表.forEach(skill => {
+    //     yield({ 角色: data.姓名, 技能: skill });
+    // });
+    
+    // 示例 4：访问其他行数据
     // const prevRow = source[index - 1];
     // return { ...data, prev_value: prevRow?.some_field };
 }`);
