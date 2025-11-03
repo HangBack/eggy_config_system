@@ -1308,6 +1308,7 @@ function renderSubfields(subfields, parentIndex) {
                         <option value="color" ${subfield.type === 'color' ? 'selected' : ''}>颜色</option>
                         <option value="option" ${subfield.type === 'option' ? 'selected' : ''}>选项</option>
                         <option value="datalist" ${subfield.type === 'datalist' ? 'selected' : ''}>数据列表</option>
+                        <option value="flags" ${subfield.type === 'flags' ? 'selected' : ''}>标志组合</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -1424,6 +1425,22 @@ function renderSubfieldTypeSpecific(subfield, parentIndex, subIndex) {
                         <small class="form-text text-muted">导出时为 前缀.枚举值，留空则直接使用枚举值</small>
                     </div>
                 `}
+            </div>
+        `;
+    } else if (subfield.type === 'flags') {
+        const linkedEnum = subfield.dataSource?.enum || '';
+        return `
+            <div class="form-group">
+                <label>关联的枚举</label>
+                <div class="custom-datalist-wrapper">
+                    <input type="text" class="custom-datalist-input subfield-flags-enum" value="${escapeHtml(linkedEnum)}" placeholder="请输入或选择枚举..." autocomplete="off" id="subfield-flags-enum-${parentIndex}-${subIndex}">
+                    <div class="custom-datalist-dropdown" id="subfield-flags-enum-dropdown-${parentIndex}-${subIndex}"></div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>枚举前缀（可选）</label>
+                <input type="text" class="form-control subfield-flags-enum-prefix" value="${escapeHtml(subfield.dataSource?.enumPrefix || '')}" placeholder="例如: ConfigType">
+                <small class="form-text text-muted">导出时为 前缀.枚举值，留空则直接使用枚举值</small>
             </div>
         `;
     }
@@ -1737,6 +1754,17 @@ function updateSubfieldType(parentIndex, subIndex, type) {
                     initCustomDatalist(enumInput, enumDropdown, enumOptions);
                 }
             }
+        } else if (type === 'flags') {
+            // 初始化 flags 类型的枚举下拉列表
+            const enumInput = document.getElementById(`subfield-flags-enum-${parentIndex}-${subIndex}`);
+            const enumDropdown = document.getElementById(`subfield-flags-enum-dropdown-${parentIndex}-${subIndex}`);
+            if (enumInput && enumDropdown) {
+                const enumOptions = enums.map(e => ({
+                    value: e.name,
+                    label: e.description || e.name
+                }));
+                initCustomDatalist(enumInput, enumDropdown, enumOptions);
+            }
         }
     }
     
@@ -1824,6 +1852,13 @@ function updateSubfieldDataSourceType(parentIndex, subIndex, type) {
 
 function addSubfield(parentIndex) {
     const field = currentSchema.fields[parentIndex];
+    
+    // 先收集当前的子字段数据，避免丢失
+    const collectedSubfields = collectSubfields(parentIndex);
+    if (collectedSubfields.length > 0) {
+        field.subfields = collectedSubfields;
+    }
+    
     if (!field.subfields) {
         field.subfields = [];
     }
@@ -1871,16 +1906,36 @@ function addSubfield(parentIndex) {
                     initCustomDatalist(enumInput, enumDropdown, enumOptions);
                 }
             }
+        } else if (subfield.type === 'flags') {
+            // 初始化 flags 类型的枚举下拉列表
+            const enumInput = document.getElementById(`subfield-flags-enum-${parentIndex}-${subIndex}`);
+            const enumDropdown = document.getElementById(`subfield-flags-enum-dropdown-${parentIndex}-${subIndex}`);
+            if (enumInput && enumDropdown) {
+                const enumOptions = enums.map(e => ({
+                    value: e.name,
+                    label: e.description || e.name
+                }));
+                initCustomDatalist(enumInput, enumDropdown, enumOptions);
+            }
         }
     });
 }
 
 function removeSubfield(parentIndex, subIndex) {
-    currentSchema.fields[parentIndex].subfields.splice(subIndex, 1);
+    const field = currentSchema.fields[parentIndex];
+    
+    // 先收集当前的子字段数据，避免丢失其他子字段
+    const collectedSubfields = collectSubfields(parentIndex);
+    if (collectedSubfields.length > 0) {
+        field.subfields = collectedSubfields;
+    }
+    
+    // 删除指定的子字段
+    field.subfields.splice(subIndex, 1);
     
     // 重新渲染字段特定区域
     document.getElementById(`field-type-specific-${parentIndex}`).innerHTML = 
-        renderFieldTypeSpecific(currentSchema.fields[parentIndex], parentIndex);
+        renderFieldTypeSpecific(field, parentIndex);
 }
 
 function removeField(index) {
@@ -2222,6 +2277,19 @@ function collectSubfields(parentIndex) {
                         subfield.dataSource.enumPrefix = enumPrefixElement.value.trim();
                     }
                 }
+            }
+        } else if (subfield.type === 'flags') {
+            // 收集 flags 类型的枚举配置
+            const linkedEnumElement = element.querySelector('.subfield-flags-enum');
+            if (linkedEnumElement) {
+                if (!subfield.dataSource) subfield.dataSource = {};
+                subfield.dataSource.type = 'enum';
+                subfield.dataSource.enum = linkedEnumElement.value;
+            }
+            const enumPrefixElement = element.querySelector('.subfield-flags-enum-prefix');
+            if (enumPrefixElement) {
+                if (!subfield.dataSource) subfield.dataSource = {};
+                subfield.dataSource.enumPrefix = enumPrefixElement.value.trim();
             }
         }
 
