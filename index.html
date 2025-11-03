@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>配表系统</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- CodeMirror 语法高亮 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css">
     <!-- CSS 样式文件 -->
     <link rel="stylesheet" href="css/common.css">
     <link rel="stylesheet" href="css/schema.css">
@@ -312,8 +316,117 @@
                 </button>
             </div>
             <div class="modal-body">
-                <div id="preview-container" class="preview-container">
-                    <!-- 预览内容 -->
+                <div class="preview-layout">
+                    <!-- 左侧：脚本编辑器 -->
+                    <div class="preview-left-panel">
+                        <div class="script-executor-panel">
+                            <div class="script-header">
+                                <h4>
+                                    <i class="fas fa-code"></i> 脚本处理器
+                                </h4>
+                                <div class="script-header-actions">
+                                    <div class="script-examples-dropdown">
+                                        <button class="btn btn-sm btn-secondary" onclick="toggleScriptExamples()">
+                                            <i class="fas fa-lightbulb"></i> 示例
+                                        </button>
+                                        <div id="script-examples-menu" class="script-examples-menu">
+                                            <div class="example-item" onclick="loadScriptExample('extract')">
+                                                <div class="example-title">提取单个字段</div>
+                                                <div class="example-desc">返回某个字段的值</div>
+                                            </div>
+                                            <div class="example-item" onclick="loadScriptExample('filter')">
+                                                <div class="example-title">条件筛选</div>
+                                                <div class="example-desc">筛选符合条件的数据</div>
+                                            </div>
+                                            <div class="example-item" onclick="loadScriptExample('transform')">
+                                                <div class="example-title">数据转换</div>
+                                                <div class="example-desc">组合多个字段</div>
+                                            </div>
+                                            <div class="example-item" onclick="loadScriptExample('calculate')">
+                                                <div class="example-title">计算处理</div>
+                                                <div class="example-desc">进行数值计算</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-sm btn-success" onclick="savePreviewScript(false, event)">
+                                        <i class="fas fa-save"></i> 保存
+                                    </button>
+                                    <button class="btn btn-sm btn-primary" onclick="executeScript()">
+                                        <i class="fas fa-play"></i> 执行
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="script-input-wrapper">
+                                <div class="script-help-text">
+                                    <i class="fas fa-info-circle"></i> 
+                                    输入 data. 自动补全字段 | Ctrl+Space 手动补全 | Ctrl+Enter 执行
+                                </div>
+                                <div id="script-syntax-warning" class="script-syntax-warning" style="display: none;">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <span id="script-warning-text"></span>
+                                </div>
+                                <textarea 
+                                    id="preview-script-input" 
+                                    class="script-input" 
+                                    placeholder="输入处理函数，例如：
+(index, data) => {
+    return data.fish_name;
+}
+
+或:
+
+function(index, data) {
+    if (data.rarity > 2) {
+        return {
+            id: data.fish_id,
+            name: data.fish_name
+        };
+    }
+}"
+                                    spellcheck="false"
+                                ></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 右侧：预览表格 -->
+                    <div class="preview-right-panel">
+                        <!-- 上半部分：原始数据表 -->
+                        <div class="preview-section preview-original">
+                            <div class="preview-section-header">
+                                <h4>
+                                    <i class="fas fa-table"></i> 原始数据
+                                </h4>
+                            </div>
+                            <div id="preview-container" class="preview-container">
+                                <!-- 原始预览内容 -->
+                            </div>
+                        </div>
+                        
+                        <!-- 下半部分：查询结果表 -->
+                        <div class="preview-section preview-result" id="script-result-container" style="display: none;">
+                            <div class="preview-section-header">
+                                <h4>
+                                    <i class="fas fa-search"></i> <span id="result-title-text">查询结果</span>
+                                    <span class="result-count"></span>
+                                </h4>
+                                <div class="script-result-actions">
+                                    <button id="apply-modifications-btn" class="btn btn-sm btn-primary" onclick="applyModifications()" style="display: none;">
+                                        <i class="fas fa-check"></i> 应用更新
+                                    </button>
+                                    <button class="btn btn-sm btn-success" onclick="copyScriptResult()">
+                                        <i class="fas fa-copy"></i> 复制
+                                    </button>
+                                    <button class="btn btn-sm btn-secondary" onclick="clearScriptResult()">
+                                        <i class="fas fa-times"></i> 清除
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="script-result-content" class="script-result-content">
+                                <!-- 脚本执行结果 -->
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -488,6 +601,14 @@
         </div>
     </div>
 
+    <!-- CodeMirror 语法高亮库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/javascript-hint.min.js"></script>
+    
     <!-- JavaScript文件 -->
     <script src="js/common.js"></script>
     <script src="js/enum-manager.js"></script>

@@ -1381,11 +1381,19 @@ function previewData() {
     const container = document.getElementById('preview-container');
     const data = collectData();
     
-    let html = `<div class="preview-table-wrapper">
-        <table class="preview-table">
-            <thead>
-                <tr>
-                    <th>数据行名称</th>`;
+    // 存储数据和 schema 供脚本使用
+    window.previewDataCache = data;
+    window.previewSchemaCache = currentSchema;
+    
+    let html = `<div class="preview-scroll-container">
+        <div class="preview-top-scrollbar" id="preview-top-scrollbar" title="横向滚动条">
+            <div class="preview-top-scrollbar-content" id="preview-top-scrollbar-content"></div>
+        </div>
+        <div class="preview-table-wrapper" id="preview-table-wrapper">
+            <table class="preview-table" id="preview-table">
+                <thead>
+                    <tr>
+                        <th>数据行名称</th>`;
     
     // 表头
     const fields = currentSchema.fields || [];
@@ -1422,13 +1430,778 @@ function previewData() {
         html += '</tr>';
     });
     
-    html += '</tbody></table></div>';
+    html += '</tbody></table></div></div>';
     container.innerHTML = html;
+    
+    // 初始化滚动条同步
+    initPreviewScrollSync();
+    
+    // 初始化代码编辑器（如果还没有初始化）
+    initScriptEditor();
 }
 
-function closePreviewModal() {
+function initPreviewScrollSync() {
+    const topScrollbar = document.getElementById('preview-top-scrollbar');
+    const tableWrapper = document.getElementById('preview-table-wrapper');
+    const topScrollbarContent = document.getElementById('preview-top-scrollbar-content');
+    const table = document.getElementById('preview-table');
+    
+    if (!topScrollbar || !tableWrapper || !topScrollbarContent || !table) {
+        return;
+    }
+    
+    // 设置顶部滚动条内容宽度与表格一致
+    const updateScrollbarWidth = () => {
+        topScrollbarContent.style.width = table.scrollWidth + 'px';
+    };
+    
+    updateScrollbarWidth();
+    
+    // 同步顶部滚动条 -> 表格
+    topScrollbar.addEventListener('scroll', () => {
+        tableWrapper.scrollLeft = topScrollbar.scrollLeft;
+    });
+    
+    // 同步表格 -> 顶部滚动条
+    tableWrapper.addEventListener('scroll', () => {
+        topScrollbar.scrollLeft = tableWrapper.scrollLeft;
+    });
+    
+    // 监听窗口大小变化
+    const resizeObserver = new ResizeObserver(() => {
+        updateScrollbarWidth();
+    });
+    
+    resizeObserver.observe(table);
+}
+
+async function closePreviewModal() {
+    // 退出预览时自动保存脚本
+    await savePreviewScript(true);
+    
     const modal = document.getElementById('preview-modal');
     modal.classList.remove('show');
+    
+    // 清除缓存数据
+    window.previewDataCache = null;
+    window.previewSchemaCache = null;
+    
+    // 清除脚本结果
+    clearScriptResult();
+}
+
+// ========== 脚本执行功能 ==========
+
+async function executeScript() {
+    const resultContainer = document.getElementById('script-result-container');
+    const resultContent = document.getElementById('script-result-content');
+    const resultCount = resultContainer.querySelector('.result-count');
+    
+    // 从 CodeMirror 编辑器或 textarea 获取代码
+    const scriptCode = scriptEditor ? scriptEditor.getValue().trim() : document.getElementById('preview-script-input').value.trim();
+    
+    if (!scriptCode) {
+        alert('请输入处理函数');
+        return;
+    }
+    
+    if (!window.previewDataCache) {
+        alert('没有可用的预览数据');
+        return;
+    }
+    
+    try {
+        // 解析用户输入的函数
+        let userFunction;
+        
+        // 尝试解析箭头函数或普通函数
+        // 支持格式: (index, data, source) => {...} 或 function(index, data, source) {...}
+        const arrowFuncMatch = scriptCode.match(/^\s*\(([^)]*)\)\s*=>\s*\{([\s\S]*)\}\s*$/);
+        const funcMatch = scriptCode.match(/^\s*function\s*\(([^)]*)\)\s*\{([\s\S]*)\}\s*$/);
+        
+        if (arrowFuncMatch) {
+            // 箭头函数
+            const params = arrowFuncMatch[1];
+            const body = arrowFuncMatch[2];
+            userFunction = new Function(params, body);
+        } else if (funcMatch) {
+            // 普通函数
+            const params = funcMatch[1];
+            const body = funcMatch[2];
+            userFunction = new Function(params, body);
+        } else {
+            // 尝试直接执行（可能是简化的箭头函数 (index, data) => data.field）
+            try {
+                userFunction = eval(`(${scriptCode})`);
+                if (typeof userFunction !== 'function') {
+                    throw new Error('输入的不是有效的函数');
+                }
+            } catch (e) {
+                throw new Error('函数格式错误。支持格式:\n(index, data, source) => { ... }\n或\nfunction(index, data, source) { ... }');
+            }
+        }
+        
+        // 准备只读的数据副本（深拷贝以防止意外修改）
+        const data = window.previewDataCache;
+        const sourceData = data.map(row => deepFreeze(deepClone(row)));
+        
+        // 存储更新记录
+        const updates = new Map();
+        
+        // 执行函数处理每行数据
+        const results = [];
+        const errors = [];
+        
+        for (let i = 0; i < data.length; i++) {
+            try {
+                // 创建 update 函数（在用户函数内部可直接调用）
+                const update = function(index, newData) {
+                    if (index < 0 || index >= data.length) {
+                        throw new Error(`update: 索引 ${index} 超出范围 (0-${data.length - 1})`);
+                    }
+                    
+                    if (typeof newData !== 'object' || newData === null) {
+                        throw new Error('update: newData 必须是一个对象');
+                    }
+                    
+                    // 验证字段
+                    const schema = window.previewSchemaCache;
+                    if (schema && schema.fields) {
+                        const allowedFields = new Set(schema.fields.map(f => f.name));
+                        const fieldMap = {};
+                        schema.fields.forEach(f => fieldMap[f.name] = f);
+                        
+                        // 检查是否有非法字段
+                        for (const key in newData) {
+                            if (!allowedFields.has(key)) {
+                                throw new Error(`update: 字段 "${key}" 在原表中不存在`);
+                            }
+                        }
+                        
+                        // 类型转换和验证
+                        const validatedData = {};
+                        for (const key in newData) {
+                            const field = fieldMap[key];
+                            const value = newData[key];
+                            
+                            try {
+                                validatedData[key] = convertFieldValue(value, field);
+                            } catch (e) {
+                                throw new Error(`update: 字段 "${key}" 类型转换失败: ${e.message}`);
+                            }
+                        }
+                        
+                        updates.set(index, validatedData);
+                    } else {
+                        updates.set(index, { ...newData });
+                    }
+                };
+                
+                // 将 update 函数注入到全局作用域（临时）
+                const originalUpdate = window.update;
+                window.update = update;
+                
+                try {
+                    // 传入：index, data (只读), source (只读)
+                    // update 函数通过全局作用域访问
+                    const result = userFunction(i, deepClone(data[i]), sourceData);
+                    
+                    // 如果有返回值
+                    if (result !== undefined && result !== null) {
+                        // 如果当前行调用了 update(),将更新应用到返回值上
+                        if (updates.has(i)) {
+                            const updatedFields = updates.get(i);
+                            
+                            // 如果返回值是对象,应用更新到对应字段
+                            if (typeof result === 'object' && result !== null && !Array.isArray(result)) {
+                                const mergedResult = { ...result };
+                                for (const key in updatedFields) {
+                                    if (key in mergedResult) {
+                                        mergedResult[key] = updatedFields[key];
+                                    }
+                                }
+                                results.push({ index: i, value: mergedResult });
+                            } else {
+                                // 返回值不是对象,直接使用原返回值
+                                results.push({ index: i, value: result });
+                            }
+                        } else {
+                            // 没有调用 update(),直接使用返回值
+                            results.push({ index: i, value: result });
+                        }
+                    }
+                } finally {
+                    // 恢复原始的 update 函数
+                    if (originalUpdate !== undefined) {
+                        window.update = originalUpdate;
+                    } else {
+                        delete window.update;
+                    }
+                }
+            } catch (err) {
+                // 记录错误
+                errors.push({ index: i, error: err.message });
+            }
+        }
+        
+        // 保存更新记录供后续应用
+        window.scriptUpdates = updates;
+        const hasUpdates = updates.size > 0;
+        
+        // 显示结果
+        displayScriptResults(results, resultContainer, resultContent, resultCount, errors, hasUpdates);
+        
+    } catch (error) {
+        // 显示错误
+        resultContent.innerHTML = `
+            <div class="script-error">
+                <div class="script-error-title">
+                    <i class="fas fa-exclamation-triangle"></i> 执行错误
+                </div>
+                <div>${escapeHtml(error.message)}</div>
+            </div>
+        `;
+        resultContainer.style.display = 'block';
+        resultCount.textContent = '';
+    }
+}
+
+function displayScriptResults(results, container, content, countElement, errors, hasModifications) {
+    // 保存结果供复制使用
+    window.scriptResultsCache = results;
+    
+    let htmlContent = '';
+    
+    // 如果有错误,在顶部显示错误警告
+    if (errors && errors.length > 0) {
+        htmlContent += `
+            <div class="script-execution-errors">
+                <div class="script-execution-errors-title">
+                    <i class="fas fa-exclamation-triangle"></i> 
+                    执行警告 (${errors.length} 行失败)
+                </div>
+                <div class="script-execution-errors-list">`;
+        
+        errors.forEach(err => {
+            htmlContent += `
+                    <div class="script-execution-error-item">
+                        <span class="error-row-index">第 ${err.index} 行:</span> ${escapeHtml(err.error)}
+                    </div>`;
+        });
+        
+        htmlContent += `
+                </div>
+            </div>`;
+    }
+    
+    if (results.length === 0) {
+        htmlContent += `
+            <div class="script-empty-result">
+                <i class="fas fa-inbox"></i>
+                <div>没有返回结果</div>
+                <div style="font-size: 11px; margin-top: 6px; color: #bdc3c7;">
+                    函数可能返回了 undefined 或 null，或者没有匹配的数据
+                </div>
+            </div>
+        `;
+        content.innerHTML = htmlContent;
+        countElement.textContent = '(0 项)';
+    } else {
+        // 检查结果类型，决定显示方式
+        const firstValue = results[0].value;
+        
+        if (typeof firstValue === 'object' && firstValue !== null && !Array.isArray(firstValue)) {
+            // 对象类型 - 显示为表格
+            htmlContent += formatResultsAsTable(results);
+        } else {
+            // 简单类型 - 显示为列表
+            results.forEach(({ index, value }) => {
+                const displayValue = formatScriptResultValue(value);
+                htmlContent += `
+                    <div class="script-result-item">
+                        <span class="script-result-index">${index}</span>
+                        <span class="script-result-value">${displayValue}</span>
+                    </div>
+                `;
+            });
+        }
+        
+        content.innerHTML = htmlContent;
+        
+        countElement.textContent = `(${results.length} 项)`;
+    }
+    
+    // 更新"应用修改"按钮的显示状态
+    updateApplyModificationsButton(hasModifications);
+    
+    // 显示结果容器
+    container.style.display = 'flex';
+    
+    // 调整右侧面板布局：原表和结果各占一半
+    const originalSection = document.querySelector('.preview-original');
+    if (originalSection) {
+        originalSection.style.flex = '1';
+    }
+}
+
+function formatResultsAsTable(results) {
+    if (!window.previewSchemaCache) {
+        // 没有 schema 信息，使用简单表格
+        return formatResultsAsSimpleTable(results);
+    }
+    
+    const schema = window.previewSchemaCache;
+    const fields = schema.fields || [];
+    
+    // 创建字段映射表
+    const fieldMap = {};
+    fields.forEach(field => {
+        fieldMap[field.name] = field;
+    });
+    
+    // 收集所有出现的键
+    const allKeys = new Set();
+    results.forEach(({ value }) => {
+        if (typeof value === 'object' && value !== null) {
+            Object.keys(value).forEach(key => allKeys.add(key));
+        }
+    });
+    
+    if (allKeys.size === 0) {
+        return '<div class="script-empty-result">返回的对象为空</div>';
+    }
+    
+    // 生成表格
+    let html = `
+        <div class="script-result-table-wrapper">
+            <table class="script-result-table">
+                <thead>
+                    <tr>
+                        <th class="result-index-col">索引</th>`;
+    
+    // 表头：优先显示字段标签
+    allKeys.forEach(key => {
+        const field = fieldMap[key];
+        const label = field ? (field.label || field.name) : key;
+        html += `<th>${escapeHtml(label)}</th>`;
+    });
+    
+    html += '</tr></thead><tbody>';
+    
+    // 数据行
+    results.forEach(({ index, value }) => {
+        html += `<tr><td class="result-index-col">${index}</td>`;
+        
+        allKeys.forEach(key => {
+            const cellValue = value[key];
+            const field = fieldMap[key];
+            
+            // 根据字段类型格式化值
+            const formattedValue = formatCellValueByField(cellValue, field);
+            html += `<td>${formattedValue}</td>`;
+        });
+        
+        html += '</tr>';
+    });
+    
+    html += '</tbody></table></div>';
+    
+    return html;
+}
+
+function formatResultsAsSimpleTable(results) {
+    // 收集所有键
+    const allKeys = new Set();
+    results.forEach(({ value }) => {
+        if (typeof value === 'object' && value !== null) {
+            Object.keys(value).forEach(key => allKeys.add(key));
+        }
+    });
+    
+    if (allKeys.size === 0) {
+        return '<div class="script-empty-result">返回的对象为空</div>';
+    }
+    
+    let html = `
+        <div class="script-result-table-wrapper">
+            <table class="script-result-table">
+                <thead>
+                    <tr>
+                        <th class="result-index-col">索引</th>`;
+    
+    allKeys.forEach(key => {
+        html += `<th>${escapeHtml(key)}</th>`;
+    });
+    
+    html += '</tr></thead><tbody>';
+    
+    results.forEach(({ index, value }) => {
+        html += `<tr><td class="result-index-col">${index}</td>`;
+        
+        allKeys.forEach(key => {
+            const cellValue = value[key];
+            const formatted = formatScriptResultValue(cellValue);
+            html += `<td>${formatted}</td>`;
+        });
+        
+        html += '</tr>';
+    });
+    
+    html += '</tbody></table></div>';
+    
+    return html;
+}
+
+function formatCellValueByField(value, field) {
+    // 空值处理
+    if (value === '' || value === null || value === undefined) {
+        return '<span class="empty-value">nil</span>';
+    }
+    
+    // 没有字段定义，使用默认格式化
+    if (!field) {
+        return escapeHtml(String(value));
+    }
+    
+    // 根据字段类型格式化
+    switch (field.type) {
+        case 'color':
+            // 颜色字段
+            const hex = String(value).replace(/^0x/i, '');
+            const colorValue = '#' + hex;
+            return `<div class="preview-color-wrapper">
+                <div class="preview-color-box" style="background-color: ${colorValue};"></div>
+                <span>${escapeHtml(String(value))}</span>
+            </div>`;
+        
+        case 'option':
+        case 'datalist':
+            // 选项字段：如果有枚举或关联表，可以显示对应的标签
+            // 这里简单显示值
+            return escapeHtml(String(value));
+        
+        case 'list':
+            // 列表字段 - 显示完整内容
+            if (Array.isArray(value)) {
+                // 显示数组内容，用逗号分隔
+                const displayValue = value.join(', ');
+                return `<span class="list-value">${escapeHtml(displayValue)}</span>`;
+            }
+            return escapeHtml(String(value));
+        
+        case 'entry':
+            // 条目字段
+            if (Array.isArray(value)) {
+                return `<span class="entry-value">[${value.length} 条目]</span>`;
+            }
+            return escapeHtml(String(value));
+        
+        case 'dict':
+            // 字典字段
+            if (typeof value === 'object' && value !== null) {
+                return `<span class="dict-value">{对象}</span>`;
+            }
+            return escapeHtml(String(value));
+        
+        case 'number':
+            // 数字字段
+            return `<span class="number-value">${escapeHtml(String(value))}</span>`;
+        
+        default:
+            // 默认文本
+            return escapeHtml(String(value));
+    }
+}
+
+function formatScriptResultValue(value) {
+    if (typeof value === 'object') {
+        try {
+            return escapeHtml(JSON.stringify(value, null, 2));
+        } catch (e) {
+            return escapeHtml(String(value));
+        }
+    }
+    return escapeHtml(String(value));
+}
+
+function clearScriptResult() {
+    const resultContainer = document.getElementById('script-result-container');
+    const resultContent = document.getElementById('script-result-content');
+    const scriptInput = document.getElementById('preview-script-input');
+    
+    resultContainer.style.display = 'none';
+    resultContent.innerHTML = '';
+    
+    // 可选：也清空输入框
+    // scriptInput.value = '';
+}
+
+function toggleScriptExamples() {
+    const menu = document.getElementById('script-examples-menu');
+    menu.classList.toggle('show');
+    
+    // 点击其他地方关闭菜单
+    if (menu.classList.contains('show')) {
+        setTimeout(() => {
+            document.addEventListener('click', closeScriptExamplesOnClickOutside);
+        }, 0);
+    }
+}
+
+function closeScriptExamplesOnClickOutside(e) {
+    const menu = document.getElementById('script-examples-menu');
+    const button = event.target.closest('.script-examples-dropdown');
+    
+    if (!button && menu.classList.contains('show')) {
+        menu.classList.remove('show');
+        document.removeEventListener('click', closeScriptExamplesOnClickOutside);
+    }
+}
+
+function loadScriptExample(type) {
+    const menu = document.getElementById('script-examples-menu');
+    
+    const examples = {
+        extract: `// 提取单个字段的值
+(index, data) => {
+    return data.fish_name;  // 替换为你需要的字段名
+}`,
+        
+        filter: `// 筛选符合条件的数据
+(index, data) => {
+    if (data.rarity > 2) {  // 修改筛选条件
+        return data;
+    }
+}`,
+        
+        transform: `// 组合多个字段
+(index, data) => {
+    return {
+        id: data.fish_id,
+        name: data.fish_name,
+        info: data.fish_name + ' - 稀有度:' + data.rarity
+    };
+}`,
+        
+        calculate: `// 进行数值计算
+(index, data) => {
+    // 例如：计算价格折扣
+    const discount = 0.8;
+    return {
+        original: data.price,
+        discounted: data.price * discount
+    };
+}`
+    };
+    
+    if (examples[type]) {
+        // 更新 CodeMirror 或 textarea
+        if (scriptEditor) {
+            scriptEditor.setValue(examples[type]);
+            scriptEditor.focus();
+        } else {
+            const scriptInput = document.getElementById('preview-script-input');
+            scriptInput.value = examples[type];
+            scriptInput.focus();
+        }
+    }
+    
+    menu.classList.remove('show');
+    document.removeEventListener('click', closeScriptExamplesOnClickOutside);
+}
+
+function copyScriptResult() {
+    if (!window.scriptResultsCache) {
+        alert('没有可复制的结果');
+        return;
+    }
+    
+    try {
+        // 将结果转换为 JSON 数组
+        const resultArray = window.scriptResultsCache.map(item => item.value);
+        const jsonString = JSON.stringify(resultArray, null, 2);
+        
+        // 复制到剪贴板
+        navigator.clipboard.writeText(jsonString).then(() => {
+            // 显示成功提示
+            const button = event.target.closest('button');
+            const originalHTML = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-check"></i> 已复制';
+            button.disabled = true;
+            
+            setTimeout(() => {
+                button.innerHTML = originalHTML;
+                button.disabled = false;
+            }, 2000);
+        }).catch(err => {
+            // 降级方案：使用 textarea
+            const textarea = document.createElement('textarea');
+            textarea.value = jsonString;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            
+            alert('结果已复制到剪贴板');
+        });
+    } catch (error) {
+        console.error('复制失败:', error);
+        alert('复制失败: ' + error.message);
+    }
+}
+
+// 更新"应用修改"按钮的显示状态
+function updateApplyModificationsButton(hasUpdates) {
+    const applyBtn = document.getElementById('apply-modifications-btn');
+    const titleText = document.getElementById('result-title-text');
+    
+    if (applyBtn) {
+        if (hasUpdates) {
+            applyBtn.style.display = 'inline-flex';
+            applyBtn.innerHTML = `<i class="fas fa-check"></i> 应用更新 (${window.scriptUpdates.size} 行)`;
+            
+            // 更新标题为"更新结果"
+            if (titleText) {
+                titleText.innerHTML = '<i class="fas fa-edit"></i> 更新结果';
+            }
+        } else {
+            applyBtn.style.display = 'none';
+            
+            // 恢复标题为"查询结果"
+            if (titleText) {
+                titleText.innerHTML = '查询结果';
+            }
+        }
+    }
+}
+
+// 应用更新到原始数据
+function applyModifications() {
+    if (!window.scriptUpdates || window.scriptUpdates.size === 0) {
+        alert('没有需要应用的更新');
+        return;
+    }
+    
+    if (!confirm(`确定要应用 ${window.scriptUpdates.size} 行数据的更新吗？\n\n此操作将更新原始数据表。`)) {
+        return;
+    }
+    
+    try {
+        // 应用所有更新到 dataRows
+        window.scriptUpdates.forEach((updatedData, index) => {
+            if (index >= 0 && index < dataRows.length) {
+                // 合并更新数据到原始数据
+                dataRows[index].data = {
+                    ...dataRows[index].data,
+                    ...updatedData
+                };
+            }
+        });
+        
+        // 清除更新记录
+        window.scriptUpdates.clear();
+        
+        // 刷新预览的原始数据表
+        previewData();
+        
+        // 隐藏"应用修改"按钮
+        updateApplyModificationsButton(false);
+        
+        // 清除查询结果
+        clearScriptResult();
+        
+        // 显示成功提示
+        const applyBtn = document.getElementById('apply-modifications-btn');
+        if (applyBtn) {
+            const originalHTML = applyBtn.innerHTML;
+            applyBtn.innerHTML = '<i class="fas fa-check"></i> 已应用';
+            applyBtn.disabled = true;
+            
+            setTimeout(() => {
+                applyBtn.innerHTML = originalHTML;
+                applyBtn.disabled = false;
+                applyBtn.style.display = 'none';
+            }, 2000);
+        }
+        
+        alert('更新已成功应用到数据表');
+        
+    } catch (error) {
+        console.error('应用更新失败:', error);
+        alert('应用更新失败: ' + error.message);
+    }
+}
+
+// 保存预览脚本到schema
+async function savePreviewScript(autoSave = false, event = null) {
+    if (!currentSchema || !currentSchemaName) {
+        if (!autoSave) {
+            alert('没有可用的 schema');
+        }
+        return;
+    }
+    
+    const scriptEditor = window.scriptEditor;
+    if (!scriptEditor) {
+        // 编辑器未初始化,跳过保存
+        return;
+    }
+    
+    const scriptCode = scriptEditor.getValue();
+    
+    // 手动保存时检查是否为空
+    if (!autoSave && !scriptCode.trim()) {
+        alert('脚本内容为空');
+        return;
+    }
+    
+    try {
+        // 更新 currentSchema 中的脚本字段
+        currentSchema.script = scriptCode;
+        
+        // 保存到服务器
+        const response = await fetch(API.SCHEMA, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action: 'update',
+                name: currentSchemaName,
+                data: currentSchema
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            if (!autoSave) {
+                // 手动保存时显示成功提示
+                const saveBtn = event?.target;
+                if (saveBtn) {
+                    const originalHTML = saveBtn.innerHTML;
+                    saveBtn.innerHTML = '<i class="fas fa-check"></i> 已保存';
+                    saveBtn.disabled = true;
+                    
+                    setTimeout(() => {
+                        saveBtn.innerHTML = originalHTML;
+                        saveBtn.disabled = false;
+                    }, 1500);
+                } else {
+                    alert('脚本已保存');
+                }
+            }
+        } else {
+            throw new Error(result.error || '保存失败');
+        }
+    } catch (error) {
+        console.error('保存脚本失败:', error);
+        if (!autoSave) {
+            alert('保存脚本失败: ' + error.message);
+        }
+    }
 }
 
 function collectData() {
@@ -3183,6 +3956,301 @@ function confirmImport() {
     closeImportDataModal();
     
     alert(`成功导入 ${importedData.length} 行数据`);
+}
+
+// ==================== 代码编辑器初始化 ====================
+
+let scriptEditor = null;
+
+function initScriptEditor() {
+    // 如果已经初始化过，直接返回
+    if (scriptEditor) {
+        return;
+    }
+    
+    const textarea = document.getElementById('preview-script-input');
+    if (!textarea || typeof CodeMirror === 'undefined') {
+        return;
+    }
+    
+    // 创建自定义字段补全函数
+    CodeMirror.registerHelper('hint', 'dataFields', function(editor, options) {
+        const cur = editor.getCursor();
+        const line = editor.getLine(cur.line);
+        
+        // 检测是否在 data. 或 source[index]. 后面
+        const beforeCursor = line.substring(0, cur.ch);
+        const dataMatch = beforeCursor.match(/(?:data|source(?:\[\d+\])?)\.(\w*)$/);
+        
+        if (!dataMatch || !window.previewSchemaCache) {
+            return null;
+        }
+        
+        const prefix = dataMatch[1] || '';
+        const fields = window.previewSchemaCache.fields || [];
+        
+        // 获取所有字段名和标签
+        const suggestions = fields.map(field => ({
+            text: field.name,
+            displayText: `${field.name} - ${field.label || field.name} (${field.type})`
+        }));
+        
+        // 过滤匹配前缀的字段
+        const filtered = prefix ? 
+            suggestions.filter(s => s.text.toLowerCase().startsWith(prefix.toLowerCase())) :
+            suggestions;
+        
+        if (filtered.length === 0) {
+            return null;
+        }
+        
+        return {
+            list: filtered,
+            from: CodeMirror.Pos(cur.line, cur.ch - prefix.length),
+            to: CodeMirror.Pos(cur.line, cur.ch)
+        };
+    });
+    
+    // 创建 CodeMirror 编辑器
+    scriptEditor = CodeMirror.fromTextArea(textarea, {
+        mode: 'javascript',
+        theme: 'monokai',
+        lineNumbers: true,
+        lineWrapping: true,
+        autoCloseBrackets: true,
+        matchBrackets: true,
+        indentUnit: 4,
+        tabSize: 4,
+        indentWithTabs: false,
+        extraKeys: {
+            'Ctrl-Enter': function(cm) {
+                executeScript();
+            },
+            'Cmd-Enter': function(cm) {
+                executeScript();
+            },
+            'Ctrl-Space': function(cm) {
+                cm.showHint({ 
+                    hint: CodeMirror.hint.dataFields, 
+                    completeSingle: false 
+                });
+            }
+        }
+    });
+    
+    // 保存到全局 window 对象供其他函数使用
+    window.scriptEditor = scriptEditor;
+    
+    // 设置编辑器高度自适应
+    scriptEditor.setSize('100%', '100%');
+    
+    // 监听输入事件，自动触发补全
+    scriptEditor.on('inputRead', function(cm, change) {
+        if (change.text[0] === '.') {
+            const cursor = cm.getCursor();
+            const line = cm.getLine(cursor.line);
+            const before = line.substring(0, cursor.ch);
+            
+            // 检测 data. 或 source. 或 source[n].
+            if (/(?:data|source(?:\[\d+\])?)\.$/. test(before)) {
+                setTimeout(function() {
+                    cm.showHint({ 
+                        hint: CodeMirror.hint.dataFields, 
+                        completeSingle: false 
+                    });
+                }, 100);
+            }
+        }
+    });
+    
+    // 监听内容变化，进行语法检查
+    let syntaxCheckTimeout;
+    scriptEditor.on('change', function(cm) {
+        clearTimeout(syntaxCheckTimeout);
+        syntaxCheckTimeout = setTimeout(function() {
+            checkScriptSyntax(cm.getValue());
+        }, 500); // 延迟 500ms 检查，避免频繁检查
+    });
+    
+    // 加载已保存的脚本或设置默认模板
+    const savedScript = currentSchema?.script;
+    if (savedScript) {
+        scriptEditor.setValue(savedScript);
+    } else {
+        // 设置初始提示文本
+        scriptEditor.setValue(`// 在此编写处理函数（支持箭头函数或普通函数）
+// 参数：
+//   index - 行索引
+//   data - 当前行数据对象（只读）
+//   source - 整个表的数据数组（只读）
+// 全局函数：
+//   update(index, newData) - 更新指定行的数据
+// 提示：输入 data. 或 source. 会自动弹出字段补全列表
+
+(index, data, source) => {
+    // 示例 1：返回数据对象
+    return data;
+    
+    // 示例 2：更新数据并预览效果
+    // update(index, { 年龄: data.年龄 + 1 });
+    // return { 姓名: data.姓名, 年龄: data.年龄 };  // 查询结果会显示更新后的年龄
+    
+    // 示例 3：访问其他行数据
+    // const prevRow = source[index - 1];
+    // return { ...data, prev_value: prevRow?.some_field };
+}`);
+    }
+}
+
+// ==================== 辅助函数 ====================
+
+// 深拷贝对象（避免修改原数据）
+function deepClone(obj) {
+    if (obj === null || typeof obj !== 'object') {
+        return obj;
+    }
+    
+    if (obj instanceof Date) {
+        return new Date(obj.getTime());
+    }
+    
+    if (Array.isArray(obj)) {
+        return obj.map(item => deepClone(item));
+    }
+    
+    const cloned = {};
+    for (const key in obj) {
+        if (obj.hasOwnProperty(key)) {
+            cloned[key] = deepClone(obj[key]);
+        }
+    }
+    return cloned;
+}
+
+// 深冻结对象（使其只读）
+function deepFreeze(obj) {
+    if (obj === null || typeof obj !== 'object') {
+        return obj;
+    }
+    
+    Object.freeze(obj);
+    
+    Object.getOwnPropertyNames(obj).forEach(prop => {
+        if (obj[prop] !== null && typeof obj[prop] === 'object' && !Object.isFrozen(obj[prop])) {
+            deepFreeze(obj[prop]);
+        }
+    });
+    
+    return obj;
+}
+
+// 根据字段类型转换值
+function convertFieldValue(value, field) {
+    if (value === null || value === undefined) {
+        return value;
+    }
+    
+    if (!field) {
+        return value;
+    }
+    
+    switch (field.type) {
+        case 'number':
+            const num = Number(value);
+            if (isNaN(num)) {
+                throw new Error(`无法转换为数字: ${value}`);
+            }
+            return num;
+            
+        case 'text':
+            return String(value);
+            
+        case 'color':
+            // 保持颜色格式
+            return String(value);
+            
+        case 'list':
+            if (!Array.isArray(value)) {
+                throw new Error('list 类型必须是数组');
+            }
+            return value;
+            
+        case 'entry':
+            if (!Array.isArray(value)) {
+                throw new Error('entry 类型必须是数组');
+            }
+            return value;
+            
+        case 'dict':
+            if (typeof value !== 'object' || Array.isArray(value)) {
+                throw new Error('dict 类型必须是对象');
+            }
+            return value;
+            
+        case 'option':
+        case 'datalist':
+            return value; // 枚举值直接返回
+            
+        default:
+            return value;
+    }
+}
+
+// ==================== 脚本语法检查 ====================
+
+function checkScriptSyntax(code) {
+    const warningDiv = document.getElementById('script-syntax-warning');
+    const warningText = document.getElementById('script-warning-text');
+    
+    if (!code || !code.trim()) {
+        warningDiv.style.display = 'none';
+        return;
+    }
+    
+    // 移除注释和空行
+    const cleanCode = code
+        .split('\n')
+        .filter(line => !line.trim().startsWith('//'))
+        .join('\n')
+        .trim();
+    
+    if (!cleanCode) {
+        warningDiv.style.display = 'none';
+        return;
+    }
+    
+    // 检查是否符合预期格式
+    const arrowFuncPattern = /^\s*\(([^)]*)\)\s*=>\s*\{[\s\S]*\}\s*$/;
+    const arrowFuncShortPattern = /^\s*\(([^)]*)\)\s*=>\s*[^{][\s\S]*$/;
+    const funcPattern = /^\s*function\s*\(([^)]*)\)\s*\{[\s\S]*\}\s*$/;
+    
+    const isValidArrow = arrowFuncPattern.test(cleanCode);
+    const isValidArrowShort = arrowFuncShortPattern.test(cleanCode);
+    const isValidFunc = funcPattern.test(cleanCode);
+    
+    if (!isValidArrow && !isValidArrowShort && !isValidFunc) {
+        warningText.textContent = '函数格式不正确！请使用 (index, data) => { ... } 或 function(index, data) { ... }';
+        warningDiv.style.display = 'flex';
+    } else {
+        // 检查参数是否正确
+        let params = '';
+        if (isValidArrow || isValidArrowShort) {
+            const match = cleanCode.match(/^\s*\(([^)]*)\)\s*=>/);
+            params = match ? match[1].trim() : '';
+        } else if (isValidFunc) {
+            const match = cleanCode.match(/^\s*function\s*\(([^)]*)\)/);
+            params = match ? match[1].trim() : '';
+        }
+        
+        // 检查参数格式（应该有 2-3 个参数）
+        const paramList = params.split(',').map(p => p.trim()).filter(p => p);
+        if (paramList.length < 2 || paramList.length > 3) {
+            warningText.textContent = '建议使用 2-3 个参数：(index, data) => { ... } 或 (index, data, source) => { ... }';
+            warningDiv.style.display = 'flex';
+        } else {
+            warningDiv.style.display = 'none';
+        }
+    }
 }
 
 // ========== 工具函数 ==========
