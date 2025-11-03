@@ -39,10 +39,10 @@
     {
       "defaultValue": "0xFF5733",
       "label": "主题颜色",
+      "luaType": "",
       "name": "mainColor",
       "required": false,
-      "type": "color",
-      "luaType": ""
+      "type": "color"
     },
     {
       "dataSource": {
@@ -143,5 +143,6 @@
       "type": "list"
     }
   ],
-  "name": "Character"
+  "name": "Character",
+  "script": "// 编写数据处理函数，点击右上角\"帮助\"按钮查看详细说明\n(index, data, source) => {\n    // 返回处理后的数据\n    update(index, {\n        \"attributes[0].hp\": 5\n    })\n    return {\n        x: data.attributes[0].hp\n    };\n}"
 }

@@ -1555,6 +1555,9 @@ async function executeScript() {
 
         for (let i = 0; i < data.length; i++) {
             try {
+                // 创建当前行数据的可修改副本（用于 update 修改）
+                const currentRowData = deepClone(data[i]);
+                
                 // 创建 update 函数（在用户函数内部可直接调用）
                 const update = function (index, newData) {
                     if (index < 0 || index >= data.length) {
@@ -1565,8 +1568,8 @@ async function executeScript() {
                         throw new Error('update: newData 必须是一个对象');
                     }
 
-                    // 获取当前行的完整数据副本（用于路径更新）
-                    const currentRowData = deepClone(data[index]);
+                    // 获取目标行数据（如果是当前行，使用 currentRowData；否则从 data 获取）
+                    const targetData = (index === i) ? currentRowData : deepClone(data[index]);
                     
                     // 解析路径并设置值的辅助函数
                     const setValueByPath = (obj, path, value) => {
@@ -1606,11 +1609,21 @@ async function executeScript() {
                         let target = obj;
                         for (let i = 0; i < pathParts.length - 1; i++) {
                             const part = pathParts[i];
+                            
                             if (!(part.key in target)) {
                                 // 创建中间路径
                                 target[part.key] = pathParts[i + 1].isArray ? [] : {};
                             }
+                            
                             target = target[part.key];
+                            
+                            // 如果 target 是数组，确保有足够的元素
+                            if (Array.isArray(target) && i + 1 < pathParts.length && pathParts[i + 1].isArray) {
+                                const nextIndex = pathParts[i + 1].key;
+                                while (target.length <= nextIndex) {
+                                    target.push({});
+                                }
+                            }
                         }
                         
                         // 设置最终值
@@ -1625,7 +1638,7 @@ async function executeScript() {
                         // 检查是否是路径语法（包含 . 或 [）
                         if (key.includes('.') || key.includes('[')) {
                             // 使用路径设置
-                            setValueByPath(currentRowData, key, value);
+                            setValueByPath(targetData, key, value);
                         } else {
                             // 简单字段更新
                             const schema = window.previewSchemaCache;
@@ -1635,18 +1648,19 @@ async function executeScript() {
                                     throw new Error(`update: 字段 "${key}" 在 schema 中不存在`);
                                 }
                                 try {
-                                    currentRowData[key] = convertFieldValue(value, field);
+                                    targetData[key] = convertFieldValue(value, field);
                                 } catch (e) {
                                     throw new Error(`update: 字段 "${key}" 类型转换失败: ${e.message}`);
                                 }
                             } else {
-                                currentRowData[key] = value;
+                                targetData[key] = value;
                             }
                         }
                     }
 
-                    // 存储完整的更新后的数据
-                    updates.set(index, currentRowData);
+                    // 如果是当前行，更新会直接反映在 currentRowData 中
+                    // 存储完整的更新后的数据（用于应用修改）
+                    updates.set(index, targetData);
                 };
 
                 // 收集本行的所有 yield 结果
@@ -1662,9 +1676,9 @@ async function executeScript() {
                 window.yield = yieldFunc;
 
                 try {
-                    // 传入：index, data (只读), source (只读)
+                    // 传入：index, currentRowData (可被 update 修改), source (只读)
                     // update 和 yield 函数通过全局作用域访问
-                    const result = userFunction(i, deepClone(data[i]), sourceData);
+                    const result = userFunction(i, currentRowData, sourceData);
 
                     // 如果调用了 yield,使用 yield 的结果
                     if (yieldResults.length > 0) {
@@ -2210,11 +2224,8 @@ function applyModifications() {
         // 应用所有更新到 dataRows 并重新渲染对应的 DOM
         window.scriptUpdates.forEach((updatedData, index) => {
             if (index >= 0 && index < dataRows.length) {
-                // 合并更新数据到原始数据
-                dataRows[index].data = {
-                    ...dataRows[index].data,
-                    ...updatedData
-                };
+                // 直接替换为完整的更新数据（已经包含了所有字段）
+                dataRows[index].data = updatedData;
                 
                 // 重新渲染被修改的字段的 DOM（关键修复）
                 Object.keys(updatedData).forEach(fieldName => {
@@ -2286,7 +2297,12 @@ function updateFieldDOM(rowIndex, fieldName, newValue) {
                                     loadOptions(rowIndex, fieldName, entryIndex, subfield.name);
                                 } else if (subfield.type === 'datalist') {
                                     const subfieldId = `entry-${rowIndex}-${fieldName}-${entryIndex}-${subfield.name}`;
-                                    initCustomDatalist(subfieldId);
+                                    const inputElement = document.getElementById(subfieldId);
+                                    const dropdownElement = document.getElementById(`${subfieldId}-dropdown`);
+                                    if (inputElement && dropdownElement) {
+                                        const options = getDatalistOptions(subfield);
+                                        initCustomDatalist(inputElement, dropdownElement, options);
+                                    }
                                 }
                             });
                         });
@@ -2317,7 +2333,12 @@ function updateFieldDOM(rowIndex, fieldName, newValue) {
                                     loadOptions(rowIndex, fieldName, idx, null);
                                 } else if (field.elementType === 'datalist') {
                                     const itemId = `list-${rowIndex}-${fieldName}-${idx}`;
-                                    initCustomDatalist(itemId);
+                                    const inputElement = document.getElementById(itemId);
+                                    const dropdownElement = document.getElementById(`${itemId}-dropdown`);
+                                    if (inputElement && dropdownElement) {
+                                        const options = getDatalistOptions(field);
+                                        initCustomDatalist(inputElement, dropdownElement, options);
+                                    }
                                 }
                             });
                         }
@@ -4442,73 +4463,128 @@ function initScriptEditor() {
                 const pathPrefix = stringMatch[1];
                 const suggestions = [];
                 
-                // 解析已有的路径部分
-                const pathParts = pathPrefix.split(/[\.\[]/).filter(p => p);
-                let currentFields = fields;
-                let currentPath = '';
-                
-                // 遍历路径找到当前层级的字段
-                for (let i = 0; i < pathParts.length - 1; i++) {
-                    const part = pathParts[i].replace(/\]$/, '');
-                    const field = currentFields.find(f => f.name === part || f.name === part);
-                    
-                    if (!field) break;
-                    
-                    currentPath += (currentPath ? '.' : '') + part;
-                    
-                    if (field.type === 'dict' && (field.subfields || field.fields)) {
-                        currentFields = field.subfields || field.fields;
-                    } else if (field.type === 'entry' && (field.subfields || field.fields)) {
-                        // 对于数组类型，提示数组索引和子字段
-                        currentFields = field.subfields || field.fields;
-                        currentPath += '[0]';
-                    } else {
-                        currentFields = [];
-                        break;
-                    }
-                }
-                
-                // 获取当前输入的最后部分
-                const lastPart = pathParts[pathParts.length - 1] || '';
-                const isAfterBracket = pathPrefix.includes('[') && !pathPrefix.includes(']');
-                
-                if (isAfterBracket) {
-                    // 在 [0] 后面，提供 .subfield 补全
-                    currentFields.forEach(field => {
-                        const fullPath = currentPath + '.' + field.name;
-                        suggestions.push({
-                            text: fullPath,
-                            displayText: `${fullPath} - ${field.label || field.name} (${field.type})`
-                        });
-                    });
-                } else {
-                    // 正常字段补全
-                    currentFields.forEach(field => {
-                        const pathSep = currentPath ? (pathPrefix.endsWith('.') ? '' : '.') : '';
-                        const fullPath = currentPath + pathSep + field.name;
-                        
+                // 如果路径为空，提供所有顶级字段
+                if (!pathPrefix) {
+                    fields.forEach(field => {
                         if (field.type === 'entry' || field.type === 'list') {
-                            // 数组类型，提示加上索引
                             suggestions.push({
-                                text: fullPath + '[0]',
-                                displayText: `${fullPath}[n] - ${field.label || field.name} 数组元素`
+                                text: field.name + '[0]',
+                                displayText: `${field.name}[n] - ${field.label || field.name} 数组`
+                            });
+                        } else if (field.type === 'dict') {
+                            suggestions.push({
+                                text: field.name + '.',
+                                displayText: `${field.name}.field - ${field.label || field.name} 字典`
                             });
                         } else {
                             suggestions.push({
-                                text: fullPath,
-                                displayText: `${fullPath} - ${field.label || field.name} (${field.type})`
+                                text: field.name,
+                                displayText: `${field.name} - ${field.label || field.name} (${field.type})`
                             });
                         }
                     });
+                } else {
+                    // 解析路径：entries[0].weight -> ['entries', '0', 'weight']
+                    const pathSegments = [];
+                    let current = '';
+                    let inBracket = false;
+                    
+                    for (let i = 0; i < pathPrefix.length; i++) {
+                        const char = pathPrefix[i];
+                        if (char === '[') {
+                            if (current) {
+                                pathSegments.push({ type: 'field', value: current });
+                                current = '';
+                            }
+                            inBracket = true;
+                        } else if (char === ']') {
+                            if (inBracket && current) {
+                                pathSegments.push({ type: 'index', value: current });
+                                current = '';
+                            }
+                            inBracket = false;
+                        } else if (char === '.' && !inBracket) {
+                            if (current) {
+                                pathSegments.push({ type: 'field', value: current });
+                                current = '';
+                            }
+                        } else {
+                            current += char;
+                        }
+                    }
+                    if (current) {
+                        pathSegments.push({ type: 'field', value: current, isPartial: true });
+                    }
+                    
+                    // 根据路径找到当前应该补全的字段列表
+                    let currentFields = fields;
+                    let validPath = true;
+                    
+                    for (let i = 0; i < pathSegments.length - 1; i++) {
+                        const segment = pathSegments[i];
+                        if (segment.type === 'field') {
+                            const field = currentFields.find(f => f.name === segment.value);
+                            if (!field) {
+                                validPath = false;
+                                break;
+                            }
+                            
+                            if (field.type === 'dict' && (field.subfields || field.fields)) {
+                                currentFields = field.subfields || field.fields;
+                            } else if ((field.type === 'entry' || field.type === 'list') && (field.subfields || field.fields)) {
+                                // 数组类型，下一步应该是索引
+                                if (i + 1 < pathSegments.length && pathSegments[i + 1].type === 'index') {
+                                    currentFields = field.subfields || field.fields;
+                                    i++; // 跳过索引段
+                                } else {
+                                    validPath = false;
+                                    break;
+                                }
+                            } else {
+                                validPath = false;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if (validPath && currentFields.length > 0) {
+                        const lastSegment = pathSegments[pathSegments.length - 1];
+                        const filterText = lastSegment && lastSegment.isPartial ? lastSegment.value : '';
+                        
+                        currentFields.forEach(field => {
+                            if (field.type === 'entry' || field.type === 'list') {
+                                const text = filterText ? field.name : field.name + '[0]';
+                                suggestions.push({
+                                    text: text,
+                                    displayText: `${field.name}[n] - ${field.label || field.name} 数组`
+                                });
+                            } else {
+                                suggestions.push({
+                                    text: field.name,
+                                    displayText: `${field.name} - ${field.label || field.name} (${field.type})`
+                                });
+                            }
+                        });
+                        
+                        const filtered = filterText ?
+                            suggestions.filter(s => s.text.toLowerCase().startsWith(filterText.toLowerCase())) :
+                            suggestions;
+                        
+                        if (filtered.length > 0) {
+                            // 计算替换的起始位置
+                            const replaceStart = filterText ? pathPrefix.length - filterText.length : pathPrefix.length;
+                            return {
+                                list: filtered,
+                                from: CodeMirror.Pos(cur.line, cur.ch - pathPrefix.length + replaceStart),
+                                to: CodeMirror.Pos(cur.line, cur.ch)
+                            };
+                        }
+                    }
                 }
                 
-                const filtered = lastPart ?
-                    suggestions.filter(s => s.text.toLowerCase().includes(lastPart.toLowerCase())) :
-                    suggestions;
-                
-                if (filtered.length > 0) {
+                if (suggestions.length > 0) {
                     return {
-                        list: filtered,
+                        list: suggestions,
                         from: CodeMirror.Pos(cur.line, cur.ch - pathPrefix.length),
                         to: CodeMirror.Pos(cur.line, cur.ch)
                     };
@@ -4959,10 +5035,24 @@ function initScriptEditor() {
             // 2. data.字段名.
             // 3. data.字段名[n].
             // 4. item. (forEach/map回调中的变量)
+            // 5. 字符串内路径语法 "field.
             const shouldTrigger = /(?:data|source)(?:\[\d+\])?(?:\.\w+(?:\[.+?\])?)*\.$/.test(before) ||
-                /\b\w+\.$/.test(before); // 匹配任何变量名后的点
+                /\b\w+\.$/.test(before) || // 匹配任何变量名后的点
+                /["'][^"']*\.$/.test(before); // 字符串内的点号
 
             if (shouldTrigger) {
+                setTimeout(function () {
+                    cm.showHint({
+                        hint: CodeMirror.hint.dataFields,
+                        completeSingle: false
+                    });
+                }, 100);
+            }
+        }
+        // 情况1.5：方括号触发补全（字符串内路径语法）
+        else if (change.text[0] === '[') {
+            // 检查是否在字符串内
+            if (/["'][^"']*\w+\[$/.test(before)) {
                 setTimeout(function () {
                     cm.showHint({
                         hint: CodeMirror.hint.dataFields,
