@@ -1403,6 +1403,18 @@ li.CodeMirror-hint-active {
     color: white !important;
 }
 
+/* 路径语法高亮 */
+.cm-s-monokai .cm-string.cm-property {
+    color: #a6e22e !important; /* 明亮的绿色 */
+    font-weight: 500;
+    text-shadow: 0 0 2px rgba(166, 226, 46, 0.3);
+}
+
+.cm-s-monokai .cm-keyword.cm-builtin {
+    color: #66d9ef !important; /* 亮青色，用于 update/yield */
+    font-weight: bold;
+}
+
 .script-input:focus {
     outline: none;
     border-color: #667eea;

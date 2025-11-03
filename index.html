@@ -653,7 +653,13 @@ function(index, data) {
                         <div style="background: #2d2d2d; padding: 12px; border-radius: 4px; margin-bottom: 8px;">
                             <code style="color: #ffd866;">update</code><code style="color: #fff;">(index, newData)</code>
                         </div>
-                        <p style="margin-left: 12px; color: #666;">更新指定行的数据，可多次调用合并更新</p>
+                        <p style="margin-left: 12px; color: #666; margin-bottom: 8px;">更新指定行的数据，支持路径语法精准修改嵌套值：</p>
+                        <ul style="margin-left: 32px; color: #666; font-size: 13px;">
+                            <li style="margin-bottom: 4px;"><code style="background: #f0f0f0; padding: 2px 6px; border-radius: 2px;">{ name: "新值" }</code> - 更新顶级字段</li>
+                            <li style="margin-bottom: 4px;"><code style="background: #f0f0f0; padding: 2px 6px; border-radius: 2px;">{ "entries[0].weight": 100 }</code> - 更新数组第0项的weight</li>
+                            <li style="margin-bottom: 4px;"><code style="background: #f0f0f0; padding: 2px 6px; border-radius: 2px;">{ "dict.subfield": "value" }</code> - 更新字典子字段</li>
+                            <li style="margin-bottom: 4px;"><code style="background: #f0f0f0; padding: 2px 6px; border-radius: 2px;">{ "list[2]": 999 }</code> - 更新列表第2项</li>
+                        </ul>
                     </div>
                     <div>
                         <div style="background: #2d2d2d; padding: 12px; border-radius: 4px; margin-bottom: 8px;">

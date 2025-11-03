@@ -1565,44 +1565,88 @@ async function executeScript() {
                         throw new Error('update: newData 必须是一个对象');
                     }
 
-                    // 验证字段
-                    const schema = window.previewSchemaCache;
-                    if (schema && schema.fields) {
-                        const fieldMap = {};
-                        schema.fields.forEach(f => fieldMap[f.name] = f);
-
-                        // 类型转换和验证
-                        const validatedData = {};
-                        for (const key in newData) {
-                            const field = fieldMap[key];
-
-                            // 检查字段是否存在
-                            if (!field) {
-                                throw new Error(`update: 字段 "${key}" 在 schema 中不存在`);
-                            }
-
-                            const value = newData[key];
-
-                            try {
-                                validatedData[key] = convertFieldValue(value, field);
-                            } catch (e) {
-                                throw new Error(`update: 字段 "${key}" 类型转换失败: ${e.message}`);
+                    // 获取当前行的完整数据副本（用于路径更新）
+                    const currentRowData = deepClone(data[index]);
+                    
+                    // 解析路径并设置值的辅助函数
+                    const setValueByPath = (obj, path, value) => {
+                        // 解析路径：支持 "field", "field.subfield", "field[0]", "field[0].subfield"
+                        const pathParts = [];
+                        let current = '';
+                        let inBracket = false;
+                        
+                        for (let i = 0; i < path.length; i++) {
+                            const char = path[i];
+                            if (char === '[') {
+                                if (current) {
+                                    pathParts.push({ key: current, isArray: false });
+                                    current = '';
+                                }
+                                inBracket = true;
+                            } else if (char === ']') {
+                                if (inBracket && current) {
+                                    pathParts.push({ key: parseInt(current), isArray: true });
+                                    current = '';
+                                }
+                                inBracket = false;
+                            } else if (char === '.' && !inBracket) {
+                                if (current) {
+                                    pathParts.push({ key: current, isArray: false });
+                                    current = '';
+                                }
+                            } else {
+                                current += char;
                             }
                         }
-
-                        // 合并到已有的更新中
-                        if (updates.has(index)) {
-                            updates.set(index, { ...updates.get(index), ...validatedData });
-                        } else {
-                            updates.set(index, validatedData);
+                        if (current) {
+                            pathParts.push({ key: current, isArray: false });
                         }
-                    } else {
-                        if (updates.has(index)) {
-                            updates.set(index, { ...updates.get(index), ...newData });
+                        
+                        // 遍历路径并设置值
+                        let target = obj;
+                        for (let i = 0; i < pathParts.length - 1; i++) {
+                            const part = pathParts[i];
+                            if (!(part.key in target)) {
+                                // 创建中间路径
+                                target[part.key] = pathParts[i + 1].isArray ? [] : {};
+                            }
+                            target = target[part.key];
+                        }
+                        
+                        // 设置最终值
+                        const lastPart = pathParts[pathParts.length - 1];
+                        target[lastPart.key] = value;
+                    };
+
+                    // 处理每个更新字段
+                    for (const key in newData) {
+                        const value = newData[key];
+                        
+                        // 检查是否是路径语法（包含 . 或 [）
+                        if (key.includes('.') || key.includes('[')) {
+                            // 使用路径设置
+                            setValueByPath(currentRowData, key, value);
                         } else {
-                            updates.set(index, { ...newData });
+                            // 简单字段更新
+                            const schema = window.previewSchemaCache;
+                            if (schema && schema.fields) {
+                                const field = schema.fields.find(f => f.name === key);
+                                if (!field) {
+                                    throw new Error(`update: 字段 "${key}" 在 schema 中不存在`);
+                                }
+                                try {
+                                    currentRowData[key] = convertFieldValue(value, field);
+                                } catch (e) {
+                                    throw new Error(`update: 字段 "${key}" 类型转换失败: ${e.message}`);
+                                }
+                            } else {
+                                currentRowData[key] = value;
+                            }
                         }
                     }
+
+                    // 存储完整的更新后的数据
+                    updates.set(index, currentRowData);
                 };
 
                 // 收集本行的所有 yield 结果
@@ -2034,23 +2078,29 @@ function loadScriptExample(type) {
 
         updateEntry: `// 精准修改条目数组的某一行
 (index, data) => {
-    // 方法1：使用 map 函数根据条件修改
+    // ★推荐★ 方法1：使用路径语法（最简单）
     update(index, {
-        技能列表: data.技能列表.map((skill, idx) => {
-            // 只修改第 0 行（第一个元素）
-            if (idx === 0) {
-                return { ...skill, level: 10 };
-            }
-            return skill;
-        })
+        "entries[0].weight": 100,      // 修改第0项的weight
+        "entries[2].code": "NewCode",  // 修改第2项的code
+        "dict.subfield": "value"       // 修改字典的子字段
     });
     
-    // 方法2：使用展开运算符复制后修改
+    // 方法2：使用 map 函数根据条件修改
+    // update(index, {
+    //     技能列表: data.技能列表.map((skill, idx) => {
+    //         if (idx === 0) {
+    //             return { ...skill, level: 10 };
+    //         }
+    //         return skill;
+    //     })
+    // });
+    
+    // 方法3：使用展开运算符复制后修改
     // const newList = [...data.技能列表];
     // newList[0] = { ...newList[0], level: 10 };
     // update(index, { 技能列表: newList });
     
-    // 方法3：批量修改符合条件的行
+    // 方法4：批量修改符合条件的行
     // update(index, {
     //     技能列表: data.技能列表.map(skill => 
     //         skill.level < 5 ? { ...skill, level: 5 } : skill
@@ -4384,70 +4434,167 @@ function initScriptEditor() {
         }
 
         if (isInUpdateParam) {
-            // 提取当前输入的前缀（可能是字段名的一部分）
-            const prefixMatch = beforeCursor.match(/(\w*)$/);
-            const prefix = prefixMatch ? prefixMatch[1] : '';
-
-            // 提取已定义的字段名（在 update 第二个参数对象内）
-            const definedFields = new Set();
-            const fieldPattern = /(\w+)\s*:/g;
-            let match;
-            while ((match = fieldPattern.exec(updateContext)) !== null) {
-                definedFields.add(match[1]);
-            }
-
-            // 检查是否在嵌套对象内（字典的子字段）
-            // 简单检查：如果在 update 参数对象内，且前面有 字段名: {
-            const nestedMatch = updateContext.match(/,\s*\{[^}]*?(\w+)\s*:\s*\{[^}]*?$/);
-
-            if (nestedMatch) {
-                // 在嵌套对象内，提供子字段补全
-                const parentFieldName = nestedMatch[1];
-                const parentField = fields.find(f => f.name === parentFieldName);
-
-                if (parentField) {
-                    const fieldsList = parentField.fields || parentField.subfields;
-
-                    if (parentField.type === 'dict' && fieldsList) {
-                        const suggestions = fieldsList
-                            .filter(field => !definedFields.has(field.name))
-                            .map(field => ({
-                                text: field.name + ': ',
-                                displayText: `${field.name} - ${field.label || field.name} (${field.type})`
-                            }));
-
-                        const filtered = prefix ?
-                            suggestions.filter(s => s.text.toLowerCase().startsWith(prefix.toLowerCase())) :
-                            suggestions;
-
-                        if (filtered.length > 0) {
-                            return {
-                                list: filtered,
-                                from: CodeMirror.Pos(cur.line, cur.ch - prefix.length),
-                                to: CodeMirror.Pos(cur.line, cur.ch)
-                            };
-                        }
+            // 检查是否在字符串内（路径语法）
+            const stringMatch = beforeCursor.match(/["']([^"']*?)$/);
+            
+            if (stringMatch) {
+                // 在字符串内，提供路径补全
+                const pathPrefix = stringMatch[1];
+                const suggestions = [];
+                
+                // 解析已有的路径部分
+                const pathParts = pathPrefix.split(/[\.\[]/).filter(p => p);
+                let currentFields = fields;
+                let currentPath = '';
+                
+                // 遍历路径找到当前层级的字段
+                for (let i = 0; i < pathParts.length - 1; i++) {
+                    const part = pathParts[i].replace(/\]$/, '');
+                    const field = currentFields.find(f => f.name === part || f.name === part);
+                    
+                    if (!field) break;
+                    
+                    currentPath += (currentPath ? '.' : '') + part;
+                    
+                    if (field.type === 'dict' && (field.subfields || field.fields)) {
+                        currentFields = field.subfields || field.fields;
+                    } else if (field.type === 'entry' && (field.subfields || field.fields)) {
+                        // 对于数组类型，提示数组索引和子字段
+                        currentFields = field.subfields || field.fields;
+                        currentPath += '[0]';
+                    } else {
+                        currentFields = [];
+                        break;
                     }
                 }
-            } else {
-                // 在顶级对象内，提供顶级字段补全（过滤已定义的）
-                const suggestions = fields
-                    .filter(field => !definedFields.has(field.name))
-                    .map(field => ({
-                        text: field.name + ': ',
-                        displayText: `${field.name} - ${field.label || field.name} (${field.type})`
-                    }));
-
-                const filtered = prefix ?
-                    suggestions.filter(s => s.text.toLowerCase().startsWith(prefix.toLowerCase())) :
+                
+                // 获取当前输入的最后部分
+                const lastPart = pathParts[pathParts.length - 1] || '';
+                const isAfterBracket = pathPrefix.includes('[') && !pathPrefix.includes(']');
+                
+                if (isAfterBracket) {
+                    // 在 [0] 后面，提供 .subfield 补全
+                    currentFields.forEach(field => {
+                        const fullPath = currentPath + '.' + field.name;
+                        suggestions.push({
+                            text: fullPath,
+                            displayText: `${fullPath} - ${field.label || field.name} (${field.type})`
+                        });
+                    });
+                } else {
+                    // 正常字段补全
+                    currentFields.forEach(field => {
+                        const pathSep = currentPath ? (pathPrefix.endsWith('.') ? '' : '.') : '';
+                        const fullPath = currentPath + pathSep + field.name;
+                        
+                        if (field.type === 'entry' || field.type === 'list') {
+                            // 数组类型，提示加上索引
+                            suggestions.push({
+                                text: fullPath + '[0]',
+                                displayText: `${fullPath}[n] - ${field.label || field.name} 数组元素`
+                            });
+                        } else {
+                            suggestions.push({
+                                text: fullPath,
+                                displayText: `${fullPath} - ${field.label || field.name} (${field.type})`
+                            });
+                        }
+                    });
+                }
+                
+                const filtered = lastPart ?
+                    suggestions.filter(s => s.text.toLowerCase().includes(lastPart.toLowerCase())) :
                     suggestions;
-
+                
                 if (filtered.length > 0) {
                     return {
                         list: filtered,
-                        from: CodeMirror.Pos(cur.line, cur.ch - prefix.length),
+                        from: CodeMirror.Pos(cur.line, cur.ch - pathPrefix.length),
                         to: CodeMirror.Pos(cur.line, cur.ch)
                     };
+                }
+            } else {
+                // 不在字符串内，提供普通字段补全
+                const prefixMatch = beforeCursor.match(/(\w*)$/);
+                const prefix = prefixMatch ? prefixMatch[1] : '';
+
+                // 提取已定义的字段名（在 update 第二个参数对象内）
+                const definedFields = new Set();
+                const fieldPattern = /["']?(\w+(?:\[?\d*\]?\.?)*?)["']?\s*:/g;
+                let match;
+                while ((match = fieldPattern.exec(updateContext)) !== null) {
+                    const fieldPath = match[1].split(/[\.\[]/).filter(p => p)[0];
+                    definedFields.add(fieldPath);
+                }
+
+                // 检查是否在嵌套对象内（字典的子字段）
+                const nestedMatch = updateContext.match(/,\s*\{[^}]*?(\w+)\s*:\s*\{[^}]*?$/);
+
+                if (nestedMatch) {
+                    // 在嵌套对象内，提供子字段补全
+                    const parentFieldName = nestedMatch[1];
+                    const parentField = fields.find(f => f.name === parentFieldName);
+
+                    if (parentField) {
+                        const fieldsList = parentField.fields || parentField.subfields;
+
+                        if (parentField.type === 'dict' && fieldsList) {
+                            const suggestions = fieldsList
+                                .filter(field => !definedFields.has(field.name))
+                                .map(field => ({
+                                    text: field.name + ': ',
+                                    displayText: `${field.name} - ${field.label || field.name} (${field.type})`
+                                }));
+
+                            const filtered = prefix ?
+                                suggestions.filter(s => s.text.toLowerCase().startsWith(prefix.toLowerCase())) :
+                                suggestions;
+
+                            if (filtered.length > 0) {
+                                return {
+                                    list: filtered,
+                                    from: CodeMirror.Pos(cur.line, cur.ch - prefix.length),
+                                    to: CodeMirror.Pos(cur.line, cur.ch)
+                                };
+                            }
+                        }
+                    }
+                } else {
+                    // 在顶级对象内，提供顶级字段补全（包括路径语法提示）
+                    const suggestions = [];
+                    
+                    fields.filter(field => !definedFields.has(field.name)).forEach(field => {
+                        // 简单字段
+                        suggestions.push({
+                            text: field.name + ': ',
+                            displayText: `${field.name} - ${field.label || field.name} (${field.type})`
+                        });
+                        
+                        // 如果是数组或字典，提示路径语法
+                        if (field.type === 'entry' || field.type === 'list') {
+                            suggestions.push({
+                                text: '"' + field.name + '[0]": ',
+                                displayText: '"' + field.name + '[n]..." - 路径语法：访问数组元素'
+                            });
+                        } else if (field.type === 'dict') {
+                            suggestions.push({
+                                text: '"' + field.name + '.": ',
+                                displayText: '"' + field.name + '.field" - 路径语法：访问字典字段'
+                            });
+                        }
+                    });
+
+                    const filtered = prefix ?
+                        suggestions.filter(s => s.text.toLowerCase().startsWith(prefix.toLowerCase())) :
+                        suggestions;
+
+                    if (filtered.length > 0) {
+                        return {
+                            list: filtered,
+                            from: CodeMirror.Pos(cur.line, cur.ch - prefix.length),
+                            to: CodeMirror.Pos(cur.line, cur.ch)
+                        };
+                    }
                 }
             }
         }
@@ -4666,14 +4813,16 @@ function initScriptEditor() {
         return null;
     });
 
-    // 定义自定义模式：JavaScript + 高亮 update 和 yield
+    // 定义自定义模式：JavaScript + 高亮 update/yield + 路径语法
     CodeMirror.defineMode("javascript-custom", function (config, parserConfig) {
         const jsMode = CodeMirror.getMode(config, "javascript");
 
         return {
             startState: function () {
                 return {
-                    jsState: CodeMirror.startState(jsMode)
+                    jsState: CodeMirror.startState(jsMode),
+                    inString: false,
+                    stringQuote: null
                 };
             },
             token: function (stream, state) {
@@ -4685,6 +4834,18 @@ function initScriptEditor() {
                 if ((current === 'update' || current === 'yield') &&
                     /^(variable|def)/.test(style)) {
                     return 'keyword builtin'; // 高亮为内置关键字
+                }
+
+                // 检查字符串内的路径语法：field[0].subfield
+                if (style === 'string' || style === 'string-2') {
+                    const stringContent = current;
+                    // 匹配路径模式：xxx[n] 或 xxx.yyy
+                    if (/[\[\.]/.test(stringContent)) {
+                        // 检查是否包含数组索引或点号访问
+                        if (/\w+\[\d*\]/.test(stringContent) || /\w+\.\w+/.test(stringContent)) {
+                            return 'string property'; // 特殊高亮路径字符串
+                        }
+                    }
                 }
 
                 return style;
