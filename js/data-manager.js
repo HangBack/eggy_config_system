@@ -1236,12 +1236,14 @@ async function addEntryItem(rowIndex, fieldName) {
                         selectElement.innerHTML = `<option value="">-- 请选择 --</option>${optionsHtml}`;
                     }
                 } else if (subfield.type === 'datalist') {
-                    const datalistElement = document.getElementById(`datalist-${subfieldId}`);
-                    if (datalistElement) {
-                        const optionsHtml = options.map(opt => 
-                            `<option value="${escapeHtml(opt)}"></option>`
-                        ).join('');
-                        datalistElement.innerHTML = optionsHtml;
+                    const inputElement = document.getElementById(subfieldId);
+                    const dropdownElement = document.getElementById(`datalist-${subfieldId}`);
+                    if (inputElement && dropdownElement) {
+                        // 格式化选项并初始化自定义 datalist
+                        const formattedOptions = options.map(opt => 
+                            typeof opt === 'object' ? opt : { value: opt, label: '' }
+                        );
+                        initCustomDatalist(inputElement, dropdownElement, formattedOptions);
                     }
                 }
             } else {
@@ -1257,15 +1259,14 @@ async function addEntryItem(rowIndex, fieldName) {
                         selectElement.innerHTML = `<option value="">-- 请选择 --</option>${optionsHtml}`;
                     }
                 } else if (subfield.type === 'datalist') {
-                    const datalistElement = document.getElementById(`datalist-${subfieldId}`);
-                    if (datalistElement) {
-                        const datalistOptions = options.map(opt => {
-                            if (typeof opt === 'object') {
-                                return `<option value="${escapeHtml(opt.value)}">${escapeHtml(opt.label)}</option>`;
-                            }
-                            return `<option value="${escapeHtml(opt)}"></option>`;
-                        }).join('');
-                        datalistElement.innerHTML = datalistOptions;
+                    const inputElement = document.getElementById(subfieldId);
+                    const dropdownElement = document.getElementById(`datalist-${subfieldId}`);
+                    if (inputElement && dropdownElement) {
+                        // 格式化选项并初始化自定义 datalist
+                        const formattedOptions = options.map(opt => 
+                            typeof opt === 'object' ? opt : { value: opt, label: '' }
+                        );
+                        initCustomDatalist(inputElement, dropdownElement, formattedOptions);
                     }
                 }
             }
