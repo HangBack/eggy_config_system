@@ -8,6 +8,81 @@ const API = {
     LUA_TYPES: `${API_BASE}/lua-types`
 };
 
+// ==================== Toaster 通知系统 ====================
+
+/**
+ * 显示 Toaster 通知
+ * @param {string} message - 通知消息
+ * @param {string} type - 通知类型: 'success', 'error', 'warning', 'info'
+ * @param {number} duration - 显示时长（毫秒），默认 3000
+ */
+function showToast(message, type = 'info', duration = 3000) {
+    // 创建 toaster 容器（如果不存在）
+    let container = document.getElementById('toaster-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toaster-container';
+        container.className = 'toaster-container';
+        document.body.appendChild(container);
+    }
+
+    // 创建 toast 元素
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    
+    // 图标映射
+    const icons = {
+        success: 'fa-check-circle',
+        error: 'fa-times-circle',
+        warning: 'fa-exclamation-triangle',
+        info: 'fa-info-circle'
+    };
+    
+    const icon = icons[type] || icons.info;
+    
+    toast.innerHTML = `
+        <i class="fas ${icon}"></i>
+        <span class="toast-message">${escapeHtml(message)}</span>
+    `;
+    
+    // 添加到容器
+    container.appendChild(toast);
+    
+    // 触发动画
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 10);
+    
+    // 自动移除
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => {
+            container.removeChild(toast);
+            // 如果容器为空，移除容器
+            if (container.children.length === 0) {
+                document.body.removeChild(container);
+            }
+        }, 300);
+    }, duration);
+}
+
+// 便捷方法
+function showSuccess(message, duration) {
+    showToast(message, 'success', duration);
+}
+
+function showError(message, duration) {
+    showToast(message, 'error', duration);
+}
+
+function showWarning(message, duration) {
+    showToast(message, 'warning', duration);
+}
+
+function showInfo(message, duration) {
+    showToast(message, 'info', duration);
+}
+
 // 工具函数：将纯数字字符串转换为数字键，用于对象访问
 function normalizeFieldKey(fieldName) {
     // 检查是否为纯数字字符串
@@ -55,7 +130,94 @@ let dataRows = [];
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
     initializeApp();
+    setupGlobalKeyboardShortcuts();
 });
+
+// 全局键盘快捷键
+function setupGlobalKeyboardShortcuts() {
+    document.addEventListener('keydown', (e) => {
+        // Ctrl+S 保存
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            // 检查是否在 CodeMirror 编辑器中
+            const target = e.target;
+            if (target && target.closest && target.closest('.CodeMirror')) {
+                // 在 CodeMirror 中，让 CodeMirror 自己处理
+                return;
+            }
+            
+            e.preventDefault();
+            handleGlobalSave();
+        }
+    });
+}
+
+// 处理全局保存，根据当前状态判断保存哪里
+function handleGlobalSave() {
+    // 检查是否有打开的模态框
+    const openModals = document.querySelectorAll('.modal.show');
+    
+    // 如果有模态框打开，优先处理模态框中的保存
+    for (const modal of openModals) {
+        const modalId = modal.id;
+        
+        // 脚本帮助模态框 - 没有保存按钮，跳过
+        if (modalId === 'script-help-modal') {
+            continue;
+        }
+        
+        // Lua导出模态框 - 没有真正的保存，但不拦截
+        if (modalId === 'export-lua-modal') {
+            return;
+        }
+        
+        // 其他模态框不处理 Ctrl+S
+        return;
+    }
+    
+    // 没有模态框打开，根据当前激活的面板决定保存行为
+    const activeTab = document.querySelector('.nav-tab.active');
+    if (!activeTab) return;
+    
+    const tabName = activeTab.dataset.tab;
+    
+    switch (tabName) {
+        case 'schema':
+            // Schema 面板
+            const schemaEditor = document.getElementById('schema-editor');
+            if (schemaEditor && schemaEditor.style.display !== 'none') {
+                // 正在编辑 Schema
+                saveSchema();
+            }
+            break;
+            
+        case 'enum':
+            // 枚举面板
+            const enumEditor = document.getElementById('enum-editor');
+            if (enumEditor && enumEditor.style.display !== 'none') {
+                // 正在编辑枚举
+                saveEnum();
+            }
+            break;
+            
+        case 'data':
+            // 配表面板
+            const dataEditor = document.getElementById('data-editor');
+            if (dataEditor && dataEditor.style.display !== 'none') {
+                // 检查是否在预览面板且脚本编辑器有焦点
+                const previewPanel = document.querySelector('.data-preview-panel');
+                if (previewPanel && previewPanel.style.display !== 'none') {
+                    // 在预览面板中，保存脚本
+                    if (typeof savePreviewScript === 'function') {
+                        savePreviewScript(false);
+                    }
+                } else {
+                    // 在数据编辑面板中，保存数据
+                    saveData();
+                }
+            }
+            break;
+    }
+}
 
 function initializeApp() {
     // 绑定导航标签切换

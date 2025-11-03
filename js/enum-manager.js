@@ -16,11 +16,11 @@ async function loadEnums() {
             renderEnumList();
         } else {
             console.error('加载枚举失败:', result.error);
-            alert('加载枚举失败: ' + result.error);
+            showError('加载枚举失败: ' + result.error);
         }
     } catch (error) {
         console.error('加载枚举失败:', error);
-        alert('加载枚举失败，请检查网络连接');
+        showError('加载枚举失败，请检查网络连接');
     }
 }
 
@@ -117,11 +117,11 @@ async function editEnum(name) {
             // 更新列表中的选中状态
             renderEnumList();
         } else {
-            alert('加载枚举失败: ' + result.error);
+            showError('加载枚举失败: ' + result.error);
         }
     } catch (error) {
         console.error('加载枚举失败:', error);
-        alert('加载枚举失败，请检查网络连接');
+        showError('加载枚举失败，请检查网络连接');
     }
 }
 
@@ -335,12 +335,12 @@ async function saveEnum() {
 
     // 验证
     if (!name) {
-        alert('请输入枚举名称');
+        showWarning('请输入枚举名称');
         return;
     }
 
     if (!currentEnum.values || currentEnum.values.length === 0) {
-        alert('请至少添加一个枚举值');
+        showWarning('请至少添加一个枚举值');
         return;
     }
 
@@ -348,7 +348,7 @@ async function saveEnum() {
     for (let i = 0; i < currentEnum.values.length; i++) {
         const value = currentEnum.values[i];
         if (!value.key) {
-            alert(`第 ${i + 1} 个枚举值的键名不能为空`);
+            showWarning(`第 ${i + 1} 个枚举值的键名不能为空`);
             return;
         }
     }
@@ -379,12 +379,12 @@ async function saveEnum() {
         const result = await response.json();
 
         if (result.success) {
-            alert(action === 'create' ? '枚举创建成功' : '枚举保存成功');
+            showSuccess(action === 'create' ? '枚举创建成功' : '枚举保存成功');
             currentEnumName = name;
             await loadEnums();
             cancelEnumEdit();
         } else {
-            alert('保存失败: ' + result.error);
+            showError('保存失败: ' + result.error);
         }
     } catch (error) {
         console.error('保存枚举失败:', error);

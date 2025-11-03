@@ -147,5 +147,5 @@
     }
   ],
   "name": "Skill",
-  "script": ""
+  "script": "// 编写数据处理函数，点击右上角\"帮助\"按钮查看详细说明\n(index, data, source) => {\n    // 返回处理后的数据\n\tupdate(index, {\n        \n    })\n    return data;\n}"
 }

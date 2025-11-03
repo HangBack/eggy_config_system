@@ -132,4 +132,77 @@ body {
     font-size: 12px;
 }
 
+/* Toaster 通知样式 */
+.toaster-container {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 400px;
+}
+
+.toast {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    border-radius: 8px;
+    background: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    font-size: 14px;
+    opacity: 0;
+    transform: translateX(-100%);
+    transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.toast i {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.toast-message {
+    flex: 1;
+    word-break: break-word;
+}
+
+.toast-success {
+    border-left: 4px solid #27ae60;
+}
+
+.toast-success i {
+    color: #27ae60;
+}
+
+.toast-error {
+    border-left: 4px solid #e74c3c;
+}
+
+.toast-error i {
+    color: #e74c3c;
+}
+
+.toast-warning {
+    border-left: 4px solid #f39c12;
+}
+
+.toast-warning i {
+    color: #f39c12;
+}
+
+.toast-info {
+    border-left: 4px solid #3498db;
+}
+
+.toast-info i {
+    color: #3498db;
+}
+
 /* Schema列表 */

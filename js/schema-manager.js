@@ -166,11 +166,11 @@ async function loadSchemas() {
             schemas = result.data || [];
             renderSchemaList();
         } else {
-            alert('加载Schema列表失败: ' + result.error);
+            showError('加载Schema列表失败: ' + result.error);
         }
     } catch (error) {
         console.error('加载Schema列表错误:', error);
-        alert('加载Schema列表失败');
+        showError('加载Schema列表失败');
     }
 }
 
@@ -286,11 +286,11 @@ async function editSchema(schemaName) {
             document.getElementById('field-editor-container').innerHTML = '<div class="empty-state"><i class="fas fa-hand-pointer"></i><p>请从左侧选择字段</p></div>';
             document.getElementById('schema-editor').style.display = 'block';
         } else {
-            alert('加载Schema失败: ' + result.error);
+            showError('加载Schema失败: ' + result.error);
         }
     } catch (error) {
         console.error('加载Schema错误:', error);
-        alert('加载Schema失败');
+        showError('加载Schema失败');
     }
 }
 
@@ -299,13 +299,13 @@ async function saveSchema() {
     const description = document.getElementById('schema-desc-input').value.trim();
 
     if (!name) {
-        alert('请输入Schema名称');
+        showWarning('请输入Schema名称');
         return;
     }
 
     // 验证Schema名称格式
     if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
-        alert('Schema名称只能包含字母、数字、下划线和连字符');
+        showWarning('Schema名称只能包含字母、数字、下划线和连字符');
         return;
     }
 
@@ -361,7 +361,7 @@ async function saveSchema() {
                 }
             }
             
-            alert(isEditMode ? 'Schema更新成功' : 'Schema创建成功');
+            showSuccess(isEditMode ? 'Schema更新成功' : 'Schema创建成功');
             
             // 如果数据管理器中正在编辑此 schema 的数据，刷新数据表
             if (typeof currentSchemaName !== 'undefined' && currentSchemaName === name) {
@@ -397,11 +397,11 @@ async function saveSchema() {
             cancelSchemaEdit();
             loadSchemas();
         } else {
-            alert('保存Schema失败: ' + result.error);
+            showError('保存Schema失败: ' + result.error);
         }
     } catch (error) {
         console.error('保存Schema错误:', error);
-        alert('保存Schema失败');
+        showError('保存Schema失败');
     }
 }
 
@@ -735,14 +735,14 @@ async function deleteSchema(schemaName) {
             const result = await response.json();
             
             if (result.success) {
-                alert('Schema删除成功');
+                showSuccess('Schema删除成功');
                 loadSchemas();
             } else {
-                alert('删除Schema失败: ' + result.error);
+                showError('删除Schema失败: ' + result.error);
             }
         } catch (error) {
             console.error('删除Schema错误:', error);
-            alert('删除Schema失败');
+            showError('删除Schema失败');
         }
     });
 }

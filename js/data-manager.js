@@ -1,23 +1,23 @@
 ﻿async function loadSchemaSelectOptions() {
     const inputElement = document.getElementById('data-schema-select');
     const dropdownElement = document.getElementById('data-schema-select-dropdown');
-    
+
     try {
         const response = await fetch(`${API.SCHEMA}?action=list`);
         const result = await response.json();
-        
+
         if (result.success) {
             schemas = result.data || [];
-            
+
             // 格式化为 datalist 选项格式
             const options = schemas.map(schema => ({
                 value: schema.name,
                 label: schema.description || ''
             }));
-            
+
             // 初始化自定义 datalist
             initCustomDatalist(inputElement, dropdownElement, options);
-            
+
             // 监听选择事件
             inputElement.removeEventListener('change', loadDataForSchema);
             inputElement.addEventListener('change', loadDataForSchema);
@@ -29,7 +29,7 @@
 
 async function loadDataForSchema() {
     const schemaName = document.getElementById('data-schema-select').value.trim();
-    
+
     if (!schemaName) {
         document.getElementById('data-editor').style.display = 'none';
         return;
@@ -54,7 +54,7 @@ async function loadDataForSchema() {
         // 加载Schema定义
         const schemaResponse = await fetch(`${API.SCHEMA}?action=get&name=${encodeURIComponent(schemaName)}`);
         const schemaResult = await schemaResponse.json();
-        
+
         if (!schemaResult.success) {
             console.error(`加载Schema失败: ${schemaName}`, schemaResult.error);
             // 不显示 alert，只在控制台记录错误
@@ -68,7 +68,7 @@ async function loadDataForSchema() {
         // 加载数据
         const dataResponse = await fetch(`${API.DATA}?action=get&name=${encodeURIComponent(schemaName)}`);
         const dataResult = await dataResponse.json();
-        
+
         dataRows = [];
         if (dataResult.success) {
             const loadedData = dataResult.data || [];
@@ -93,15 +93,15 @@ async function loadDataForSchema() {
         }
 
         selectedDataRowIndex = -1;
-        
+
         // 清空搜索框
         const searchInput = document.getElementById('data-rows-search');
         if (searchInput) {
             searchInput.value = '';
         }
-        
+
         renderDataRowsList();
-        document.getElementById('data-row-editor-container').innerHTML = 
+        document.getElementById('data-row-editor-container').innerHTML =
             '<div class="empty-state"><i class="fas fa-hand-pointer"></i><p>请从左侧选择或添加数据行</p></div>';
         document.getElementById('data-editor').style.display = 'block';
         document.getElementById('data-table-title').textContent = `${schemaName} - 配表数据`;
@@ -110,7 +110,7 @@ async function loadDataForSchema() {
         document.getElementById('export-lua-btn').style.display = 'inline-flex';
     } catch (error) {
         console.error('加载数据错误:', error);
-        alert('加载数据失败');
+        showError('加载数据失败');
     }
 }
 
@@ -150,7 +150,7 @@ function createDataRowListItem(dataRow, index) {
     if (index === selectedDataRowIndex) {
         div.classList.add('active');
     }
-    
+
     div.innerHTML = `
         <div class="data-row-list-item-name">${escapeHtml(dataRow.name)}</div>
         <div class="data-row-list-item-actions">
@@ -159,16 +159,16 @@ function createDataRowListItem(dataRow, index) {
             </button>
         </div>
     `;
-    
+
     div.addEventListener('click', () => {
         // 在切换前保存当前编辑的数据到内存
         saveCurrentEditToMemory();
-        
+
         selectedDataRowIndex = index;
         renderDataRowsList();
         renderDataRowEditor(index);
     });
-    
+
     return div;
 }
 
@@ -181,15 +181,15 @@ function saveCurrentEditToMemory() {
     if (selectedDataRowIndex < 0 || selectedDataRowIndex >= dataRows.length) {
         return; // 没有选中的数据行
     }
-    
+
     // 如果 currentSchema 为空，则无法保存
     if (!currentSchema) {
         return;
     }
-    
+
     const fields = currentSchema.fields || [];
     const currentData = {};
-    
+
     fields.forEach(field => {
         if (field.type === 'dict') {
             const selector = `.dict-container[data-row="${selectedDataRowIndex}"][data-field="${field.name}"]`;
@@ -221,7 +221,7 @@ function saveCurrentEditToMemory() {
             }
         }
     });
-    
+
     // 更新内存中的数据
     dataRows[selectedDataRowIndex].data = currentData;
 }
@@ -229,20 +229,20 @@ function saveCurrentEditToMemory() {
 async function renderDataRowEditor(index) {
     const container = document.getElementById('data-row-editor-container');
     const dataRow = dataRows[index];
-    
+
     // 如果 currentSchema 为空，显示错误信息
     if (!currentSchema) {
         container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Schema 未加载，请刷新或重新选择</p></div>';
         return;
     }
-    
+
     container.innerHTML = '';
-    
+
     const editor = document.createElement('div');
     editor.className = 'data-row-editor';
     editor.innerHTML = createDataRowEditorHTML(dataRow, index);
     container.appendChild(editor);
-    
+
     // 绑定名称输入框事件
     const nameInput = document.getElementById(`data-row-name-input-${index}`);
     if (nameInput) {
@@ -251,7 +251,7 @@ async function renderDataRowEditor(index) {
             renderDataRowsList();
         });
     }
-    
+
     // 绑定原始文本复选框事件
     const rawCheckbox = document.getElementById(`data-row-raw-${index}`);
     if (rawCheckbox) {
@@ -259,7 +259,7 @@ async function renderDataRowEditor(index) {
             dataRows[index].isRaw = rawCheckbox.checked;
         });
     }
-    
+
     // 异步加载关联字段的选项
     await loadLinkedFieldOptions(index);
 }
@@ -269,7 +269,7 @@ function createDataRowEditorHTML(dataRow, rowIndex) {
     if (!currentSchema) {
         return '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Schema Schema 未加载，请刷新或重新选择</p></div>';
     }
-    
+
     const fields = currentSchema.fields || [];
     const fieldsHtml = fields.map(field => {
         // 使用工具函数获取字段值，支持数字键
@@ -303,7 +303,7 @@ async function getFieldOptions(field) {
         try {
             const response = await fetch(`${API_BASE}/data?action=load&name=${encodeURIComponent(linkedSchemaName)}`);
             const result = await response.json();
-            
+
             if (result.success && result.data) {
                 // 将数据行名称作为选项返回
                 return result.data.map(row => {
@@ -320,7 +320,7 @@ async function getFieldOptions(field) {
             console.error('加载关联配表数据失败:', error);
         }
     }
-    
+
     // 如果是枚举模式
     if (field.dataSource && field.dataSource.type === 'enum' && field.dataSource.enum) {
         const enumName = field.dataSource.enum;
@@ -328,7 +328,7 @@ async function getFieldOptions(field) {
         try {
             const response = await fetch(`${API.ENUM}?action=get&name=${encodeURIComponent(enumName)}`);
             const result = await response.json();
-            
+
             if (result.success && result.data && result.data.values) {
                 // 返回枚举值（键名或value|label格式），带前缀
                 if (field.type === 'datalist' || field.elementType === 'datalist') {
@@ -351,7 +351,7 @@ async function getFieldOptions(field) {
             console.error('加载枚举数据失败:', error);
         }
     }
-    
+
     // 手动输入模式，直接返回选项
     return field.options || [];
 }
@@ -360,17 +360,17 @@ async function getFieldOptions(field) {
 function initCustomDatalist(inputElement, dropdownElement, options) {
     const wrapper = inputElement.closest('.custom-datalist-wrapper');
     if (!wrapper) return;
-    
+
     let currentOptions = options;
     let activeIndex = -1;
-    
+
     // 渲染选项列表
     function renderOptions(filteredOptions) {
         if (!filteredOptions || filteredOptions.length === 0) {
             dropdownElement.innerHTML = '<div class="custom-datalist-empty">无匹配项</div>';
             return;
         }
-        
+
         const optionsHtml = filteredOptions.map((opt, index) => {
             let valueText, labelText;
             if (typeof opt === 'object') {
@@ -380,7 +380,7 @@ function initCustomDatalist(inputElement, dropdownElement, options) {
                 valueText = opt;
                 labelText = '';
             }
-            
+
             const isSelected = inputElement.value === valueText;
             return `
                 <div class="custom-datalist-option ${isSelected ? 'selected' : ''}" data-index="${index}" data-value="${escapeHtml(valueText)}">
@@ -389,24 +389,24 @@ function initCustomDatalist(inputElement, dropdownElement, options) {
                 </div>
             `;
         }).join('');
-        
+
         dropdownElement.innerHTML = optionsHtml;
     }
-    
+
     // 过滤选项
     function filterOptions(searchText) {
         if (!searchText) return currentOptions;
-        
+
         const search = searchText.toLowerCase();
         return currentOptions.filter(opt => {
             if (typeof opt === 'object') {
-                return opt.value.toLowerCase().includes(search) || 
-                       (opt.label && opt.label.toLowerCase().includes(search));
+                return opt.value.toLowerCase().includes(search) ||
+                    (opt.label && opt.label.toLowerCase().includes(search));
             }
             return opt.toLowerCase().includes(search);
         });
     }
-    
+
     // 显示下拉列表
     function showDropdown() {
         const filtered = filterOptions(inputElement.value);
@@ -414,13 +414,13 @@ function initCustomDatalist(inputElement, dropdownElement, options) {
         dropdownElement.classList.add('show');
         activeIndex = -1;
     }
-    
+
     // 隐藏下拉列表
     function hideDropdown() {
         dropdownElement.classList.remove('show');
         activeIndex = -1;
     }
-    
+
     // 选择选项
     function selectOption(value) {
         inputElement.value = value;
@@ -429,34 +429,34 @@ function initCustomDatalist(inputElement, dropdownElement, options) {
         inputElement.dispatchEvent(new Event('change', { bubbles: true }));
         inputElement.dispatchEvent(new Event('input', { bubbles: true }));
     }
-    
+
     // 高亮活动选项
     function setActiveOption(index) {
         const options = dropdownElement.querySelectorAll('.custom-datalist-option');
         options.forEach(opt => opt.classList.remove('active'));
-        
+
         if (index >= 0 && index < options.length) {
             options[index].classList.add('active');
             options[index].scrollIntoView({ block: 'nearest' });
             activeIndex = index;
         }
     }
-    
+
     // 输入事件
     inputElement.addEventListener('focus', () => {
         showDropdown();
     });
-    
+
     inputElement.addEventListener('input', () => {
         showDropdown();
     });
-    
+
     // 键盘导航
     inputElement.addEventListener('keydown', (e) => {
         if (!dropdownElement.classList.contains('show')) return;
-        
+
         const options = dropdownElement.querySelectorAll('.custom-datalist-option');
-        
+
         if (e.key === 'ArrowDown') {
             e.preventDefault();
             setActiveOption(Math.min(activeIndex + 1, options.length - 1));
@@ -473,7 +473,7 @@ function initCustomDatalist(inputElement, dropdownElement, options) {
             hideDropdown();
         }
     });
-    
+
     // 点击选项
     dropdownElement.addEventListener('click', (e) => {
         const option = e.target.closest('.custom-datalist-option');
@@ -482,14 +482,14 @@ function initCustomDatalist(inputElement, dropdownElement, options) {
             selectOption(value);
         }
     });
-    
+
     // 点击外部关闭
     document.addEventListener('click', (e) => {
         if (!wrapper.contains(e.target)) {
             hideDropdown();
         }
     });
-    
+
     // 初始渲染
     renderOptions(currentOptions);
 }
@@ -498,19 +498,19 @@ function initCustomDatalist(inputElement, dropdownElement, options) {
 async function loadLinkedFieldOptions(rowIndex) {
     if (!currentSchema) return;
     const fields = currentSchema.fields || [];
-    
+
     for (const field of fields) {
         if (field.type === 'option' || field.type === 'datalist') {
             // 检查是否是关联配表或枚举模式
             if (field.dataSource && (field.dataSource.type === 'linked' || field.dataSource.type === 'enum')) {
                 const options = await getFieldOptions(field);
                 const currentValue = dataRows[rowIndex].data[field.name] || '';
-                
+
                 // 更新选项
                 if (field.type === 'option') {
                     const selectElement = document.getElementById(`field-${rowIndex}-${field.name}`);
                     if (selectElement) {
-                        const optionsHtml = options.map(opt => 
+                        const optionsHtml = options.map(opt =>
                             `<option value="${escapeHtml(opt)}" ${currentValue === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`
                         ).join('');
                         selectElement.innerHTML = `<option value="">-- 请选择 --</option>${optionsHtml}`;
@@ -520,7 +520,7 @@ async function loadLinkedFieldOptions(rowIndex) {
                     const dropdownElement = document.getElementById(`datalist-field-${rowIndex}-${field.name}`);
                     if (inputElement && dropdownElement) {
                         // 将简单字符串转换为对象格式（关联模式返回字符串，枚举模式已经是对象）
-                        const formattedOptions = options.map(opt => 
+                        const formattedOptions = options.map(opt =>
                             typeof opt === 'string' ? { value: opt, label: '' } : opt
                         );
                         initCustomDatalist(inputElement, dropdownElement, formattedOptions);
@@ -530,11 +530,11 @@ async function loadLinkedFieldOptions(rowIndex) {
                 // 手动模式，直接使用 field.options
                 const currentValue = dataRows[rowIndex].data[field.name] || '';
                 const options = field.options || [];
-                
+
                 if (field.type === 'option') {
                     const selectElement = document.getElementById(`field-${rowIndex}-${field.name}`);
                     if (selectElement) {
-                        const optionsHtml = options.map(opt => 
+                        const optionsHtml = options.map(opt =>
                             `<option value="${escapeHtml(opt)}" ${currentValue === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`
                         ).join('');
                         selectElement.innerHTML = `<option value="">-- 请选择 --</option>${optionsHtml}`;
@@ -555,17 +555,17 @@ async function loadLinkedFieldOptions(rowIndex) {
                 }
             }
         }
-        
+
         // 处理字典类型的子字段
         if (field.type === 'dict' && field.subfields) {
             await loadLinkedDictSubfieldOptions(rowIndex, field);
         }
-        
+
         // 处理条目类型的子字段
         if (field.type === 'entry' && field.subfields) {
             await loadLinkedSubfieldOptions(rowIndex, field);
         }
-        
+
         // 处理列表类型的元素（如果元素类型为 option 或 datalist）
         if (field.type === 'list' && (field.elementType === 'option' || field.elementType === 'datalist')) {
             const items = dataRows[rowIndex].data[field.name] || [];
@@ -579,7 +579,7 @@ async function loadLinkedFieldOptions(rowIndex) {
                     if (field.elementType === 'option') {
                         const selectElement = document.getElementById(itemId);
                         if (selectElement) {
-                            const optionsHtml = options.map(opt => 
+                            const optionsHtml = options.map(opt =>
                                 `<option value="${escapeHtml(opt)}" ${currentValue === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`
                             ).join('');
                             selectElement.innerHTML = `<option value="">-- 请选择 --</option>${optionsHtml}`;
@@ -598,7 +598,7 @@ async function loadLinkedFieldOptions(rowIndex) {
                     if (field.elementType === 'option') {
                         const selectElement = document.getElementById(itemId);
                         if (selectElement) {
-                            const optionsHtml = options.map(opt => 
+                            const optionsHtml = options.map(opt =>
                                 `<option value="${escapeHtml(opt)}" ${currentValue === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`
                             ).join('');
                             selectElement.innerHTML = `<option value="">-- 请选择 --</option>${optionsHtml}`;
@@ -620,18 +620,18 @@ async function loadLinkedFieldOptions(rowIndex) {
 // 加载字典子字段的关联选项
 async function loadLinkedDictSubfieldOptions(rowIndex, field) {
     const dictData = dataRows[rowIndex].data[field.name] || {};
-    
+
     for (const subfield of field.subfields) {
         if (subfield.type === 'option' || subfield.type === 'datalist') {
             const subfieldId = `dict-${rowIndex}-${field.name}-${subfield.name}`;
             const currentValue = dictData[subfield.name] || '';
-            
+
             if (subfield.dataSource && (subfield.dataSource.type === 'linked' || subfield.dataSource.type === 'enum')) {
                 const options = await getFieldOptions(subfield);
                 if (subfield.type === 'option') {
                     const selectElement = document.getElementById(subfieldId);
                     if (selectElement) {
-                        const optionsHtml = options.map(opt => 
+                        const optionsHtml = options.map(opt =>
                             `<option value="${escapeHtml(opt)}" ${currentValue === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`
                         ).join('');
                         selectElement.innerHTML = `<option value="">-- 请选择 --</option>${optionsHtml}`;
@@ -650,7 +650,7 @@ async function loadLinkedDictSubfieldOptions(rowIndex, field) {
                 if (subfield.type === 'option') {
                     const selectElement = document.getElementById(subfieldId);
                     if (selectElement) {
-                        const optionsHtml = options.map(opt => 
+                        const optionsHtml = options.map(opt =>
                             `<option value="${escapeHtml(opt)}" ${currentValue === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`
                         ).join('');
                         selectElement.innerHTML = `<option value="">-- 请选择 --</option>${optionsHtml}`;
@@ -671,22 +671,22 @@ async function loadLinkedDictSubfieldOptions(rowIndex, field) {
 // 加载条目子字段的关联选项
 async function loadLinkedSubfieldOptions(rowIndex, field) {
     const entries = dataRows[rowIndex].data[field.name] || [];
-    
+
     for (let entryIndex = 0; entryIndex < entries.length; entryIndex++) {
         for (const subfield of field.subfields) {
             if (subfield.type === 'option' || subfield.type === 'datalist') {
                 const subfieldId = `entry-${rowIndex}-${field.name}-${entryIndex}-${subfield.name}`;
-                
+
                 // 检查是否是关联配表或枚举模式
                 if (subfield.dataSource && (subfield.dataSource.type === 'linked' || subfield.dataSource.type === 'enum')) {
                     const options = await getFieldOptions(subfield);
                     const currentValue = entries[entryIndex][subfield.name] || '';
-                    
+
                     // 更新选项
                     if (subfield.type === 'option') {
                         const selectElement = document.getElementById(subfieldId);
                         if (selectElement) {
-                            const optionsHtml = options.map(opt => 
+                            const optionsHtml = options.map(opt =>
                                 `<option value="${escapeHtml(opt)}" ${currentValue === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`
                             ).join('');
                             selectElement.innerHTML = `<option value="">-- 请选择 --</option>${optionsHtml}`;
@@ -695,7 +695,7 @@ async function loadLinkedSubfieldOptions(rowIndex, field) {
                         const inputElement = document.getElementById(subfieldId);
                         const dropdownElement = document.getElementById(`datalist-${subfieldId}`);
                         if (inputElement && dropdownElement) {
-                            const formattedOptions = options.map(opt => 
+                            const formattedOptions = options.map(opt =>
                                 typeof opt === 'string' ? { value: opt, label: '' } : opt
                             );
                             initCustomDatalist(inputElement, dropdownElement, formattedOptions);
@@ -705,11 +705,11 @@ async function loadLinkedSubfieldOptions(rowIndex, field) {
                     // 手动模式，直接使用 subfield.options
                     const currentValue = entries[entryIndex][subfield.name] || '';
                     const options = subfield.options || [];
-                    
+
                     if (subfield.type === 'option') {
                         const selectElement = document.getElementById(subfieldId);
                         if (selectElement) {
-                            const optionsHtml = options.map(opt => 
+                            const optionsHtml = options.map(opt =>
                                 `<option value="${escapeHtml(opt)}" ${currentValue === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>`
                             ).join('');
                             selectElement.innerHTML = `<option value="">-- 请选择 --</option>${optionsHtml}`;
@@ -735,18 +735,18 @@ async function loadLinkedSubfieldOptions(rowIndex, field) {
 
 function createFieldInput(field, value, rowIndex) {
     const fieldId = `field-${rowIndex}-${field.name}`;
-    
+
     let inputHtml = '';
 
     switch (field.type) {
         case 'text':
             inputHtml = `<input type="text" id="${fieldId}" class="form-control" value="${escapeHtml(value)}" ${field.required ? 'required' : ''}>`;
             break;
-        
+
         case 'number':
             inputHtml = `<input type="number" id="${fieldId}" class="form-control" value="${value}" ${field.required ? 'required' : ''}>`;
             break;
-        
+
         case 'color':
             // 颜色选择器：包含色盘和文本输入框
             const hexValue = value ? String(value).replace(/^0x/i, '') : 'FFFFFF';
@@ -763,14 +763,14 @@ function createFieldInput(field, value, rowIndex) {
                 </div>
             `;
             break;
-        
+
         case 'option':
             // 使用占位符，稍后异步加载选项
             inputHtml = `<select id="${fieldId}" class="form-control linked-field" data-field-name="${field.name}" ${field.required ? 'required' : ''}>
                 <option value="">-- 加载中... --</option>
             </select>`;
             break;
-        
+
         case 'datalist':
             const datalistId = `datalist-${fieldId}`;
             // 使用自定义下拉列表
@@ -790,7 +790,7 @@ function createFieldInput(field, value, rowIndex) {
                 </div>
             `;
             break;
-        
+
         case 'dict':
             inputHtml = createDictInput(field, value, rowIndex);
             return `
@@ -798,7 +798,7 @@ function createFieldInput(field, value, rowIndex) {
                     ${inputHtml}
                 </div>
             `;
-        
+
         case 'entry':
             inputHtml = createEntryInput(field, value, rowIndex);
             return `
@@ -820,7 +820,7 @@ function createFieldInput(field, value, rowIndex) {
                     ${inputHtml}
                 </div>
             `;
-        
+
         case 'flags':
             const flagsValue = value || 0;
             inputHtml = `
@@ -835,7 +835,7 @@ function createFieldInput(field, value, rowIndex) {
     }
 
     const rawBadge = field.isRaw ? '<span class="raw-badge" title="此字段Lua导出时不加引号">原始</span>' : '';
-    
+
     return `
         <div class="form-group">
             <label>${escapeHtml(field.label || field.name)}${field.required ? ' *' : ''} ${rawBadge}</label>
@@ -848,12 +848,12 @@ function createDictInput(field, value, rowIndex) {
     // 字典是单个对象，不是数组
     const dictData = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
     const subfields = field.subfields || [];
-    
+
     const subfieldsHtml = subfields.map((subfield) => {
         const subfieldValue = dictData[subfield.name] || '';
         const subfieldId = `dict-${rowIndex}-${field.name}-${subfield.name}`;
         let inputHtml = '';
-        
+
         switch (subfield.type) {
             case 'text':
                 inputHtml = `<input type="text" id="${subfieldId}" class="form-control" value="${escapeHtml(subfieldValue)}">`;
@@ -885,7 +885,7 @@ function createDictInput(field, value, rowIndex) {
                 `;
                 break;
         }
-        
+
         const rawBadge = subfield.isRaw ? '<span class="raw-badge" title="此字段Lua导出时不加引号">原始</span>' : '';
         return `
             <div class="dict-field-item">
@@ -894,7 +894,7 @@ function createDictInput(field, value, rowIndex) {
             </div>
         `;
     }).join('');
-    
+
     return `
         <div class="dict-container" data-row="${rowIndex}" data-field="${field.name}">
             <div class="dict-header">
@@ -909,7 +909,7 @@ function createDictInput(field, value, rowIndex) {
 
 function createEntryInput(field, value, rowIndex) {
     const entries = Array.isArray(value) ? value : [];
-    const entriesHtml = entries.map((entry, entryIndex) => 
+    const entriesHtml = entries.map((entry, entryIndex) =>
         createEntryItem(field, entry, rowIndex, entryIndex)
     ).join('');
 
@@ -1027,7 +1027,7 @@ async function addListItem(rowIndex, fieldName) {
             const dropdownElement = document.getElementById(`datalist-${itemId}`);
             if (inputElement && dropdownElement) {
                 // 格式化选项并初始化自定义 datalist
-                const formattedOptions = options.map(opt => 
+                const formattedOptions = options.map(opt =>
                     typeof opt === 'object' ? opt : { value: opt, label: '' }
                 );
                 initCustomDatalist(inputElement, dropdownElement, formattedOptions);
@@ -1077,11 +1077,11 @@ function createEntryItem(field, entry, rowIndex, entryIndex) {
             case 'text':
                 inputHtml = `<input type="text" id="${subfieldId}" class="form-control" value="${escapeHtml(value)}">`;
                 break;
-            
+
             case 'number':
                 inputHtml = `<input type="number" id="${subfieldId}" class="form-control" value="${value}">`;
                 break;
-            
+
             case 'color':
                 // 颜色选择器：包含色盘和文本输入框
                 const hexValue = value ? String(value).replace(/^0x/i, '') : 'FFFFFF';
@@ -1097,14 +1097,14 @@ function createEntryItem(field, entry, rowIndex, entryIndex) {
                     </div>
                 `;
                 break;
-            
+
             case 'option':
                 // 使用占位符，稍后异步加载选项
                 inputHtml = `<select id="${subfieldId}" class="form-control">
                     <option value="">-- 加载中... --</option>
                 </select>`;
                 break;
-            
+
             case 'datalist':
                 const datalistId = `datalist-${subfieldId}`;
                 // 使用自定义下拉列表
@@ -1146,7 +1146,7 @@ function createEntryItem(field, entry, rowIndex, entryIndex) {
 
 function addDataRow() {
     const newRowData = {};
-    
+
     // 使用默认值初始化新行
     (currentSchema.fields || []).forEach(field => {
         if (field.type === 'entry' || field.type === 'list') {
@@ -1166,7 +1166,7 @@ function addDataRow() {
 
     dataRows.push(newDataRow);
     selectedDataRowIndex = dataRows.length - 1;
-    
+
     renderDataRowsList();
     renderDataRowEditor(selectedDataRowIndex);
 }
@@ -1176,20 +1176,20 @@ function removeDataRow(index) {
     if (selectedDataRowIndex !== index) {
         saveCurrentEditToMemory();
     }
-    
+
     dataRows.splice(index, 1);
-    
+
     // 如果删除的是当前选中的数据行，重置选择
     if (selectedDataRowIndex === index) {
         selectedDataRowIndex = -1;
-        document.getElementById('data-row-editor-container').innerHTML = 
+        document.getElementById('data-row-editor-container').innerHTML =
             '<div class="empty-state"><i class="fas fa-hand-pointer"></i><p>请从左侧选择数据行</p></div>';
     } else if (selectedDataRowIndex > index) {
         selectedDataRowIndex--;
     }
-    
+
     renderDataRowsList();
-    
+
     // 如果还有数据行且之前有选中，重新渲染编辑器
     if (selectedDataRowIndex >= 0 && selectedDataRowIndex < dataRows.length) {
         renderDataRowEditor(selectedDataRowIndex);
@@ -1202,7 +1202,7 @@ async function addEntryItem(rowIndex, fieldName) {
     if (!field) return;
 
     const container = document.querySelector(`.entry-container[data-row="${rowIndex}"][data-field="${fieldName}"] .entry-items`);
-    
+
     // 如果容器只有提示文字，先清空
     if (container.querySelector('p')) {
         container.innerHTML = '';
@@ -1210,7 +1210,7 @@ async function addEntryItem(rowIndex, fieldName) {
 
     const currentItemCount = container.querySelectorAll('.entry-item').length;
     const newEntry = {};
-    
+
     // 使用默认值初始化新条目，支持数字键
     (field.subfields || []).forEach(subfield => {
         setFieldValue(newEntry, subfield.name, subfield.defaultValue || '');
@@ -1218,19 +1218,19 @@ async function addEntryItem(rowIndex, fieldName) {
 
     const itemHtml = createEntryItem(field, newEntry, rowIndex, currentItemCount);
     container.insertAdjacentHTML('beforeend', itemHtml);
-    
+
     // 加载新添加条目的关联子字段选项
     for (const subfield of field.subfields || []) {
         if (subfield.type === 'option' || subfield.type === 'datalist') {
             const subfieldId = `entry-${rowIndex}-${fieldName}-${currentItemCount}-${subfield.name}`;
-            
+
             if (subfield.dataSource && (subfield.dataSource.type === 'linked' || subfield.dataSource.type === 'enum')) {
                 const options = await getFieldOptions(subfield);
-                
+
                 if (subfield.type === 'option') {
                     const selectElement = document.getElementById(subfieldId);
                     if (selectElement) {
-                        const optionsHtml = options.map(opt => 
+                        const optionsHtml = options.map(opt =>
                             `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`
                         ).join('');
                         selectElement.innerHTML = `<option value="">-- 请选择 --</option>${optionsHtml}`;
@@ -1240,7 +1240,7 @@ async function addEntryItem(rowIndex, fieldName) {
                     const dropdownElement = document.getElementById(`datalist-${subfieldId}`);
                     if (inputElement && dropdownElement) {
                         // 格式化选项并初始化自定义 datalist
-                        const formattedOptions = options.map(opt => 
+                        const formattedOptions = options.map(opt =>
                             typeof opt === 'object' ? opt : { value: opt, label: '' }
                         );
                         initCustomDatalist(inputElement, dropdownElement, formattedOptions);
@@ -1249,11 +1249,11 @@ async function addEntryItem(rowIndex, fieldName) {
             } else {
                 // 手动模式，直接使用 subfield.options
                 const options = subfield.options || [];
-                
+
                 if (subfield.type === 'option') {
                     const selectElement = document.getElementById(subfieldId);
                     if (selectElement) {
-                        const optionsHtml = options.map(opt => 
+                        const optionsHtml = options.map(opt =>
                             `<option value="${escapeHtml(opt)}">${escapeHtml(opt)}</option>`
                         ).join('');
                         selectElement.innerHTML = `<option value="">-- 请选择 --</option>${optionsHtml}`;
@@ -1263,7 +1263,7 @@ async function addEntryItem(rowIndex, fieldName) {
                     const dropdownElement = document.getElementById(`datalist-${subfieldId}`);
                     if (inputElement && dropdownElement) {
                         // 格式化选项并初始化自定义 datalist
-                        const formattedOptions = options.map(opt => 
+                        const formattedOptions = options.map(opt =>
                             typeof opt === 'object' ? opt : { value: opt, label: '' }
                         );
                         initCustomDatalist(inputElement, dropdownElement, formattedOptions);
@@ -1277,10 +1277,10 @@ async function addEntryItem(rowIndex, fieldName) {
 function removeEntryItem(rowIndex, fieldName, entryIndex) {
     const container = document.querySelector(`.entry-container[data-row="${rowIndex}"][data-field="${fieldName}"] .entry-items`);
     const item = container.querySelector(`.entry-item[data-entry-index="${entryIndex}"]`);
-    
+
     if (item) {
         item.remove();
-        
+
         // 重新编号
         container.querySelectorAll('.entry-item').forEach((item, newIndex) => {
             item.dataset.entryIndex = newIndex;
@@ -1296,9 +1296,9 @@ function removeEntryItem(rowIndex, fieldName, entryIndex) {
 async function saveData() {
     // 在保存前，先将当前编辑器中的数据保存到内存
     saveCurrentEditToMemory();
-    
+
     const data = collectData();
-    
+
     // 保存完整的 dataRows 信息（包括 name 和 isRaw）
     const dataWithMeta = dataRows.map((dataRow, index) => ({
         name: dataRow.name,
@@ -1320,16 +1320,16 @@ async function saveData() {
         });
 
         const result = await response.json();
-        
+
         if (result.success) {
-            alert('配表数据保存成功');
-            
+            showSuccess('配表数据保存成功');
+
             // 保存当前编辑的数据行索引
             const currentEditingIndex = selectedDataRowIndex;
-            
+
             // 重新从服务器加载数据以确保数据同步
             await reloadCurrentData();
-            
+
             // 如果之前有选中的数据行，重新选中并渲染
             if (currentEditingIndex >= 0 && currentEditingIndex < dataRows.length) {
                 selectedDataRowIndex = currentEditingIndex;
@@ -1337,11 +1337,11 @@ async function saveData() {
                 await renderDataRowEditor(currentEditingIndex);
             }
         } else {
-            alert('保存配表数据失败: ' + result.error);
+            showError('保存配表数据失败: ' + result.error);
         }
     } catch (error) {
         console.error('保存配表数据错误:', error);
-        alert('保存配表数据失败');
+        showError('保存配表数据失败');
     }
 }
 
@@ -1350,7 +1350,7 @@ async function reloadCurrentData() {
     try {
         const dataResponse = await fetch(`${API.DATA}?action=get&name=${encodeURIComponent(currentSchemaName)}`);
         const dataResult = await dataResponse.json();
-        
+
         if (dataResult.success) {
             const loadedData = dataResult.data || [];
             dataRows = loadedData.map((row, index) => {
@@ -1378,14 +1378,14 @@ async function reloadCurrentData() {
 function previewData() {
     const modal = document.getElementById('preview-modal');
     modal.classList.add('show');
-    
+
     const container = document.getElementById('preview-container');
     const data = collectData();
-    
+
     // 存储数据和 schema 供脚本使用
     window.previewDataCache = data;
     window.previewSchemaCache = currentSchema;
-    
+
     let html = `<div class="preview-scroll-container">
         <div class="preview-top-scrollbar" id="preview-top-scrollbar" title="横向滚动条">
             <div class="preview-top-scrollbar-content" id="preview-top-scrollbar-content"></div>
@@ -1395,20 +1395,20 @@ function previewData() {
                 <thead>
                     <tr>
                         <th>数据行名称</th>`;
-    
+
     // 表头
     const fields = currentSchema.fields || [];
     fields.forEach(field => {
         html += `<th>${escapeHtml(field.label || field.name)}</th>`;
     });
     html += '</tr></thead><tbody>';
-    
+
     // 数据行
     dataRows.forEach((dataRow, index) => {
         const rowData = data[index];
         html += `<tr>
             <td class="preview-row-name">${escapeHtml(dataRow.name)}${dataRow.isRaw ? ' <span class="raw-badge">原始</span>' : ''}</td>`;
-        
+
         fields.forEach(field => {
             // 使用工具函数获取字段值，支持数字键
             let value = getFieldValue(rowData, field.name);
@@ -1427,16 +1427,16 @@ function previewData() {
             }
             html += `<td>${isHtml ? value : escapeHtml(String(value))}</td>`;
         });
-        
+
         html += '</tr>';
     });
-    
+
     html += '</tbody></table></div></div>';
     container.innerHTML = html;
-    
+
     // 初始化滚动条同步
     initPreviewScrollSync();
-    
+
     // 初始化代码编辑器（如果还没有初始化）
     initScriptEditor();
 }
@@ -1446,47 +1446,47 @@ function initPreviewScrollSync() {
     const tableWrapper = document.getElementById('preview-table-wrapper');
     const topScrollbarContent = document.getElementById('preview-top-scrollbar-content');
     const table = document.getElementById('preview-table');
-    
+
     if (!topScrollbar || !tableWrapper || !topScrollbarContent || !table) {
         return;
     }
-    
+
     // 设置顶部滚动条内容宽度与表格一致
     const updateScrollbarWidth = () => {
         topScrollbarContent.style.width = table.scrollWidth + 'px';
     };
-    
+
     updateScrollbarWidth();
-    
+
     // 同步顶部滚动条 -> 表格
     topScrollbar.addEventListener('scroll', () => {
         tableWrapper.scrollLeft = topScrollbar.scrollLeft;
     });
-    
+
     // 同步表格 -> 顶部滚动条
     tableWrapper.addEventListener('scroll', () => {
         topScrollbar.scrollLeft = tableWrapper.scrollLeft;
     });
-    
+
     // 监听窗口大小变化
     const resizeObserver = new ResizeObserver(() => {
         updateScrollbarWidth();
     });
-    
+
     resizeObserver.observe(table);
 }
 
 async function closePreviewModal() {
     // 退出预览时自动保存脚本
     await savePreviewScript(true);
-    
+
     const modal = document.getElementById('preview-modal');
     modal.classList.remove('show');
-    
+
     // 清除缓存数据
     window.previewDataCache = null;
     window.previewSchemaCache = null;
-    
+
     // 清除脚本结果
     clearScriptResult();
 }
@@ -1497,29 +1497,29 @@ async function executeScript() {
     const resultContainer = document.getElementById('script-result-container');
     const resultContent = document.getElementById('script-result-content');
     const resultCount = resultContainer.querySelector('.result-count');
-    
+
     // 从 CodeMirror 编辑器或 textarea 获取代码
     const scriptCode = scriptEditor ? scriptEditor.getValue().trim() : document.getElementById('preview-script-input').value.trim();
-    
+
     if (!scriptCode) {
-        alert('请输入处理函数');
+        showWarning('请输入处理函数');
         return;
     }
-    
+
     if (!window.previewDataCache) {
-        alert('没有可用的预览数据');
+        showWarning('没有可用的预览数据');
         return;
     }
-    
+
     try {
         // 解析用户输入的函数
         let userFunction;
-        
+
         // 尝试解析箭头函数或普通函数
         // 支持格式: (index, data, source) => {...} 或 function(index, data, source) {...}
         const arrowFuncMatch = scriptCode.match(/^\s*\(([^)]*)\)\s*=>\s*\{([\s\S]*)\}\s*$/);
         const funcMatch = scriptCode.match(/^\s*function\s*\(([^)]*)\)\s*\{([\s\S]*)\}\s*$/);
-        
+
         if (arrowFuncMatch) {
             // 箭头函数
             const params = arrowFuncMatch[1];
@@ -1541,80 +1541,87 @@ async function executeScript() {
                 throw new Error('函数格式错误。支持格式:\n(index, data, source) => { ... }\n或\nfunction(index, data, source) { ... }');
             }
         }
-        
+
         // 准备只读的数据副本（深拷贝以防止意外修改）
         const data = window.previewDataCache;
         const sourceData = data.map(row => deepFreeze(deepClone(row)));
-        
+
         // 存储更新记录
         const updates = new Map();
-        
+
         // 执行函数处理每行数据
         const results = [];
         const errors = [];
-        
+
         for (let i = 0; i < data.length; i++) {
             try {
                 // 创建 update 函数（在用户函数内部可直接调用）
-                const update = function(index, newData) {
+                const update = function (index, newData) {
                     if (index < 0 || index >= data.length) {
                         throw new Error(`update: 索引 ${index} 超出范围 (0-${data.length - 1})`);
                     }
-                    
-                    if (typeof newData !== 'object' || newData === null) {
+
+                    if (typeof newData !== 'object' || newData === null || Array.isArray(newData)) {
                         throw new Error('update: newData 必须是一个对象');
                     }
-                    
+
                     // 验证字段
                     const schema = window.previewSchemaCache;
                     if (schema && schema.fields) {
-                        const allowedFields = new Set(schema.fields.map(f => f.name));
                         const fieldMap = {};
                         schema.fields.forEach(f => fieldMap[f.name] = f);
-                        
-                        // 检查是否有非法字段
-                        for (const key in newData) {
-                            if (!allowedFields.has(key)) {
-                                throw new Error(`update: 字段 "${key}" 在原表中不存在`);
-                            }
-                        }
-                        
+
                         // 类型转换和验证
                         const validatedData = {};
                         for (const key in newData) {
                             const field = fieldMap[key];
+
+                            // 检查字段是否存在
+                            if (!field) {
+                                throw new Error(`update: 字段 "${key}" 在 schema 中不存在`);
+                            }
+
                             const value = newData[key];
-                            
+
                             try {
                                 validatedData[key] = convertFieldValue(value, field);
                             } catch (e) {
                                 throw new Error(`update: 字段 "${key}" 类型转换失败: ${e.message}`);
                             }
                         }
-                        
-                        updates.set(index, validatedData);
+
+                        // 合并到已有的更新中
+                        if (updates.has(index)) {
+                            updates.set(index, { ...updates.get(index), ...validatedData });
+                        } else {
+                            updates.set(index, validatedData);
+                        }
                     } else {
-                        updates.set(index, { ...newData });
+                        if (updates.has(index)) {
+                            updates.set(index, { ...updates.get(index), ...newData });
+                        } else {
+                            updates.set(index, { ...newData });
+                        }
                     }
                 };
-                
+
                 // 收集本行的所有 yield 结果
                 const yieldResults = [];
-                const yieldFunc = function(value) {
+                const yieldFunc = function (value) {
                     yieldResults.push(value);
                 };
-                
+
                 // 将 update 和 yield 函数注入到全局作用域（临时）
                 const originalUpdate = window.update;
                 const originalYield = window.yield;
                 window.update = update;
                 window.yield = yieldFunc;
-                
+
                 try {
                     // 传入：index, data (只读), source (只读)
                     // update 和 yield 函数通过全局作用域访问
                     const result = userFunction(i, deepClone(data[i]), sourceData);
-                    
+
                     // 如果调用了 yield,使用 yield 的结果
                     if (yieldResults.length > 0) {
                         yieldResults.forEach(yieldValue => {
@@ -1638,7 +1645,7 @@ async function executeScript() {
                         // 如果当前行调用了 update(),将更新应用到返回值上
                         if (updates.has(i)) {
                             const updatedFields = updates.get(i);
-                            
+
                             // 如果返回值是对象,应用更新到对应字段
                             if (typeof result === 'object' && result !== null && !Array.isArray(result)) {
                                 const mergedResult = { ...result };
@@ -1675,14 +1682,14 @@ async function executeScript() {
                 errors.push({ index: i, error: err.message });
             }
         }
-        
+
         // 保存更新记录供后续应用
         window.scriptUpdates = updates;
         const hasUpdates = updates.size > 0;
-        
+
         // 显示结果
         displayScriptResults(results, resultContainer, resultContent, resultCount, errors, hasUpdates);
-        
+
     } catch (error) {
         // 显示错误
         resultContent.innerHTML = `
@@ -1701,9 +1708,9 @@ async function executeScript() {
 function displayScriptResults(results, container, content, countElement, errors, hasModifications) {
     // 保存结果供复制使用
     window.scriptResultsCache = results;
-    
+
     let htmlContent = '';
-    
+
     // 如果有错误,在顶部显示错误警告
     if (errors && errors.length > 0) {
         htmlContent += `
@@ -1713,19 +1720,19 @@ function displayScriptResults(results, container, content, countElement, errors,
                     执行警告 (${errors.length} 行失败)
                 </div>
                 <div class="script-execution-errors-list">`;
-        
+
         errors.forEach(err => {
             htmlContent += `
                     <div class="script-execution-error-item">
                         <span class="error-row-index">第 ${err.index} 行:</span> ${escapeHtml(err.error)}
                     </div>`;
         });
-        
+
         htmlContent += `
                 </div>
             </div>`;
     }
-    
+
     if (results.length === 0) {
         htmlContent += `
             <div class="script-empty-result">
@@ -1741,7 +1748,7 @@ function displayScriptResults(results, container, content, countElement, errors,
     } else {
         // 检查结果类型，决定显示方式
         const firstValue = results[0].value;
-        
+
         if (typeof firstValue === 'object' && firstValue !== null && !Array.isArray(firstValue)) {
             // 对象类型 - 显示为表格
             htmlContent += formatResultsAsTable(results);
@@ -1757,18 +1764,18 @@ function displayScriptResults(results, container, content, countElement, errors,
                 `;
             });
         }
-        
+
         content.innerHTML = htmlContent;
-        
+
         countElement.textContent = `(${results.length} 项)`;
     }
-    
+
     // 更新"应用修改"按钮的显示状态
     updateApplyModificationsButton(hasModifications);
-    
+
     // 显示结果容器
     container.style.display = 'flex';
-    
+
     // 调整右侧面板布局：原表和结果各占一半
     const originalSection = document.querySelector('.preview-original');
     if (originalSection) {
@@ -1781,16 +1788,16 @@ function formatResultsAsTable(results) {
         // 没有 schema 信息，使用简单表格
         return formatResultsAsSimpleTable(results);
     }
-    
+
     const schema = window.previewSchemaCache;
     const fields = schema.fields || [];
-    
+
     // 创建字段映射表
     const fieldMap = {};
     fields.forEach(field => {
         fieldMap[field.name] = field;
     });
-    
+
     // 收集所有出现的键
     const allKeys = new Set();
     results.forEach(({ value }) => {
@@ -1798,11 +1805,11 @@ function formatResultsAsTable(results) {
             Object.keys(value).forEach(key => allKeys.add(key));
         }
     });
-    
+
     if (allKeys.size === 0) {
         return '<div class="script-empty-result">返回的对象为空</div>';
     }
-    
+
     // 生成表格
     let html = `
         <div class="script-result-table-wrapper">
@@ -1810,34 +1817,34 @@ function formatResultsAsTable(results) {
                 <thead>
                     <tr>
                         <th class="result-index-col">索引</th>`;
-    
+
     // 表头：优先显示字段标签
     allKeys.forEach(key => {
         const field = fieldMap[key];
         const label = field ? (field.label || field.name) : key;
         html += `<th>${escapeHtml(label)}</th>`;
     });
-    
+
     html += '</tr></thead><tbody>';
-    
+
     // 数据行
     results.forEach(({ index, value }) => {
         html += `<tr><td class="result-index-col">${index}</td>`;
-        
+
         allKeys.forEach(key => {
             const cellValue = value[key];
             const field = fieldMap[key];
-            
+
             // 根据字段类型格式化值
             const formattedValue = formatCellValueByField(cellValue, field);
             html += `<td>${formattedValue}</td>`;
         });
-        
+
         html += '</tr>';
     });
-    
+
     html += '</tbody></table></div>';
-    
+
     return html;
 }
 
@@ -1849,38 +1856,38 @@ function formatResultsAsSimpleTable(results) {
             Object.keys(value).forEach(key => allKeys.add(key));
         }
     });
-    
+
     if (allKeys.size === 0) {
         return '<div class="script-empty-result">返回的对象为空</div>';
     }
-    
+
     let html = `
         <div class="script-result-table-wrapper">
             <table class="script-result-table">
                 <thead>
                     <tr>
                         <th class="result-index-col">索引</th>`;
-    
+
     allKeys.forEach(key => {
         html += `<th>${escapeHtml(key)}</th>`;
     });
-    
+
     html += '</tr></thead><tbody>';
-    
+
     results.forEach(({ index, value }) => {
         html += `<tr><td class="result-index-col">${index}</td>`;
-        
+
         allKeys.forEach(key => {
             const cellValue = value[key];
             const formatted = formatScriptResultValue(cellValue);
             html += `<td>${formatted}</td>`;
         });
-        
+
         html += '</tr>';
     });
-    
+
     html += '</tbody></table></div>';
-    
+
     return html;
 }
 
@@ -1889,12 +1896,12 @@ function formatCellValueByField(value, field) {
     if (value === '' || value === null || value === undefined) {
         return '<span class="empty-value">nil</span>';
     }
-    
+
     // 没有字段定义，使用默认格式化
     if (!field) {
         return escapeHtml(String(value));
     }
-    
+
     // 根据字段类型格式化
     switch (field.type) {
         case 'color':
@@ -1905,13 +1912,13 @@ function formatCellValueByField(value, field) {
                 <div class="preview-color-box" style="background-color: ${colorValue};"></div>
                 <span>${escapeHtml(String(value))}</span>
             </div>`;
-        
+
         case 'option':
         case 'datalist':
             // 选项字段：如果有枚举或关联表，可以显示对应的标签
             // 这里简单显示值
             return escapeHtml(String(value));
-        
+
         case 'list':
             // 列表字段 - 显示完整内容
             if (Array.isArray(value)) {
@@ -1920,25 +1927,25 @@ function formatCellValueByField(value, field) {
                 return `<span class="list-value">${escapeHtml(displayValue)}</span>`;
             }
             return escapeHtml(String(value));
-        
+
         case 'entry':
             // 条目字段
             if (Array.isArray(value)) {
                 return `<span class="entry-value">[${value.length} 条目]</span>`;
             }
             return escapeHtml(String(value));
-        
+
         case 'dict':
             // 字典字段
             if (typeof value === 'object' && value !== null) {
                 return `<span class="dict-value">{对象}</span>`;
             }
             return escapeHtml(String(value));
-        
+
         case 'number':
             // 数字字段
             return `<span class="number-value">${escapeHtml(String(value))}</span>`;
-        
+
         default:
             // 默认文本
             return escapeHtml(String(value));
@@ -1960,10 +1967,10 @@ function clearScriptResult() {
     const resultContainer = document.getElementById('script-result-container');
     const resultContent = document.getElementById('script-result-content');
     const scriptInput = document.getElementById('preview-script-input');
-    
+
     resultContainer.style.display = 'none';
     resultContent.innerHTML = '';
-    
+
     // 可选：也清空输入框
     // scriptInput.value = '';
 }
@@ -1971,7 +1978,7 @@ function clearScriptResult() {
 function toggleScriptExamples() {
     const menu = document.getElementById('script-examples-menu');
     menu.classList.toggle('show');
-    
+
     // 点击其他地方关闭菜单
     if (menu.classList.contains('show')) {
         setTimeout(() => {
@@ -1983,7 +1990,7 @@ function toggleScriptExamples() {
 function closeScriptExamplesOnClickOutside(e) {
     const menu = document.getElementById('script-examples-menu');
     const button = event.target.closest('.script-examples-dropdown');
-    
+
     if (!button && menu.classList.contains('show')) {
         menu.classList.remove('show');
         document.removeEventListener('click', closeScriptExamplesOnClickOutside);
@@ -1992,20 +1999,20 @@ function closeScriptExamplesOnClickOutside(e) {
 
 function loadScriptExample(type) {
     const menu = document.getElementById('script-examples-menu');
-    
+
     const examples = {
         extract: `// 提取单个字段的值
 (index, data) => {
     return data.fish_name;  // 替换为你需要的字段名
 }`,
-        
+
         filter: `// 筛选符合条件的数据
 (index, data) => {
     if (data.rarity > 2) {  // 修改筛选条件
         return data;
     }
 }`,
-        
+
         transform: `// 组合多个字段
 (index, data) => {
     return {
@@ -2014,7 +2021,7 @@ function loadScriptExample(type) {
         info: data.fish_name + ' - 稀有度:' + data.rarity
     };
 }`,
-        
+
         calculate: `// 进行数值计算
 (index, data) => {
     // 例如：计算价格折扣
@@ -2023,9 +2030,37 @@ function loadScriptExample(type) {
         original: data.price,
         discounted: data.price * discount
     };
+}`,
+
+        updateEntry: `// 精准修改条目数组的某一行
+(index, data) => {
+    // 方法1：使用 map 函数根据条件修改
+    update(index, {
+        技能列表: data.技能列表.map((skill, idx) => {
+            // 只修改第 0 行（第一个元素）
+            if (idx === 0) {
+                return { ...skill, level: 10 };
+            }
+            return skill;
+        })
+    });
+    
+    // 方法2：使用展开运算符复制后修改
+    // const newList = [...data.技能列表];
+    // newList[0] = { ...newList[0], level: 10 };
+    // update(index, { 技能列表: newList });
+    
+    // 方法3：批量修改符合条件的行
+    // update(index, {
+    //     技能列表: data.技能列表.map(skill => 
+    //         skill.level < 5 ? { ...skill, level: 5 } : skill
+    //     )
+    // });
+    
+    return data;
 }`
     };
-    
+
     if (examples[type]) {
         // 更新 CodeMirror 或 textarea
         if (scriptEditor) {
@@ -2037,30 +2072,31 @@ function loadScriptExample(type) {
             scriptInput.focus();
         }
     }
-    
+
     menu.classList.remove('show');
     document.removeEventListener('click', closeScriptExamplesOnClickOutside);
 }
 
 function copyScriptResult() {
     if (!window.scriptResultsCache) {
-        alert('没有可复制的结果');
+        showWarning('没有可复制的结果');
         return;
     }
-    
+
     try {
         // 将结果转换为 JSON 数组
         const resultArray = window.scriptResultsCache.map(item => item.value);
         const jsonString = JSON.stringify(resultArray, null, 2);
-        
+
         // 复制到剪贴板
         navigator.clipboard.writeText(jsonString).then(() => {
+            showSuccess('结果已复制到剪贴板');
             // 显示成功提示
             const button = event.target.closest('button');
             const originalHTML = button.innerHTML;
             button.innerHTML = '<i class="fas fa-check"></i> 已复制';
             button.disabled = true;
-            
+
             setTimeout(() => {
                 button.innerHTML = originalHTML;
                 button.disabled = false;
@@ -2075,12 +2111,12 @@ function copyScriptResult() {
             textarea.select();
             document.execCommand('copy');
             document.body.removeChild(textarea);
-            
-            alert('结果已复制到剪贴板');
+
+            showSuccess('结果已复制到剪贴板');
         });
     } catch (error) {
         console.error('复制失败:', error);
-        alert('复制失败: ' + error.message);
+        showError('复制失败: ' + error.message);
     }
 }
 
@@ -2088,19 +2124,19 @@ function copyScriptResult() {
 function updateApplyModificationsButton(hasUpdates) {
     const applyBtn = document.getElementById('apply-modifications-btn');
     const titleText = document.getElementById('result-title-text');
-    
+
     if (applyBtn) {
         if (hasUpdates) {
             applyBtn.style.display = 'inline-flex';
             applyBtn.innerHTML = `<i class="fas fa-check"></i> 应用更新 (${window.scriptUpdates.size} 行)`;
-            
+
             // 更新标题为"更新结果"
             if (titleText) {
                 titleText.innerHTML = '<i class="fas fa-edit"></i> 更新结果';
             }
         } else {
             applyBtn.style.display = 'none';
-            
+
             // 恢复标题为"查询结果"
             if (titleText) {
                 titleText.innerHTML = '查询结果';
@@ -2112,16 +2148,16 @@ function updateApplyModificationsButton(hasUpdates) {
 // 应用更新到原始数据
 function applyModifications() {
     if (!window.scriptUpdates || window.scriptUpdates.size === 0) {
-        alert('没有需要应用的更新');
+        showWarning('没有需要应用的更新');
         return;
     }
-    
+
     if (!confirm(`确定要应用 ${window.scriptUpdates.size} 行数据的更新吗？\n\n此操作将更新原始数据表。`)) {
         return;
     }
-    
+
     try {
-        // 应用所有更新到 dataRows
+        // 应用所有更新到 dataRows 并重新渲染对应的 DOM
         window.scriptUpdates.forEach((updatedData, index) => {
             if (index >= 0 && index < dataRows.length) {
                 // 合并更新数据到原始数据
@@ -2129,40 +2165,136 @@ function applyModifications() {
                     ...dataRows[index].data,
                     ...updatedData
                 };
+                
+                // 重新渲染被修改的字段的 DOM（关键修复）
+                Object.keys(updatedData).forEach(fieldName => {
+                    updateFieldDOM(index, fieldName, updatedData[fieldName]);
+                });
             }
         });
-        
+
         // 清除更新记录
         window.scriptUpdates.clear();
-        
+
         // 刷新预览的原始数据表
         previewData();
-        
+
         // 隐藏"应用修改"按钮
         updateApplyModificationsButton(false);
-        
+
         // 清除查询结果
         clearScriptResult();
-        
+
         // 显示成功提示
         const applyBtn = document.getElementById('apply-modifications-btn');
         if (applyBtn) {
             const originalHTML = applyBtn.innerHTML;
             applyBtn.innerHTML = '<i class="fas fa-check"></i> 已应用';
             applyBtn.disabled = true;
-            
+
             setTimeout(() => {
                 applyBtn.innerHTML = originalHTML;
                 applyBtn.disabled = false;
                 applyBtn.style.display = 'none';
             }, 2000);
         }
-        
-        alert('更新已成功应用到数据表');
-        
+
+        showSuccess('更新已成功应用到数据表');
+
     } catch (error) {
         console.error('应用更新失败:', error);
-        alert('应用更新失败: ' + error.message);
+        showError('应用更新失败: ' + error.message);
+    }
+}
+
+// 更新字段的 DOM 显示（在应用修改后同步 DOM）
+function updateFieldDOM(rowIndex, fieldName, newValue) {
+    if (!currentSchema || !currentSchema.fields) return;
+    
+    const field = currentSchema.fields.find(f => f.name === fieldName);
+    if (!field) return;
+    
+    // 对于 entry 类型，重新渲染整个容器
+    if (field.type === 'entry') {
+        const container = document.querySelector(`.entry-container[data-row="${rowIndex}"][data-field="${fieldName}"]`);
+        if (container) {
+            const entryItems = container.querySelector('.entry-items');
+            if (entryItems) {
+                const entries = Array.isArray(newValue) ? newValue : [];
+                if (entries.length === 0) {
+                    entryItems.innerHTML = '<p style="color: #95a5a6; text-align: center; padding: 10px;">暂无条目</p>';
+                } else {
+                    entryItems.innerHTML = entries.map((entry, entryIndex) =>
+                        createEntryItem(field, entry, rowIndex, entryIndex)
+                    ).join('');
+                    
+                    // 重新初始化相关的 option 和 datalist
+                    setTimeout(() => {
+                        entries.forEach((entry, entryIndex) => {
+                            field.subfields?.forEach(subfield => {
+                                if (subfield.type === 'option') {
+                                    loadOptions(rowIndex, fieldName, entryIndex, subfield.name);
+                                } else if (subfield.type === 'datalist') {
+                                    const subfieldId = `entry-${rowIndex}-${fieldName}-${entryIndex}-${subfield.name}`;
+                                    initCustomDatalist(subfieldId);
+                                }
+                            });
+                        });
+                    }, 100);
+                }
+            }
+        }
+    }
+    // 对于 list 类型
+    else if (field.type === 'list') {
+        const container = document.querySelector(`.list-container[data-row="${rowIndex}"][data-field="${fieldName}"]`);
+        if (container) {
+            const listItems = container.querySelector('.list-items');
+            if (listItems) {
+                const items = Array.isArray(newValue) ? newValue : [];
+                if (items.length === 0) {
+                    listItems.innerHTML = '<p style="color: #95a5a6; text-align: center; padding: 10px;">暂无元素</p>';
+                } else {
+                    listItems.innerHTML = items.map((item, idx) =>
+                        createListItem(field, item, rowIndex, idx)
+                    ).join('');
+                    
+                    // 重新初始化相关的 option 和 datalist
+                    setTimeout(() => {
+                        if (field.elementType === 'option' || field.elementType === 'datalist') {
+                            items.forEach((item, idx) => {
+                                if (field.elementType === 'option') {
+                                    loadOptions(rowIndex, fieldName, idx, null);
+                                } else if (field.elementType === 'datalist') {
+                                    const itemId = `list-${rowIndex}-${fieldName}-${idx}`;
+                                    initCustomDatalist(itemId);
+                                }
+                            });
+                        }
+                    }, 100);
+                }
+            }
+        }
+    }
+    // 对于 dict 类型
+    else if (field.type === 'dict') {
+        const container = document.querySelector(`.dict-container[data-row="${rowIndex}"][data-field="${fieldName}"]`);
+        if (container && typeof newValue === 'object' && newValue !== null) {
+            field.subfields?.forEach(subfield => {
+                const subfieldId = `dict-${rowIndex}-${fieldName}-${subfield.name}`;
+                const input = document.getElementById(subfieldId);
+                if (input && subfield.name in newValue) {
+                    input.value = newValue[subfield.name] || '';
+                }
+            });
+        }
+    }
+    // 对于简单类型
+    else {
+        const input = document.getElementById(`field-${rowIndex}-${fieldName}`);
+        if (input) {
+            input.value = newValue || '';
+        }
     }
 }
 
@@ -2170,29 +2302,29 @@ function applyModifications() {
 async function savePreviewScript(autoSave = false, event = null) {
     if (!currentSchema || !currentSchemaName) {
         if (!autoSave) {
-            alert('没有可用的 schema');
+            showWarning('没有可用的 schema');
         }
         return;
     }
-    
+
     const scriptEditor = window.scriptEditor;
     if (!scriptEditor) {
         // 编辑器未初始化,跳过保存
         return;
     }
-    
+
     const scriptCode = scriptEditor.getValue();
-    
+
     // 手动保存时检查是否为空
     if (!autoSave && !scriptCode.trim()) {
-        alert('脚本内容为空');
+        showWarning('脚本内容为空');
         return;
     }
-    
+
     try {
         // 更新 currentSchema 中的脚本字段
         currentSchema.script = scriptCode;
-        
+
         // 保存到服务器
         const response = await fetch(API.SCHEMA, {
             method: 'POST',
@@ -2205,9 +2337,9 @@ async function savePreviewScript(autoSave = false, event = null) {
                 data: currentSchema
             })
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             if (!autoSave) {
                 // 手动保存时显示成功提示
@@ -2216,13 +2348,13 @@ async function savePreviewScript(autoSave = false, event = null) {
                     const originalHTML = saveBtn.innerHTML;
                     saveBtn.innerHTML = '<i class="fas fa-check"></i> 已保存';
                     saveBtn.disabled = true;
-                    
+
                     setTimeout(() => {
                         saveBtn.innerHTML = originalHTML;
                         saveBtn.disabled = false;
                     }, 1500);
                 } else {
-                    alert('脚本已保存');
+                    showSuccess('脚本已保存');
                 }
             }
         } else {
@@ -2231,7 +2363,7 @@ async function savePreviewScript(autoSave = false, event = null) {
     } catch (error) {
         console.error('保存脚本失败:', error);
         if (!autoSave) {
-            alert('保存脚本失败: ' + error.message);
+            showError('保存脚本失败: ' + error.message);
         }
     }
 }
@@ -2329,17 +2461,17 @@ function isValidLuaIdentifier(str) {
         'function', 'if', 'in', 'local', 'nil', 'not', 'or', 'repeat',
         'return', 'then', 'true', 'until', 'while'
     ];
-    
+
     if (!str || typeof str !== 'string') return false;
     if (luaKeywords.includes(str)) return false;
-    
+
     return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(str);
 }
 
 function exportToLua() {
     const modal = document.getElementById('export-lua-modal');
     modal.classList.add('show');
-    
+
     // 从当前schema加载导出配置
     if (currentSchema && currentSchema.exportConfig) {
         document.getElementById('export-namespace').value = currentSchema.exportConfig.namespace || 'Tile';
@@ -2350,14 +2482,14 @@ function exportToLua() {
         document.getElementById('export-table-key-type').value = 'string';
         requireItems = [];
     }
-    
+
     renderRequireList();
     updateLuaExport();
-    
+
     // 监听格式切换，显示/隐藏键类型配置
     document.getElementById('export-format-select').addEventListener('change', toggleTableKeyTypeVisibility);
     toggleTableKeyTypeVisibility();
-    
+
     // 监听配置变化，自动保存到schema
     document.getElementById('export-namespace').addEventListener('blur', saveExportConfigToSchema);
     document.getElementById('export-table-key-type').addEventListener('blur', saveExportConfigToSchema);
@@ -2368,7 +2500,7 @@ function toggleTableKeyTypeVisibility() {
     const keyTypeGroup = document.getElementById('table-key-type-group');
     const requireListGroup = document.getElementById('require-list').parentElement;
     const namespaceGroup = document.getElementById('export-namespace').parentElement;
-    
+
     // CSV格式隐藏Lua特有的配置项
     if (format === 'csv') {
         keyTypeGroup.style.display = 'none';
@@ -2383,15 +2515,15 @@ function toggleTableKeyTypeVisibility() {
 
 function saveExportConfigToSchema() {
     if (!currentSchema) return;
-    
+
     if (!currentSchema.exportConfig) {
         currentSchema.exportConfig = {};
     }
-    
+
     currentSchema.exportConfig.namespace = document.getElementById('export-namespace').value.trim() || 'Tile';
     currentSchema.exportConfig.tableKeyType = document.getElementById('export-table-key-type').value.trim() || 'string';
     currentSchema.exportConfig.requires = [...requireItems];
-    
+
     // 自动保存到服务器
     saveSchemaExportConfig();
 }
@@ -2416,7 +2548,7 @@ function renderRequireList() {
         container.innerHTML = '<div style="color: #999; text-align: center; padding: 10px;">暂无包导入</div>';
         return;
     }
-    
+
     container.innerHTML = requireItems.map((item, index) => `
         <div class="require-item">
             <input type="text" class="form-control var-name-input" 
@@ -2443,14 +2575,14 @@ function updateRequireItem(index, field, value) {
 function closeLuaExportModal() {
     const modal = document.getElementById('export-lua-modal');
     modal.classList.remove('show');
-    
+
     // 关闭时再次保存（确保所有更改都已保存）
     saveExportConfigToSchema();
 }
 
 async function saveSchemaExportConfig() {
     if (!currentSchema || !currentSchemaName) return;
-    
+
     try {
         await fetch(API.SCHEMA, {
             method: 'POST',
@@ -2471,7 +2603,7 @@ async function saveSchemaExportConfig() {
 function updateLuaExport() {
     const format = document.getElementById('export-format-select').value;
     const data = collectData();
-    
+
     let code;
     if (format === 'csv') {
         code = generateCsvCode(data);
@@ -2480,19 +2612,19 @@ function updateLuaExport() {
         const tableKeyType = document.getElementById('export-table-key-type').value.trim() || 'string';
         code = generateLuaCode(data, format, namespace, tableKeyType);
     }
-    
+
     document.getElementById('lua-code-output').textContent = code;
 }
 
 function generateLuaCode(data, format, namespace, tableKeyType) {
     const schema = currentSchema;
     const schemaName = currentSchemaName;
-    
+
     let code = '';
-    
+
     // 添加 namespace 注释头部
     code += `---@namespace ${namespace}\n\n`;
-    
+
     // 添加包导入
     const validRequires = requireItems.filter(item => item.varName.trim() && item.path.trim());
     if (validRequires.length > 0) {
@@ -2501,64 +2633,64 @@ function generateLuaCode(data, format, namespace, tableKeyType) {
         });
         code += '\n';
     }
-    
+
     // 如果schema有描述，添加描述注释
     if (schema.description) {
         code += `-- ${schema.description}\n\n`;
     }
-    
+
     // 生成类型定义
     code += generateTypeDefinition(schema, schemaName);
     code += '\n';
-    
+
     // 生成数据
     if (format === 'table') {
         code += generateLuaTable(data, schema, schemaName, tableKeyType);
     } else {
         code += generateLuaArray(data, schema, schemaName);
     }
-    
+
     code += `\nreturn result\n`;
-    
+
     return code;
 }
 
 function generateCsvCode(data) {
     const schema = currentSchema;
     const fields = schema.fields || [];
-    
+
     // 第一列是固定的
     const headerRow1 = ['key'];
     const headerRow2 = ['Int'];
-    
+
     // 添加所有字段的标签
     fields.forEach(field => {
         headerRow1.push(field.label || field.name);
-        
+
         // 确定类型名称
         let typeName = getCsvType(field);
         headerRow2.push(typeName);
     });
-    
+
     // 生成CSV行
     const csvRows = [];
     csvRows.push(headerRow1.join(','));
     csvRows.push(headerRow2.join(','));
-    
+
     // 添加数据行
     dataRows.forEach((dataRow, rowIndex) => {
         const row = data[rowIndex];
         const csvRow = [(rowIndex + 1).toString()]; // key列是行号
-        
+
         fields.forEach(field => {
             const value = getFieldValue(row, field.name);
             const csvValue = formatCsvValue(value, field);
             csvRow.push(csvValue);
         });
-        
+
         csvRows.push(csvRow.join(','));
     });
-    
+
     return csvRows.join('\n');
 }
 
@@ -2567,7 +2699,7 @@ function getCsvType(field) {
     if (field.luaType && field.luaType.trim()) {
         return field.luaType.trim();
     }
-    
+
     switch (field.type) {
         case 'number':
             return 'Int';
@@ -2605,13 +2737,13 @@ function formatCsvValue(value, field) {
     if (value === null || value === undefined || value === '') {
         return '';
     }
-    
+
     // 列表类型需要用[]包裹，模仿Python列表格式
     if (field.type === 'list' && Array.isArray(value)) {
         // 根据元素类型格式化
         const elemType = field.elementType || 'text';
         let formattedItems;
-        
+
         if (elemType === 'number') {
             // 数字直接输出
             formattedItems = value.map(v => String(v));
@@ -2631,11 +2763,11 @@ function formatCsvValue(value, field) {
                 return String(v);
             });
         }
-        
+
         // 整个列表用引号包裹（因为包含逗号），内容用Python列表风格
         return `"[${formattedItems.join(', ')}]"`;
     }
-    
+
     // dict类型转换为JSON字符串（单个对象）
     if (field.type === 'dict' && value && typeof value === 'object' && !Array.isArray(value)) {
         // 生成紧凑的JSON字符串
@@ -2643,7 +2775,7 @@ function formatCsvValue(value, field) {
         // CSV中的引号需要双倍转义
         return `"${jsonStr.replace(/"/g, '""')}"`;
     }
-    
+
     // entry类型转换为JSON字符串（紧凑格式，无空格）
     if (field.type === 'entry' && Array.isArray(value)) {
         // 生成紧凑的JSON字符串
@@ -2651,12 +2783,12 @@ function formatCsvValue(value, field) {
         // CSV中的引号需要双倍转义
         return `"${jsonStr.replace(/"/g, '""')}"`;
     }
-    
+
     // 数字类型直接输出
     if (field.type === 'number' || field.type === 'flags') {
         return String(value);
     }
-    
+
     // 颜色类型作为ImageKey输出（数字）
     if (field.type === 'color') {
         // 移除0x前缀，转换为十进制数字
@@ -2664,27 +2796,27 @@ function formatCsvValue(value, field) {
         const decimal = parseInt(hex, 16);
         return isNaN(decimal) ? '0' : String(decimal);
     }
-    
+
     // 字符串类型
     const str = String(value);
     // 如果包含逗号、换行或引号，需要用引号包裹并转义
     if (str.includes(',') || str.includes('\n') || str.includes('"')) {
         return `"${str.replace(/"/g, '""')}"`;
     }
-    
+
     return str;
 }
 
 function generateTypeDefinition(schema, schemaName) {
     let code = '';
     const mainTypeName = toPascalCase(schemaName);
-    
+
     // 先生成所有 dict 和 entry 类型的子类定义
     const fields = schema.fields || [];
     fields.forEach(field => {
         if (field.type === 'dict' && field.subfields && field.subfields.length > 0) {
             // 如果设置了自定义 luaType，使用它；否则使用字段名生成
-            const dictTypeName = (field.luaType && field.luaType.trim()) 
+            const dictTypeName = (field.luaType && field.luaType.trim())
                 ? field.luaType.trim()
                 : toPascalCase(field.name);
             code += `---@class (exact) ${dictTypeName}\n`;
@@ -2700,7 +2832,7 @@ function generateTypeDefinition(schema, schemaName) {
             code += '\n';
         } else if (field.type === 'entry' && field.subfields && field.subfields.length > 0) {
             // 如果设置了自定义 luaType，使用它；否则使用字段名生成
-            const entryTypeName = (field.luaType && field.luaType.trim()) 
+            const entryTypeName = (field.luaType && field.luaType.trim())
                 ? field.luaType.trim().replace(/\[\]$/, '') // 移除可能的 []
                 : toPascalCase(field.name);
             code += `---@class (exact) ${entryTypeName}\n`;
@@ -2716,7 +2848,7 @@ function generateTypeDefinition(schema, schemaName) {
             code += '\n';
         }
     });
-    
+
     // 然后生成主类定义
     code += `---@class (exact) ${mainTypeName}\n`;
     fields.forEach(field => {
@@ -2728,7 +2860,7 @@ function generateTypeDefinition(schema, schemaName) {
         const optionalMark = field.required ? '' : '?';
         code += `---@field ${fieldName} ${fieldType}${optionalMark} ${comment}\n`;
     });
-    
+
     return code;
 }
 
@@ -2744,7 +2876,7 @@ function getLuaType(field, parentName = '') {
     if (field.luaType && field.luaType.trim()) {
         return field.luaType.trim();
     }
-    
+
     switch (field.type) {
         case 'number':
             return 'integer';
@@ -2787,61 +2919,61 @@ function getLuaType(field, parentName = '') {
 function generateLuaTable(data, schema, schemaName, tableKeyType = 'string') {
     const typeName = toPascalCase(schemaName);
     let code = `---@type table<${tableKeyType}, ${typeName}>\nlocal result = {\n`;
-    
+
     dataRows.forEach((dataRow, index) => {
         const row = data[index];
         // 使用数据行名称作为键
         const key = dataRow.name || `item_${index + 1}`;
-        
+
         // 根据 isRaw 决定键的格式
         if (dataRow.isRaw) {
             code += `    [${key}] = {\n`;
         } else {
             code += `    ["${escapeHtml(key)}"] = {\n`;
         }
-        
+
         code += generateLuaFields(row, schema, '        ');
         code += `    }`;
-        
+
         if (index < data.length - 1) {
             code += ',';
         }
         code += '\n';
     });
-    
+
     code += `}`;
-    
+
     return code;
 }
 
 function generateLuaArray(data, schema, schemaName) {
     const typeName = toPascalCase(schemaName);
     let code = `---@type ${typeName}[]\nlocal result = {\n`;
-    
+
     data.forEach((row, index) => {
         code += `    {\n`;
         code += generateLuaFields(row, schema, '        ');
         code += `    }`;
-        
+
         if (index < data.length - 1) {
             code += ',';
         }
         code += '\n';
     });
-    
+
     code += `}`;
-    
+
     return code;
 }
 
 function generateLuaFields(row, schema, indent) {
     let code = '';
     const fields = schema.fields || [];
-    
+
     fields.forEach((field, fieldIndex) => {
         // 使用工具函数获取字段值，支持数字键
         const value = getFieldValue(row, field.name);
-        
+
         // 智能选择字段名格式
         if (isValidLuaIdentifier(field.name)) {
             // 合法的 Lua 标识符，直接使用
@@ -2853,7 +2985,7 @@ function generateLuaFields(row, schema, indent) {
             // 其他情况，使用 ["string"] 格式
             code += `${indent}["${field.name}"] = `;
         }
-        
+
         if (field.type === 'dict' && value && typeof value === 'object' && !Array.isArray(value)) {
             // 字典类型导出为单个对象
             code += formatLuaEntry(value, field);
@@ -2882,31 +3014,31 @@ function generateLuaFields(row, schema, indent) {
             // 传递 isRaw 参数
             code += formatLuaValue(value, field.type, field.isRaw);
         }
-        
+
         if (fieldIndex < fields.length - 1) {
             code += ',';
         }
-        
+
         // 在行尾添加注释
         if (field.label && field.label !== field.name) {
             code += ` -- ${field.label}`;
         }
-        
+
         code += '\n';
     });
-    
+
     return code;
 }
 
 function formatLuaEntry(entry, field) {
     const subfields = field.subfields || [];
     let parts = [];
-    
+
     subfields.forEach(subfield => {
         // 使用工具函数获取字段值，支持数字键
         const value = getFieldValue(entry, subfield.name);
         const luaValue = formatLuaValue(value, subfield.type, subfield.isRaw);
-        
+
         // 智能选择字段名格式
         if (isValidLuaIdentifier(subfield.name)) {
             // 合法的 Lua 标识符，直接使用
@@ -2919,7 +3051,7 @@ function formatLuaEntry(entry, field) {
             parts.push(`["${subfield.name}"] = ${luaValue}`);
         }
     });
-    
+
     return `{ ${parts.join(', ')} }`;
 }
 
@@ -2927,11 +3059,11 @@ function formatLuaValue(value, type, isRaw = false) {
     if (value === null || value === undefined || value === '') {
         return 'nil';
     }
-    
+
     switch (type) {
         case 'number':
             return String(value);
-        
+
         case 'color':
             // 颜色值确保以 0x 开头
             const colorStr = String(value).toUpperCase();
@@ -2943,7 +3075,7 @@ function formatLuaValue(value, type, isRaw = false) {
             }
             // 如果格式不对，返回原值
             return colorStr.startsWith('0x') ? colorStr : '0x' + colorStr;
-        
+
         case 'text':
         case 'option':
         case 'datalist':
@@ -2952,7 +3084,7 @@ function formatLuaValue(value, type, isRaw = false) {
                 return String(value);
             }
             return formatLuaString(String(value));
-        
+
         default:
             // 检查是否是数字
             if (!isNaN(value) && value !== '') {
@@ -2976,12 +3108,12 @@ function formatLuaKey(key) {
     if (/^[A-Z][a-zA-Z0-9]*\.[A-Z][a-zA-Z0-9]*$/.test(key)) {
         return key;
     }
-    
+
     // 如果key是有效的Lua标识符，直接使用
     if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key)) {
         return key;
     }
-    
+
     // 否则使用字符串形式
     return formatLuaString(key);
 }
@@ -2989,23 +3121,23 @@ function formatLuaKey(key) {
 async function copyLuaCode() {
     const codeElement = document.getElementById('lua-code-output');
     const code = codeElement.textContent;
-    
+
     try {
         await navigator.clipboard.writeText(code);
-        
+
         // 显示复制成功提示
         const btn = document.getElementById('copy-lua-btn');
         const originalHtml = btn.innerHTML;
         btn.innerHTML = '<i class="fas fa-check"></i> 已复制';
         btn.disabled = true;
-        
+
         setTimeout(() => {
             btn.innerHTML = originalHtml;
             btn.disabled = false;
         }, 2000);
     } catch (error) {
         console.error('复制失败:', error);
-        
+
         // 降级方案：使用传统方法
         const textArea = document.createElement('textarea');
         textArea.value = code;
@@ -3013,14 +3145,14 @@ async function copyLuaCode() {
         textArea.style.left = '-999999px';
         document.body.appendChild(textArea);
         textArea.select();
-        
+
         try {
             document.execCommand('copy');
-            alert('代码已复制到剪贴板');
+            showSuccess('代码已复制到剪贴板');
         } catch (err) {
-            alert('复制失败，请手动复制代码');
+            showError('复制失败，请手动复制代码');
         }
-        
+
         document.body.removeChild(textArea);
     }
 }
@@ -3029,11 +3161,11 @@ function downloadExportFile() {
     const codeElement = document.getElementById('lua-code-output');
     const code = codeElement.textContent;
     const format = document.getElementById('export-format-select').value;
-    
+
     // 确定文件名和扩展名
     let fileName = currentSchemaName || 'export';
     let extension, mimeType;
-    
+
     if (format === 'csv') {
         extension = 'csv';
         mimeType = 'text/csv;charset=utf-8;';
@@ -3041,7 +3173,7 @@ function downloadExportFile() {
         extension = 'lua';
         mimeType = 'text/plain;charset=utf-8;';
     }
-    
+
     // 创建Blob并下载
     const blob = new Blob([code], { type: mimeType });
     const url = URL.createObjectURL(blob);
@@ -3049,20 +3181,20 @@ function downloadExportFile() {
     link.href = url;
     link.download = `${fileName}.${extension}`;
     link.style.display = 'none';
-    
+
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
+
     // 释放URL对象
     setTimeout(() => URL.revokeObjectURL(url), 100);
-    
+
     // 显示下载成功提示
     const btn = document.getElementById('download-export-btn');
     const originalHtml = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-check"></i> 已下载';
     btn.disabled = true;
-    
+
     setTimeout(() => {
         btn.innerHTML = originalHtml;
         btn.disabled = false;
@@ -3073,10 +3205,10 @@ function downloadPreviewCsv() {
     // 从预览表格生成CSV
     const data = collectData();
     const csvCode = generateCsvCode(data);
-    
+
     // 确定文件名
     const fileName = currentSchemaName || 'preview';
-    
+
     // 创建Blob并下载
     const blob = new Blob([csvCode], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -3084,20 +3216,20 @@ function downloadPreviewCsv() {
     link.href = url;
     link.download = `${fileName}_preview.csv`;
     link.style.display = 'none';
-    
+
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
+
     // 释放URL对象
     setTimeout(() => URL.revokeObjectURL(url), 100);
-    
+
     // 显示下载成功提示
     const btn = document.getElementById('download-preview-btn');
     const originalHtml = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-check"></i> 已下载';
     btn.disabled = true;
-    
+
     setTimeout(() => {
         btn.innerHTML = originalHtml;
         btn.disabled = false;
@@ -3112,33 +3244,33 @@ let currentFlagsEnum = null;
 
 async function openFlagsModal(rowIndex, fieldName, initialValue) {
     if (!currentSchema || !currentSchema.fields) return;
-    
+
     const field = currentSchema.fields.find(f => f.name === fieldName);
     if (!field || field.type !== 'flags' || !field.dataSource || !field.dataSource.enum) {
-        alert('标志字段配置错误');
+        showError('标志字段配置错误');
         return;
     }
-    
+
     currentFlagsRowIndex = rowIndex;
     currentFlagsFieldName = fieldName;
-    
+
     // 从输入框读取当前实际值，而不是使用传入的初始值
     const fieldId = `field-${rowIndex}-${fieldName}`;
     const input = document.getElementById(fieldId);
     const currentValue = input ? parseInt(input.value) || 0 : (initialValue || 0);
-    
+
     // 加载枚举数据
     try {
         const response = await fetch(`${API.ENUM}?action=get&name=${encodeURIComponent(field.dataSource.enum)}`);
         const result = await response.json();
-        
+
         if (!result.success || !result.data) {
-            alert('加载枚举数据失败');
+            showError('加载枚举数据失败');
             return;
         }
-        
+
         currentFlagsEnum = result.data;
-        
+
         // 渲染复选框列表
         const container = document.getElementById('flags-checkboxes');
         container.innerHTML = currentFlagsEnum.values.map(v => {
@@ -3154,15 +3286,15 @@ async function openFlagsModal(rowIndex, fieldName, initialValue) {
                 </label>
             `;
         }).join('');
-        
+
         // 更新结果值
         updateFlagsValue();
-        
+
         // 显示模态框
         document.getElementById('flags-modal').style.display = 'flex';
     } catch (error) {
         console.error('加载标志枚举失败:', error);
-        alert('加载标志枚举失败');
+        showError('加载标志枚举失败');
     }
 }
 
@@ -3202,7 +3334,7 @@ function openImportDataModal() {
         alert('请先选择一个Schema');
         return;
     }
-    
+
     document.getElementById('import-data-modal').classList.add('show');
     document.getElementById('import-file-input').value = '';
     document.getElementById('import-preview').style.display = 'none';
@@ -3223,11 +3355,11 @@ function onImportFileSelected(event) {
         document.getElementById('confirm-import-btn').disabled = true;
         return;
     }
-    
+
     const fileType = document.getElementById('import-file-type').value;
     const reader = new FileReader();
-    
-    reader.onload = function(e) {
+
+    reader.onload = function (e) {
         const content = e.target.result;
         try {
             if (fileType === 'csv') {
@@ -3235,7 +3367,7 @@ function onImportFileSelected(event) {
             } else {
                 importedData = parseLuaImport(content);
             }
-            
+
             if (importedData && importedData.length > 0) {
                 showImportPreview(importedData);
                 document.getElementById('confirm-import-btn').disabled = false;
@@ -3249,7 +3381,7 @@ function onImportFileSelected(event) {
             document.getElementById('confirm-import-btn').disabled = true;
         }
     };
-    
+
     reader.readAsText(file, 'UTF-8');
 }
 
@@ -3259,17 +3391,17 @@ function parseCSVImport(content) {
     if (lines.length < 3) {
         throw new Error('CSV文件格式不正确，至少需要3行（标题、类型、数据）');
     }
-    
+
     // 解析CSV行（处理引号包裹的字段）
     function parseCSVLine(line) {
         const result = [];
         let current = '';
         let inQuotes = false;
-        
+
         for (let i = 0; i < line.length; i++) {
             const char = line[i];
             const nextChar = line[i + 1];
-            
+
             if (char === '"') {
                 if (inQuotes && nextChar === '"') {
                     // 双引号转义
@@ -3290,28 +3422,28 @@ function parseCSVImport(content) {
         result.push(current.trim());
         return result;
     }
-    
+
     // 第一行：key + 字段标签
     const headers = parseCSVLine(lines[0]);
     headers.shift(); // 移除 "key" 列
-    
+
     // 第二行：Int + 字段类型（暂不使用，以schema为准）
     // const types = parseCSVLine(lines[1]);
-    
+
     // 解析数据行
     const dataRows = [];
     for (let i = 2; i < lines.length; i++) {
         if (!lines[i].trim()) continue;
-        
+
         const values = parseCSVLine(lines[i]);
         const rowKey = values[0]; // 行号或key
-        
+
         const rowData = {
             name: `row_${rowKey}`,
             isRaw: false,
             data: {}
         };
-        
+
         // 根据schema字段匹配数据
         currentSchema.fields.forEach((field, fieldIndex) => {
             const value = values[fieldIndex + 1]; // +1 因为第一列是key
@@ -3320,10 +3452,10 @@ function parseCSVImport(content) {
                 setFieldValue(rowData.data, field.name, parsedValue);
             }
         });
-        
+
         dataRows.push(rowData);
     }
-    
+
     return dataRows;
 }
 
@@ -3332,12 +3464,12 @@ function parseCSVValue(value, field) {
     if (value === '' || value === null || value === undefined) {
         return '';
     }
-    
+
     switch (field.type) {
         case 'number':
         case 'flags':
             return String(parseInt(value) || 0);
-        
+
         case 'color':
             // CSV中是十进制数字，转换为十六进制
             const decimal = parseInt(value);
@@ -3345,21 +3477,21 @@ function parseCSVValue(value, field) {
                 return '0x' + decimal.toString(16).toUpperCase().padStart(6, '0');
             }
             return value;
-        
+
         case 'list':
             // 解析 "[元素1, 元素2, ...]" 格式
             if (value.startsWith('[') && value.endsWith(']')) {
                 const listContent = value.slice(1, -1).trim();
                 if (!listContent) return [];
-                
+
                 // 简单分割（处理引号包裹的元素）
                 const elements = [];
                 let current = '';
                 let inQuotes = false;
-                
+
                 for (let i = 0; i < listContent.length; i++) {
                     const char = listContent[i];
-                    
+
                     if (char === '"' && listContent[i - 1] !== '\\') {
                         inQuotes = !inQuotes;
                     } else if (char === ',' && !inQuotes) {
@@ -3372,7 +3504,7 @@ function parseCSVValue(value, field) {
                 if (current.trim()) {
                     elements.push(current.trim().replace(/^"|"$/g, ''));
                 }
-                
+
                 // 根据elementType转换
                 if (field.elementType === 'number') {
                     return elements.map(e => String(parseInt(e) || 0));
@@ -3380,7 +3512,7 @@ function parseCSVValue(value, field) {
                 return elements.map(e => String(e));
             }
             return [];
-        
+
         case 'dict':
             // 解析JSON字符串（单个对象）
             try {
@@ -3389,7 +3521,7 @@ function parseCSVValue(value, field) {
             } catch {
                 return {};
             }
-        
+
         case 'entry':
             // 解析JSON字符串
             try {
@@ -3397,7 +3529,7 @@ function parseCSVValue(value, field) {
             } catch {
                 return [];
             }
-        
+
         default:
             return String(value);
     }
@@ -3407,24 +3539,24 @@ function parseCSVValue(value, field) {
 function parseLuaImport(content) {
     // 移除注释
     const withoutComments = content.replace(/--.*$/gm, '');
-    
+
     // 查找主table
     let tableMatch = withoutComments.match(/local\s+result\s*=\s*(\{[\s\S]*\})\s*return\s+result/);
     if (!tableMatch) {
         tableMatch = withoutComments.match(/return\s+(\{[\s\S]*\})/);
     }
-    
+
     if (!tableMatch) {
         throw new Error('未找到Lua table结构');
     }
-    
+
     const tableContent = tableMatch[1];
-    
+
     // 判断是Table格式还是Array格式
     // Table格式有键值对: ["key"] = { ... } 或 [key] = { ... }
     // Array格式只有值: { ... }, { ... }
     const isTableFormat = /\[[^\]]+\]\s*=\s*\{/.test(tableContent);
-    
+
     if (isTableFormat) {
         return parseLuaTableFormat(tableContent);
     } else {
@@ -3435,17 +3567,17 @@ function parseLuaImport(content) {
 // 解析Table格式: ["key"] = { fields... }
 function parseLuaTableFormat(tableContent) {
     const dataRows = [];
-    
+
     // 使用栈来匹配嵌套的大括号
     let depth = 0;
     let currentEntry = '';
     let currentKey = '';
     let inKey = false;
     let i = 0;
-    
+
     while (i < tableContent.length) {
         const char = tableContent[i];
-        
+
         // 查找键
         if (char === '[' && depth === 1) {
             inKey = true;
@@ -3455,14 +3587,14 @@ function parseLuaTableFormat(tableContent) {
             }
             currentKey = tableContent.substring(i + 1, keyEnd).replace(/['"]/g, '').trim();
             i = keyEnd + 1;
-            
+
             // 跳过 = 号
             while (i < tableContent.length && /[\s=]/.test(tableContent[i])) {
                 i++;
             }
             continue;
         }
-        
+
         if (char === '{') {
             depth++;
             if (depth === 2 && currentKey) {
@@ -3490,25 +3622,25 @@ function parseLuaTableFormat(tableContent) {
             // 只要在entry内部（depth >= 2），都累积内容
             currentEntry += char;
         }
-        
+
         i++;
     }
-    
+
     return dataRows;
 }
 
 // 解析Array格式: { { fields... }, { fields... } }
 function parseLuaArrayFormat(tableContent) {
     const dataRows = [];
-    
+
     // 使用栈来匹配嵌套的大括号
     let depth = 0;
     let currentEntry = '';
     let entryIndex = 0;
-    
+
     for (let i = 0; i < tableContent.length; i++) {
         const char = tableContent[i];
-        
+
         if (char === '{') {
             depth++;
             if (depth === 2) {
@@ -3537,7 +3669,7 @@ function parseLuaArrayFormat(tableContent) {
             currentEntry += char;
         }
     }
-    
+
     return dataRows;
 }
 
@@ -3548,7 +3680,7 @@ function parseLuaEntry(key, entryContent, fullEntry) {
         isRaw: false, // 默认不是原始文本
         data: {}
     };
-    
+
     // 如果有完整entry，检查key是否有引号来判断isRaw
     if (fullEntry) {
         const keyMatch = fullEntry.match(/\[([^\]]+)\]/);
@@ -3556,7 +3688,7 @@ function parseLuaEntry(key, entryContent, fullEntry) {
             rowData.isRaw = !/['"]/.test(keyMatch[1]);
         }
     }
-    
+
     // 解析entry中的字段
     currentSchema.fields.forEach(field => {
         const value = extractLuaFieldValue(entryContent, field.name);
@@ -3565,7 +3697,7 @@ function parseLuaEntry(key, entryContent, fullEntry) {
             setFieldValue(rowData.data, field.name, parsedValue);
         }
     });
-    
+
     return rowData;
 }
 
@@ -3573,7 +3705,7 @@ function parseLuaEntry(key, entryContent, fullEntry) {
 function extractLuaFieldValue(entryContent, fieldName) {
     // 转义字段名中的特殊字符
     const escapedFieldName = fieldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    
+
     // 尝试多种匹配模式
     const patterns = [
         // fieldName = value
@@ -3583,23 +3715,23 @@ function extractLuaFieldValue(entryContent, fieldName) {
         // [fieldName] = value
         new RegExp(`\\[${escapedFieldName}\\]\\s*=\\s*`, 'i')
     ];
-    
+
     for (const pattern of patterns) {
         const match = pattern.exec(entryContent);
         if (match) {
             const startPos = match.index + match[0].length;
             let remainingContent = entryContent.substring(startPos);
-            
+
             // 如果值以 { 开始，需要找到匹配的 }
             if (remainingContent.trim().startsWith('{')) {
                 let depth = 0;
                 let endPos = 0;
                 let inString = false;
                 let stringChar = '';
-                
+
                 for (let i = 0; i < remainingContent.length; i++) {
                     const char = remainingContent[i];
-                    
+
                     // 检查字符串
                     if ((char === '"' || char === "'") && (i === 0 || remainingContent[i - 1] !== '\\')) {
                         if (!inString) {
@@ -3609,7 +3741,7 @@ function extractLuaFieldValue(entryContent, fieldName) {
                             inString = false;
                         }
                     }
-                    
+
                     if (!inString) {
                         if (char === '{') depth++;
                         if (char === '}') {
@@ -3621,7 +3753,7 @@ function extractLuaFieldValue(entryContent, fieldName) {
                         }
                     }
                 }
-                
+
                 if (endPos > 0) {
                     return remainingContent.substring(0, endPos).trim();
                 }
@@ -3630,11 +3762,11 @@ function extractLuaFieldValue(entryContent, fieldName) {
                 let endPos = remainingContent.length;
                 let inString = false;
                 let stringChar = '';
-                
+
                 for (let i = 0; i < remainingContent.length; i++) {
                     const char = remainingContent[i];
                     const nextChar = i < remainingContent.length - 1 ? remainingContent[i + 1] : '';
-                    
+
                     // 检查字符串
                     if ((char === '"' || char === "'") && (i === 0 || remainingContent[i - 1] !== '\\')) {
                         if (!inString) {
@@ -3644,7 +3776,7 @@ function extractLuaFieldValue(entryContent, fieldName) {
                             inString = false;
                         }
                     }
-                    
+
                     if (!inString) {
                         // 遇到逗号
                         if (char === ',') {
@@ -3666,12 +3798,12 @@ function extractLuaFieldValue(entryContent, fieldName) {
                         }
                     }
                 }
-                
+
                 return remainingContent.substring(0, endPos).trim().replace(/,\s*$/, '');
             }
         }
     }
-    
+
     return null;
 }
 
@@ -3680,34 +3812,34 @@ function parseLuaValue(value, field) {
     if (!value || value === 'nil') {
         return field.type === 'list' || field.type === 'entry' ? [] : (field.type === 'dict' ? {} : '');
     }
-    
+
     value = value.trim();
-    
+
     switch (field.type) {
         case 'number':
         case 'flags':
             return String(parseInt(value) || 0);
-        
+
         case 'color':
             // 保持十六进制格式
             if (value.startsWith('0x') || value.startsWith('0X')) {
                 return value.toUpperCase();
             }
             return value;
-        
+
         case 'list':
             // 解析 { 元素1, 元素2, ... } 格式
             if (value.startsWith('{') && value.endsWith('}')) {
                 const listContent = value.slice(1, -1).trim();
                 if (!listContent) return [];
-                
+
                 // 智能分割（处理嵌套的大括号和引号）
                 const elements = smartSplitLuaList(listContent);
-                
+
                 return elements.map(e => {
                     e = e.trim();
                     // 移除引号
-                    if ((e.startsWith('"') && e.endsWith('"')) || 
+                    if ((e.startsWith('"') && e.endsWith('"')) ||
                         (e.startsWith("'") && e.endsWith("'"))) {
                         return e.slice(1, -1);
                     }
@@ -3715,17 +3847,17 @@ function parseLuaValue(value, field) {
                 });
             }
             return [];
-        
+
         case 'dict':
             // 解析单个对象: { field1 = val1, field2 = val2 }
             if (value.startsWith('{') && value.endsWith('}')) {
                 const dictContent = value.slice(1, -1).trim();
-                
+
                 // 空对象 {}
                 if (!dictContent) return {};
-                
+
                 const dictObj = {};
-                
+
                 // 解析dict的subfields
                 if (field.subfields && field.subfields.length > 0) {
                     field.subfields.forEach(subfield => {
@@ -3736,27 +3868,27 @@ function parseLuaValue(value, field) {
                         }
                     });
                 }
-                
+
                 return dictObj;
             }
             return {};
-        
+
         case 'entry':
             // 解析嵌套table: { { field1 = val1, field2 = val2 }, ... } 或单个 {}
             if (value.startsWith('{') && value.endsWith('}')) {
                 const listContent = value.slice(1, -1).trim();
-                
+
                 // 空对象 {} 返回空数组
                 if (!listContent) return [];
-                
+
                 // 检查是否是单层对象（直接包含字段，不是数组）
                 // 如: { field1 = val1, field2 = val2 } 而不是 { { ... }, { ... } }
                 const isSingleEntry = !listContent.trim().startsWith('{');
-                
+
                 if (isSingleEntry) {
                     // 单个entry对象
                     const entryObj = {};
-                    
+
                     if (field.subfields && field.subfields.length > 0) {
                         field.subfields.forEach(subfield => {
                             const subfieldValue = extractLuaFieldValue(listContent, subfield.name);
@@ -3766,19 +3898,19 @@ function parseLuaValue(value, field) {
                             }
                         });
                     }
-                    
+
                     return [entryObj];
                 } else {
                     // 多个entry对象的数组
                     const entries = smartSplitLuaList(listContent);
                     const result = [];
-                    
+
                     entries.forEach(entryStr => {
                         entryStr = entryStr.trim();
                         if (entryStr.startsWith('{') && entryStr.endsWith('}')) {
                             const entryContent = entryStr.slice(1, -1);
                             const entryObj = {};
-                            
+
                             // 解析entry的subfields
                             if (field.subfields && field.subfields.length > 0) {
                                 field.subfields.forEach(subfield => {
@@ -3790,26 +3922,26 @@ function parseLuaValue(value, field) {
                                     }
                                 });
                             }
-                            
+
                             result.push(entryObj);
                         }
                     });
-                    
+
                     return result;
                 }
             }
             return [];
-        
+
         case 'text':
         case 'option':
         case 'datalist':
             // 移除引号
-            if ((value.startsWith('"') && value.endsWith('"')) || 
+            if ((value.startsWith('"') && value.endsWith('"')) ||
                 (value.startsWith("'") && value.endsWith("'"))) {
                 return value.slice(1, -1);
             }
             return value;
-        
+
         default:
             return String(value);
     }
@@ -3823,12 +3955,12 @@ function smartSplitLuaList(content) {
     let inString = false;
     let stringChar = '';
     let inComment = false;
-    
+
     for (let i = 0; i < content.length; i++) {
         const char = content[i];
         const prevChar = i > 0 ? content[i - 1] : '';
         const nextChar = i < content.length - 1 ? content[i + 1] : '';
-        
+
         // 处理注释
         if (char === '-' && nextChar === '-' && !inString) {
             inComment = true;
@@ -3840,7 +3972,7 @@ function smartSplitLuaList(content) {
             current += char;
             continue;
         }
-        
+
         // 处理字符串
         if ((char === '"' || char === "'") && prevChar !== '\\') {
             if (!inString) {
@@ -3850,7 +3982,7 @@ function smartSplitLuaList(content) {
                 inString = false;
             }
         }
-        
+
         if (!inString) {
             if (char === '{') {
                 depth++;
@@ -3867,17 +3999,17 @@ function smartSplitLuaList(content) {
                 continue;
             }
         }
-        
+
         current += char;
     }
-    
+
     const trimmed = current.trim();
     // 移除注释
     const withoutComment = trimmed.replace(/\s*--.*$/, '').trim();
     if (withoutComment) {
         elements.push(withoutComment);
     }
-    
+
     return elements;
 }
 
@@ -3885,25 +4017,25 @@ function smartSplitLuaList(content) {
 function showImportPreview(data) {
     const previewDiv = document.getElementById('import-preview');
     const contentDiv = document.getElementById('import-preview-content');
-    
+
     let html = `<div class="import-preview-stats">
         准备导入 ${data.length} 行数据
     </div>`;
-    
+
     // 显示前5行的预览
     html += '<table class="import-preview-table">';
     html += '<thead><tr><th>数据行名称</th>';
-    
+
     currentSchema.fields.forEach(field => {
         html += `<th>${escapeHtml(field.label || field.name)}</th>`;
     });
     html += '</tr></thead><tbody>';
-    
+
     const previewCount = Math.min(5, data.length);
     for (let i = 0; i < previewCount; i++) {
         const row = data[i];
         html += `<tr><td>${escapeHtml(row.name)}</td>`;
-        
+
         currentSchema.fields.forEach(field => {
             let value = getFieldValue(row.data, field.name);
             if (Array.isArray(value)) {
@@ -3913,16 +4045,16 @@ function showImportPreview(data) {
             }
             html += `<td>${escapeHtml(String(value))}</td>`;
         });
-        
+
         html += '</tr>';
     }
-    
+
     html += '</tbody></table>';
-    
+
     if (data.length > 5) {
         html += `<p style="text-align: center; color: #666; margin-top: 10px;">... 还有 ${data.length - 5} 行数据</p>`;
     }
-    
+
     contentDiv.innerHTML = html;
     previewDiv.style.display = 'block';
 }
@@ -3931,11 +4063,11 @@ function showImportPreview(data) {
 function showImportError(message) {
     const previewDiv = document.getElementById('import-preview');
     const contentDiv = document.getElementById('import-preview-content');
-    
+
     contentDiv.innerHTML = `<div class="import-preview-error">
         <i class="fas fa-exclamation-triangle"></i> ${escapeHtml(message)}
     </div>`;
-    
+
     previewDiv.style.display = 'block';
 }
 
@@ -3944,12 +4076,12 @@ function onImportFileTypeChange() {
     const fileTypeSelect = document.getElementById('import-file-type');
     const fileInput = document.getElementById('import-file-input');
     const previewDiv = document.getElementById('import-preview');
-    
+
     // 清空已选择的文件和预览
     fileInput.value = '';
     previewDiv.style.display = 'none';
     importedData = null;
-    
+
     // 根据选择的类型设置accept属性
     if (fileTypeSelect.value === 'csv') {
         fileInput.accept = '.csv';
@@ -3964,9 +4096,9 @@ function confirmImport() {
         alert('没有可导入的数据');
         return;
     }
-    
+
     const clearExisting = document.getElementById('import-clear-existing').checked;
-    
+
     if (clearExisting) {
         // 清空现有数据
         dataRows = [...importedData];
@@ -3974,20 +4106,174 @@ function confirmImport() {
         // 追加数据
         dataRows = dataRows.concat(importedData);
     }
-    
+
     // 刷新界面
     renderDataRowsList();
-    
+
     // 显示导入的第一行
     if (dataRows.length > 0) {
         selectedDataRowIndex = 0;
         renderDataRowEditor(0);
     }
-    
+
     // 关闭模态框
     closeImportDataModal();
-    
+
     alert(`成功导入 ${importedData.length} 行数据`);
+}
+
+// ==================== 脚本帮助 ====================
+
+function openScriptHelp() {
+    document.getElementById('script-help-modal').classList.add('show');
+}
+
+function closeScriptHelp() {
+    document.getElementById('script-help-modal').classList.remove('show');
+}
+
+// ==================== 代码格式化 ====================
+
+function formatScriptCode(cm) {
+    const code = cm.getValue();
+    
+    try {
+        // 简单的 JavaScript 代码格式化
+        // 使用缩进和换行规则
+        const formatted = formatJavaScript(code);
+        
+        // 保存当前光标位置
+        const cursor = cm.getCursor();
+        
+        // 设置格式化后的代码
+        cm.setValue(formatted);
+        
+        // 尝试恢复光标位置（可能会有偏移）
+        try {
+            cm.setCursor(cursor);
+        } catch (e) {
+            // 如果光标位置无效，移到开头
+            cm.setCursor(0, 0);
+        }
+        
+        // 显示提示
+        const btn = document.querySelector('.script-editor-header');
+        if (btn) {
+            const tip = document.createElement('div');
+            tip.style.cssText = 'position: absolute; top: 0; right: 100px; background: #4a9eff; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; z-index: 1000;';
+            tip.textContent = '✓ 已格式化';
+            btn.style.position = 'relative';
+            btn.appendChild(tip);
+            setTimeout(() => tip.remove(), 2000);
+        }
+    } catch (error) {
+        console.error('格式化失败:', error);
+        alert('代码格式化失败，请检查语法是否正确');
+    }
+}
+
+function formatJavaScript(code) {
+    // 简单的格式化实现
+    let formatted = '';
+    let indentLevel = 0;
+    const indentStr = '    '; // 4个空格
+    let inString = false;
+    let stringChar = '';
+    let inComment = false;
+    let inMultiLineComment = false;
+    
+    for (let i = 0; i < code.length; i++) {
+        const char = code[i];
+        const nextChar = code[i + 1] || '';
+        const prevChar = code[i - 1] || '';
+        
+        // 处理字符串
+        if (!inComment && !inMultiLineComment) {
+            if ((char === '"' || char === "'" || char === '`') && prevChar !== '\\') {
+                if (!inString) {
+                    inString = true;
+                    stringChar = char;
+                } else if (char === stringChar) {
+                    inString = false;
+                }
+            }
+        }
+        
+        // 处理注释
+        if (!inString) {
+            if (char === '/' && nextChar === '/' && !inMultiLineComment) {
+                inComment = true;
+            } else if (char === '/' && nextChar === '*') {
+                inMultiLineComment = true;
+            } else if (char === '*' && nextChar === '/' && inMultiLineComment) {
+                inMultiLineComment = false;
+                formatted += char + nextChar;
+                i++;
+                continue;
+            }
+            
+            if (char === '\n') {
+                inComment = false;
+            }
+        }
+        
+        // 在字符串或注释中，保持原样
+        if (inString || inComment || inMultiLineComment) {
+            formatted += char;
+            continue;
+        }
+        
+        // 处理大括号和缩进
+        if (char === '{') {
+            formatted += char + '\n';
+            indentLevel++;
+            // 跳过后续的空白字符
+            while (code[i + 1] && /\s/.test(code[i + 1])) {
+                i++;
+            }
+            formatted += indentStr.repeat(indentLevel);
+            continue;
+        } else if (char === '}') {
+            // 移除当前行的空白
+            formatted = formatted.trimEnd();
+            if (formatted.endsWith('\n')) {
+                formatted = formatted.slice(0, -1);
+            }
+            indentLevel = Math.max(0, indentLevel - 1);
+            formatted += '\n' + indentStr.repeat(indentLevel) + char;
+            continue;
+        } else if (char === ';') {
+            formatted += char;
+            // 如果后面不是闭合括号，添加换行
+            if (nextChar && nextChar !== '}' && nextChar !== ')') {
+                formatted += '\n' + indentStr.repeat(indentLevel);
+                // 跳过后续的空白字符
+                while (code[i + 1] && /\s/.test(code[i + 1])) {
+                    i++;
+                }
+            }
+            continue;
+        } else if (char === '\n') {
+            // 跳过空行
+            while (code[i + 1] === '\n') {
+                i++;
+            }
+            formatted += '\n' + indentStr.repeat(indentLevel);
+            // 跳过后续的空白字符
+            while (code[i + 1] && code[i + 1] !== '\n' && /\s/.test(code[i + 1])) {
+                i++;
+            }
+            continue;
+        }
+        
+        formatted += char;
+    }
+    
+    // 清理多余的空行
+    formatted = formatted.replace(/\n{3,}/g, '\n\n');
+    formatted = formatted.trim();
+    
+    return formatted;
 }
 
 // ==================== 代码编辑器初始化 ====================
@@ -3999,24 +4285,173 @@ function initScriptEditor() {
     if (scriptEditor) {
         return;
     }
-    
+
     const textarea = document.getElementById('preview-script-input');
     if (!textarea || typeof CodeMirror === 'undefined') {
         return;
     }
-    
+
     // 创建自定义字段补全函数
-    CodeMirror.registerHelper('hint', 'dataFields', function(editor, options) {
+    CodeMirror.registerHelper('hint', 'dataFields', function (editor, options) {
         const cur = editor.getCursor();
         const line = editor.getLine(cur.line);
         const beforeCursor = line.substring(0, cur.ch);
-        
+
         if (!window.previewSchemaCache) {
             return null;
         }
-        
+
         const fields = window.previewSchemaCache.fields || [];
-        
+
+        // 特殊情况：补全全局函数 update 和 yield
+        const functionMatch = beforeCursor.match(/\b(u|up|upd|upda|updat|update|y|yi|yie|yiel|yield)\b$/i);
+        if (functionMatch) {
+            const prefix = functionMatch[1].toLowerCase();
+            const functions = [];
+
+            if ('update'.startsWith(prefix)) {
+                functions.push({
+                    text: 'update(index, {})',
+                    displayText: 'update(index, newData) - 更新指定行数据',
+                    hint: function (cm, data, completion) {
+                        const from = data.from || data;
+                        const to = data.to || data;
+                        cm.replaceRange('update(index, {})', from, to);
+                        const cursor = cm.getCursor();
+                        cm.setCursor({ line: cursor.line, ch: cursor.ch - 2 });
+                    }
+                });
+            }
+
+            if ('yield'.startsWith(prefix)) {
+                functions.push({
+                    text: 'yield()',
+                    displayText: 'yield(value) - 输出一个结果',
+                    hint: function (cm, data, completion) {
+                        const from = data.from || data;
+                        const to = data.to || data;
+                        cm.replaceRange('yield()', from, to);
+                        const cursor = cm.getCursor();
+                        cm.setCursor({ line: cursor.line, ch: cursor.ch - 1 });
+                    }
+                });
+            }
+
+            if (functions.length > 0) {
+                return {
+                    list: functions,
+                    from: CodeMirror.Pos(cur.line, cur.ch - prefix.length),
+                    to: CodeMirror.Pos(cur.line, cur.ch)
+                };
+            }
+        }
+
+        // update 第二个参数内的字段补全：update(index, { 字段名 })
+        // 需要查找完整的编辑器内容以支持跨行
+        const allText = editor.getValue();
+        const cursorIndex = editor.indexFromPos(cur);
+        const fullBeforeCursor = allText.substring(0, cursorIndex);
+
+        // 查找最后一个 update 调用
+        const updateMatches = [...fullBeforeCursor.matchAll(/\bupdate\s*\(/g)];
+        let isInUpdateParam = false;
+        let updateContext = '';
+
+        if (updateMatches.length > 0) {
+            const lastUpdateIndex = updateMatches[updateMatches.length - 1].index;
+            updateContext = fullBeforeCursor.substring(lastUpdateIndex);
+
+            // 检查是否在第二个参数的对象内
+            const commaPos = updateContext.indexOf(',');
+            if (commaPos !== -1) {
+                const afterComma = updateContext.substring(commaPos + 1);
+
+                // 统计花括号
+                let braceCount = 0;
+                let foundOpenBrace = false;
+
+                for (const char of afterComma) {
+                    if (char === '{') {
+                        braceCount++;
+                        foundOpenBrace = true;
+                    } else if (char === '}') {
+                        braceCount--;
+                    }
+                }
+
+                isInUpdateParam = foundOpenBrace && braceCount > 0;
+            }
+        }
+
+        if (isInUpdateParam) {
+            // 提取当前输入的前缀（可能是字段名的一部分）
+            const prefixMatch = beforeCursor.match(/(\w*)$/);
+            const prefix = prefixMatch ? prefixMatch[1] : '';
+
+            // 提取已定义的字段名（在 update 第二个参数对象内）
+            const definedFields = new Set();
+            const fieldPattern = /(\w+)\s*:/g;
+            let match;
+            while ((match = fieldPattern.exec(updateContext)) !== null) {
+                definedFields.add(match[1]);
+            }
+
+            // 检查是否在嵌套对象内（字典的子字段）
+            // 简单检查：如果在 update 参数对象内，且前面有 字段名: {
+            const nestedMatch = updateContext.match(/,\s*\{[^}]*?(\w+)\s*:\s*\{[^}]*?$/);
+
+            if (nestedMatch) {
+                // 在嵌套对象内，提供子字段补全
+                const parentFieldName = nestedMatch[1];
+                const parentField = fields.find(f => f.name === parentFieldName);
+
+                if (parentField) {
+                    const fieldsList = parentField.fields || parentField.subfields;
+
+                    if (parentField.type === 'dict' && fieldsList) {
+                        const suggestions = fieldsList
+                            .filter(field => !definedFields.has(field.name))
+                            .map(field => ({
+                                text: field.name + ': ',
+                                displayText: `${field.name} - ${field.label || field.name} (${field.type})`
+                            }));
+
+                        const filtered = prefix ?
+                            suggestions.filter(s => s.text.toLowerCase().startsWith(prefix.toLowerCase())) :
+                            suggestions;
+
+                        if (filtered.length > 0) {
+                            return {
+                                list: filtered,
+                                from: CodeMirror.Pos(cur.line, cur.ch - prefix.length),
+                                to: CodeMirror.Pos(cur.line, cur.ch)
+                            };
+                        }
+                    }
+                }
+            } else {
+                // 在顶级对象内，提供顶级字段补全（过滤已定义的）
+                const suggestions = fields
+                    .filter(field => !definedFields.has(field.name))
+                    .map(field => ({
+                        text: field.name + ': ',
+                        displayText: `${field.name} - ${field.label || field.name} (${field.type})`
+                    }));
+
+                const filtered = prefix ?
+                    suggestions.filter(s => s.text.toLowerCase().startsWith(prefix.toLowerCase())) :
+                    suggestions;
+
+                if (filtered.length > 0) {
+                    return {
+                        list: filtered,
+                        from: CodeMirror.Pos(cur.line, cur.ch - prefix.length),
+                        to: CodeMirror.Pos(cur.line, cur.ch)
+                    };
+                }
+            }
+        }
+
         // 情况1: data. 或 source[index]. - 顶级字段补全
         const topLevelMatch = beforeCursor.match(/(?:data|source(?:\[\d+\])?)\.(\w*)$/);
         if (topLevelMatch) {
@@ -4025,39 +4460,39 @@ function initScriptEditor() {
                 text: field.name,
                 displayText: `${field.name} - ${field.label || field.name} (${field.type})`
             }));
-            
-            const filtered = prefix ? 
+
+            const filtered = prefix ?
                 suggestions.filter(s => s.text.toLowerCase().startsWith(prefix.toLowerCase())) :
                 suggestions;
-            
+
             if (filtered.length === 0) {
                 return null;
             }
-            
+
             return {
                 list: filtered,
                 from: CodeMirror.Pos(cur.line, cur.ch - prefix.length),
                 to: CodeMirror.Pos(cur.line, cur.ch)
             };
         }
-        
+
         // 情况2: data.字段名. - 嵌套字段补全 (dict/entry)
         const nestedMatch = beforeCursor.match(/(?:data|source(?:\[\d+\])?)\.(\w+)\.(\w*)$/);
         if (nestedMatch) {
             const parentFieldName = nestedMatch[1];
             const prefix = nestedMatch[2] || '';
-            
+
             // 找到父字段
             const parentField = fields.find(f => f.name === parentFieldName);
             if (!parentField) {
                 return null;
             }
-            
+
             let nestedFields = [];
-            
+
             // 获取嵌套字段列表 (可能是 fields 或 subfields)
             const fieldsList = parentField.fields || parentField.subfields;
-            
+
             // 根据类型获取嵌套字段
             if (parentField.type === 'dict' && fieldsList) {
                 // 字典类型
@@ -4070,7 +4505,7 @@ function initScriptEditor() {
                 const hints = [{
                     text: 'forEach(item => {\n        \n    });',
                     displayText: 'forEach(item => { ... }) - 遍历数组',
-                    hint: function(cm, data, completion) {
+                    hint: function (cm, data, completion) {
                         const from = data.from || data;
                         const to = data.to || data;
                         const cursor = cm.getCursor();
@@ -4083,7 +4518,7 @@ function initScriptEditor() {
                 }, {
                     text: 'map(item => {\n        \n    })',
                     displayText: 'map(item => { ... }) - 映射数组',
-                    hint: function(cm, data, completion) {
+                    hint: function (cm, data, completion) {
                         const from = data.from || data;
                         const to = data.to || data;
                         const cursor = cm.getCursor();
@@ -4096,7 +4531,7 @@ function initScriptEditor() {
                 }, {
                     text: 'filter(item => )',
                     displayText: 'filter(item => ...) - 过滤数组',
-                    hint: function(cm, data, completion) {
+                    hint: function (cm, data, completion) {
                         const from = data.from || data;
                         const to = data.to || data;
                         const text = 'filter(item => )';
@@ -4112,84 +4547,84 @@ function initScriptEditor() {
                     text: '[0]',
                     displayText: '[index] - 访问元素'
                 }];
-                
+
                 return {
                     list: hints,
                     from: CodeMirror.Pos(cur.line, cur.ch - prefix.length),
                     to: CodeMirror.Pos(cur.line, cur.ch)
                 };
             }
-            
+
             if (nestedFields.length === 0) {
                 return null;
             }
-            
-            const filtered = prefix ? 
+
+            const filtered = prefix ?
                 nestedFields.filter(s => s.text.toLowerCase().startsWith(prefix.toLowerCase())) :
                 nestedFields;
-            
+
             if (filtered.length === 0) {
                 return null;
             }
-            
+
             return {
                 list: filtered,
                 from: CodeMirror.Pos(cur.line, cur.ch - prefix.length),
                 to: CodeMirror.Pos(cur.line, cur.ch)
             };
         }
-        
+
         // 情况3: data.条目字段[i]. - entry数组元素的字段补全
         const entryItemMatch = beforeCursor.match(/(?:data|source(?:\[\d+\])?)\.(\w+)\[.+?\]\.(\w*)$/);
         if (entryItemMatch) {
             const parentFieldName = entryItemMatch[1];
             const prefix = entryItemMatch[2] || '';
-            
+
             // 找到父字段
             const parentField = fields.find(f => f.name === parentFieldName);
-            
+
             // 获取嵌套字段列表 (可能是 fields 或 subfields)
             const nestedFields = parentField?.fields || parentField?.subfields;
-            
+
             if (!parentField || parentField.type !== 'entry' || !nestedFields) {
                 return null;
             }
-            
+
             // entry 数组元素的字段
             const itemFields = nestedFields.map(field => ({
                 text: field.name,
                 displayText: `${field.name} - ${field.label || field.name} (${field.type})`
             }));
-            
-            const filtered = prefix ? 
+
+            const filtered = prefix ?
                 itemFields.filter(s => s.text.toLowerCase().startsWith(prefix.toLowerCase())) :
                 itemFields;
-            
+
             if (filtered.length === 0) {
                 return null;
             }
-            
+
             return {
                 list: filtered,
                 from: CodeMirror.Pos(cur.line, cur.ch - prefix.length),
                 to: CodeMirror.Pos(cur.line, cur.ch)
             };
         }
-        
+
         // 情况4: item. - forEach/map回调中的item变量补全
         // 匹配当前行中的 变量名.
         const currentVarMatch = beforeCursor.match(/\b(\w+)\.(\w*)$/);
         if (currentVarMatch) {
             const varName = currentVarMatch[1];
             const prefix = currentVarMatch[2] || '';
-            
+
             // 如果不是 data 或 source，可能是回调变量
             if (varName !== 'data' && varName !== 'source') {
                 // 向上查找整个编辑器内容，找到这个变量的定义
                 const allText = editor.getValue();
                 const lines = allText.split('\n');
                 let arrayFieldName = null;
-                
+
                 // 查找 data.字段名.forEach(varName => 或 .map(varName =>
                 for (let i = 0; i <= cur.line; i++) {
                     const lineText = lines[i];
@@ -4199,25 +4634,25 @@ function initScriptEditor() {
                         break;
                     }
                 }
-                
+
                 if (arrayFieldName) {
                     const parentField = fields.find(f => f.name === arrayFieldName);
                     const nestedFields = parentField?.fields || parentField?.subfields;
-                    
+
                     if (parentField && parentField.type === 'entry' && nestedFields) {
                         const itemFields = nestedFields.map(field => ({
                             text: field.name,
                             displayText: `${field.name} - ${field.label || field.name} (${field.type})`
                         }));
-                        
-                        const filtered = prefix ? 
+
+                        const filtered = prefix ?
                             itemFields.filter(s => s.text.toLowerCase().startsWith(prefix.toLowerCase())) :
                             itemFields;
-                        
+
                         if (filtered.length === 0) {
                             return null;
                         }
-                        
+
                         return {
                             list: filtered,
                             from: CodeMirror.Pos(cur.line, cur.ch - prefix.length),
@@ -4227,13 +4662,47 @@ function initScriptEditor() {
                 }
             }
         }
-        
+
         return null;
     });
-    
+
+    // 定义自定义模式：JavaScript + 高亮 update 和 yield
+    CodeMirror.defineMode("javascript-custom", function (config, parserConfig) {
+        const jsMode = CodeMirror.getMode(config, "javascript");
+
+        return {
+            startState: function () {
+                return {
+                    jsState: CodeMirror.startState(jsMode)
+                };
+            },
+            token: function (stream, state) {
+                // 先用 JavaScript 模式处理
+                const style = jsMode.token(stream, state.jsState);
+
+                // 检查是否是 update 或 yield 关键字
+                const current = stream.current();
+                if ((current === 'update' || current === 'yield') &&
+                    /^(variable|def)/.test(style)) {
+                    return 'keyword builtin'; // 高亮为内置关键字
+                }
+
+                return style;
+            },
+            indent: function (state, textAfter) {
+                return jsMode.indent(state.jsState, textAfter);
+            },
+            electricInput: jsMode.electricInput,
+            lineComment: jsMode.lineComment,
+            blockCommentStart: jsMode.blockCommentStart,
+            blockCommentEnd: jsMode.blockCommentEnd,
+            fold: jsMode.fold
+        };
+    });
+
     // 创建 CodeMirror 编辑器
     scriptEditor = CodeMirror.fromTextArea(textarea, {
-        mode: 'javascript',
+        mode: 'javascript-custom',
         theme: 'monokai',
         lineNumbers: true,
         lineWrapping: true,
@@ -4243,101 +4712,301 @@ function initScriptEditor() {
         tabSize: 4,
         indentWithTabs: false,
         extraKeys: {
-            'Ctrl-Enter': function(cm) {
+            'Ctrl-Enter': function (cm) {
                 executeScript();
             },
-            'Cmd-Enter': function(cm) {
+            'Cmd-Enter': function (cm) {
                 executeScript();
             },
-            'Ctrl-Space': function(cm) {
-                cm.showHint({ 
-                    hint: CodeMirror.hint.dataFields, 
-                    completeSingle: false 
+            'Ctrl-S': function (cm) {
+                // 保存脚本
+                savePreviewScript(false);
+                return false; // 阻止默认行为
+            },
+            'Cmd-S': function (cm) {
+                // Mac 保存脚本
+                savePreviewScript(false);
+                return false;
+            },
+            'Ctrl-J': function (cm) {
+                // 手动触发补全（避免与输入法 Ctrl+Space 冲突）
+                CodeMirror.commands.autocomplete(cm, null, {
+                    hint: CodeMirror.hint.dataFields,
+                    completeSingle: false
                 });
+            },
+            'Alt-/': function (cm) {
+                // 备用快捷键：Alt+/
+                CodeMirror.commands.autocomplete(cm, null, {
+                    hint: CodeMirror.hint.dataFields,
+                    completeSingle: false
+                });
+            },
+            'Ctrl-/': function (cm) {
+                cm.toggleComment();
+            },
+            'Cmd-/': function (cm) {
+                cm.toggleComment();
+            },
+            'Shift-Alt-F': function (cm) {
+                // 格式化代码
+                formatScriptCode(cm);
+            },
+            'Backspace': function (cm) {
+                // 智能删除缩进
+                const cursor = cm.getCursor();
+                const line = cm.getLine(cursor.line);
+                const beforeCursor = line.substring(0, cursor.ch);
+                
+                // 检查光标前是否全是空格
+                if (/^\s+$/.test(beforeCursor) && beforeCursor.length > 0) {
+                    // 计算要删除的空格数（删除到上一个缩进级别）
+                    const indentUnit = cm.getOption('indentUnit') || 4;
+                    const currentIndent = beforeCursor.length;
+                    const deleteCount = currentIndent % indentUnit || indentUnit;
+                    
+                    // 删除对应数量的空格
+                    cm.replaceRange(
+                        '',
+                        { line: cursor.line, ch: cursor.ch - deleteCount },
+                        cursor
+                    );
+                } else {
+                    // 默认删除行为
+                    return CodeMirror.Pass;
+                }
             }
         }
     });
-    
+
     // 保存到全局 window 对象供其他函数使用
     window.scriptEditor = scriptEditor;
-    
+
     // 设置编辑器高度自适应
     scriptEditor.setSize('100%', '100%');
-    
+
     // 监听输入事件，自动触发补全
-    scriptEditor.on('inputRead', function(cm, change) {
+    scriptEditor.on('inputRead', function (cm, change) {
+        const cursor = cm.getCursor();
+        const line = cm.getLine(cursor.line);
+        const before = line.substring(0, cursor.ch);
+
+        // 情况1：点号触发补全
         if (change.text[0] === '.') {
-            const cursor = cm.getCursor();
-            const line = cm.getLine(cursor.line);
-            const before = line.substring(0, cursor.ch);
-            
             // 检测各种情况的点号触发补全:
             // 1. data. 或 source. 或 source[n].
             // 2. data.字段名.
             // 3. data.字段名[n].
             // 4. item. (forEach/map回调中的变量)
             const shouldTrigger = /(?:data|source)(?:\[\d+\])?(?:\.\w+(?:\[.+?\])?)*\.$/.test(before) ||
-                                  /\b\w+\.$/.test(before); // 匹配任何变量名后的点
-            
+                /\b\w+\.$/.test(before); // 匹配任何变量名后的点
+
             if (shouldTrigger) {
-                setTimeout(function() {
-                    cm.showHint({ 
-                        hint: CodeMirror.hint.dataFields, 
-                        completeSingle: false 
+                setTimeout(function () {
+                    cm.showHint({
+                        hint: CodeMirror.hint.dataFields,
+                        completeSingle: false
                     });
                 }, 100);
+            }
+        }
+        // 情况2：输入字母时，检查是否是 update/yield 或在 update 参数中
+        else if (change.text[0] && /[a-zA-Z]/.test(change.text[0])) {
+            // 检查是否在输入 update 或 yield
+            const wordMatch = before.match(/\b(u|up|upd|upda|updat|update|y|yi|yie|yiel|yield)\b$/i);
+
+            // 辅助函数：判断是否在 update 的第二个参数对象内
+            function isInUpdateParam(text) {
+                const updateMatches = [...text.matchAll(/\bupdate\s*\(/g)];
+                
+                if (updateMatches.length === 0) return false;
+                
+                const lastUpdatePos = updateMatches[updateMatches.length - 1].index;
+                const afterUpdate = text.substring(lastUpdatePos);
+                
+                // 统计括号和大括号（考虑字符串）
+                let parenCount = 0;
+                let braceCount = 0;
+                let commaFound = false;
+                let openBraceFound = false;
+                let inString = false;
+                let stringChar = '';
+                
+                for (let i = 0; i < afterUpdate.length; i++) {
+                    const char = afterUpdate[i];
+                    const prevChar = i > 0 ? afterUpdate[i - 1] : '';
+                    
+                    // 处理字符串
+                    if ((char === '"' || char === "'" || char === '`') && prevChar !== '\\') {
+                        if (!inString) {
+                            inString = true;
+                            stringChar = char;
+                        } else if (char === stringChar) {
+                            inString = false;
+                        }
+                    }
+                    
+                    if (!inString) {
+                        if (char === '(') {
+                            parenCount++;
+                        } else if (char === ')') {
+                            parenCount--;
+                            // update() 的括号已闭合
+                            if (parenCount === 0) return false;
+                        } else if (char === ',') {
+                            // 在第一层括号内找到逗号
+                            if (parenCount === 1) commaFound = true;
+                        } else if (char === '{') {
+                            // 在逗号后找到开括号
+                            if (commaFound && parenCount === 1) {
+                                openBraceFound = true;
+                                braceCount++;
+                            } else if (openBraceFound) {
+                                braceCount++;
+                            }
+                        } else if (char === '}') {
+                            if (openBraceFound) {
+                                braceCount--;
+                                // 第二个参数的对象已闭合
+                                if (braceCount === 0) return false;
+                            }
+                        }
+                    }
+                }
+                
+                // 必须找到逗号、开括号，且对象未闭合
+                return commaFound && openBraceFound && braceCount > 0;
+            }
+
+            // 检查是否在 update 参数中
+            const allText = cm.getValue();
+            const cursorPos = cm.indexFromPos(cursor);
+            const beforeCursor = allText.substring(0, cursorPos);
+            const inUpdateParam = isInUpdateParam(beforeCursor);
+
+            if (wordMatch || inUpdateParam) {
+                setTimeout(function () {
+                    cm.showHint({
+                        hint: CodeMirror.hint.dataFields,
+                        completeSingle: false
+                    });
+                }, 100);
+            }
+        }
+    });
+
+    // 监听换行事件，专门处理 update 内换行补全
+    scriptEditor.on('beforeChange', function(cm, changeObj) {
+        // 标记是否是换行操作
+        if (changeObj.origin === '+input' && changeObj.text && changeObj.text.length === 2 && 
+            changeObj.text[0] === '' && changeObj.text[1] === '') {
+            // 设置一个标记
+            cm._justPressedEnter = true;
+            setTimeout(() => { cm._justPressedEnter = false; }, 100);
+        }
+    });
+    
+    scriptEditor.on('cursorActivity', function(cm) {
+        if (cm._justPressedEnter) {
+            cm._justPressedEnter = false;
+            
+            const cursor = cm.getCursor();
+            const allText = cm.getValue();
+            const cursorPos = cm.indexFromPos(cursor);
+            const beforeCursor = allText.substring(0, cursorPos);
+            
+            // 辅助函数：判断是否在 update 的第二个参数对象内
+            function isInUpdateParam(text) {
+                const updateMatches = [...text.matchAll(/\bupdate\s*\(/g)];
+                
+                if (updateMatches.length === 0) return false;
+                
+                const lastUpdatePos = updateMatches[updateMatches.length - 1].index;
+                const afterUpdate = text.substring(lastUpdatePos);
+                
+                // 统计括号和大括号（考虑字符串）
+                let parenCount = 0;
+                let braceCount = 0;
+                let commaFound = false;
+                let openBraceFound = false;
+                let inString = false;
+                let stringChar = '';
+                
+                for (let i = 0; i < afterUpdate.length; i++) {
+                    const char = afterUpdate[i];
+                    const prevChar = i > 0 ? afterUpdate[i - 1] : '';
+                    
+                    // 处理字符串
+                    if ((char === '"' || char === "'" || char === '`') && prevChar !== '\\') {
+                        if (!inString) {
+                            inString = true;
+                            stringChar = char;
+                        } else if (char === stringChar) {
+                            inString = false;
+                        }
+                    }
+                    
+                    if (!inString) {
+                        if (char === '(') {
+                            parenCount++;
+                        } else if (char === ')') {
+                            parenCount--;
+                            // update() 的括号已闭合
+                            if (parenCount === 0) return false;
+                        } else if (char === ',') {
+                            // 在第一层括号内找到逗号
+                            if (parenCount === 1) commaFound = true;
+                        } else if (char === '{') {
+                            // 在逗号后找到开括号
+                            if (commaFound && parenCount === 1) {
+                                openBraceFound = true;
+                                braceCount++;
+                            } else if (openBraceFound) {
+                                braceCount++;
+                            }
+                        } else if (char === '}') {
+                            if (openBraceFound) {
+                                braceCount--;
+                                // 第二个参数的对象已闭合
+                                if (braceCount === 0) return false;
+                            }
+                        }
+                    }
+                }
+                
+                // 必须找到逗号、开括号，且对象未闭合
+                return commaFound && openBraceFound && braceCount > 0;
+            }
+            
+            // 检查是否应该触发补全
+            if (isInUpdateParam(beforeCursor)) {
+                cm.showHint({
+                    hint: CodeMirror.hint.dataFields,
+                    completeSingle: false
+                });
             }
         }
     });
     
     // 监听内容变化，进行语法检查
     let syntaxCheckTimeout;
-    scriptEditor.on('change', function(cm) {
+    scriptEditor.on('change', function (cm) {
         clearTimeout(syntaxCheckTimeout);
-        syntaxCheckTimeout = setTimeout(function() {
+        syntaxCheckTimeout = setTimeout(function () {
             checkScriptSyntax(cm.getValue());
         }, 500); // 延迟 500ms 检查，避免频繁检查
     });
-    
+
     // 加载已保存的脚本或设置默认模板
     const savedScript = currentSchema?.script;
     if (savedScript) {
         scriptEditor.setValue(savedScript);
     } else {
-        // 设置初始提示文本
-        scriptEditor.setValue(`// 在此编写处理函数（支持箭头函数或普通函数）
-// 参数：
-//   index - 行索引
-//   data - 当前行数据对象（只读）
-//   source - 整个表的数据数组（只读）
-// 全局函数：
-//   update(index, newData) - 更新指定行的数据
-//   yield(value) - 输出一条结果（可多次调用，一行产生多个结果）
-// 字段补全：
-//   data. - 顶级字段补全
-//   data.字典字段. - 字典内部字段补全
-//   data.条目字段[0]. - 条目数组元素字段补全
-
+        // 设置简洁的初始模板
+        scriptEditor.setValue(`// 编写数据处理函数，点击右上角"帮助"按钮查看详细说明
 (index, data, source) => {
-    // 示例 1：返回数据对象
+    // 返回处理后的数据
     return data;
-    
-    // 示例 2：更新数据并预览效果
-    // update(index, { 年龄: data.年龄 + 1 });
-    // return { 姓名: data.姓名, 年龄: data.年龄 };  // 查询结果会显示更新后的年龄
-    
-    // 示例 3：一行数据产生多个结果（展开条目数组）
-    // data.技能列表.forEach(skill => {
-    //     yield({ 角色: data.姓名, 技能名: skill.name, 等级: skill.level });
-    // });
-    
-    // 示例 4：访问字典嵌套字段
-    // return { 名称: data.name, 攻击力: data.属性.attack };
-    
-    // 示例 5：更新嵌套字段
-    // update(index, { 
-    //     属性: { ...data.属性, attack: data.属性.attack + 10 }
-    // });
 }`);
     }
 }
@@ -4349,15 +5018,15 @@ function deepClone(obj) {
     if (obj === null || typeof obj !== 'object') {
         return obj;
     }
-    
+
     if (obj instanceof Date) {
         return new Date(obj.getTime());
     }
-    
+
     if (Array.isArray(obj)) {
         return obj.map(item => deepClone(item));
     }
-    
+
     const cloned = {};
     for (const key in obj) {
         if (obj.hasOwnProperty(key)) {
@@ -4372,15 +5041,15 @@ function deepFreeze(obj) {
     if (obj === null || typeof obj !== 'object') {
         return obj;
     }
-    
+
     Object.freeze(obj);
-    
+
     Object.getOwnPropertyNames(obj).forEach(prop => {
         if (obj[prop] !== null && typeof obj[prop] === 'object' && !Object.isFrozen(obj[prop])) {
             deepFreeze(obj[prop]);
         }
     });
-    
+
     return obj;
 }
 
@@ -4389,11 +5058,11 @@ function convertFieldValue(value, field) {
     if (value === null || value === undefined) {
         return value;
     }
-    
+
     if (!field) {
         return value;
     }
-    
+
     switch (field.type) {
         case 'number':
             const num = Number(value);
@@ -4401,21 +5070,21 @@ function convertFieldValue(value, field) {
                 throw new Error(`无法转换为数字: ${value}`);
             }
             return num;
-            
+
         case 'text':
             return String(value);
-            
+
         case 'color':
             // 保持颜色格式
             return String(value);
-            
+
         case 'list':
             if (!Array.isArray(value)) {
                 throw new Error('list 类型必须是数组');
             }
             // list 只是简单数组,不需要递归验证
             return value;
-            
+
         case 'entry':
             if (!Array.isArray(value)) {
                 throw new Error('entry 类型必须是数组');
@@ -4442,7 +5111,7 @@ function convertFieldValue(value, field) {
                 });
             }
             return value;
-            
+
         case 'dict':
             if (typeof value !== 'object' || Array.isArray(value)) {
                 throw new Error('dict 类型必须是对象');
@@ -4463,11 +5132,11 @@ function convertFieldValue(value, field) {
                 return validatedDict;
             }
             return value;
-            
+
         case 'option':
         case 'datalist':
             return value; // 枚举值直接返回
-            
+
         default:
             return value;
     }
@@ -4478,33 +5147,33 @@ function convertFieldValue(value, field) {
 function checkScriptSyntax(code) {
     const warningDiv = document.getElementById('script-syntax-warning');
     const warningText = document.getElementById('script-warning-text');
-    
+
     if (!code || !code.trim()) {
         warningDiv.style.display = 'none';
         return;
     }
-    
+
     // 移除注释和空行
     const cleanCode = code
         .split('\n')
         .filter(line => !line.trim().startsWith('//'))
         .join('\n')
         .trim();
-    
+
     if (!cleanCode) {
         warningDiv.style.display = 'none';
         return;
     }
-    
+
     // 检查是否符合预期格式
     const arrowFuncPattern = /^\s*\(([^)]*)\)\s*=>\s*\{[\s\S]*\}\s*$/;
     const arrowFuncShortPattern = /^\s*\(([^)]*)\)\s*=>\s*[^{][\s\S]*$/;
     const funcPattern = /^\s*function\s*\(([^)]*)\)\s*\{[\s\S]*\}\s*$/;
-    
+
     const isValidArrow = arrowFuncPattern.test(cleanCode);
     const isValidArrowShort = arrowFuncShortPattern.test(cleanCode);
     const isValidFunc = funcPattern.test(cleanCode);
-    
+
     if (!isValidArrow && !isValidArrowShort && !isValidFunc) {
         warningText.textContent = '函数格式不正确！请使用 (index, data) => { ... } 或 function(index, data) { ... }';
         warningDiv.style.display = 'flex';
@@ -4518,7 +5187,7 @@ function checkScriptSyntax(code) {
             const match = cleanCode.match(/^\s*function\s*\(([^)]*)\)/);
             params = match ? match[1].trim() : '';
         }
-        
+
         // 检查参数格式（应该有 2-3 个参数）
         const paramList = params.split(',').map(p => p.trim()).filter(p => p);
         if (paramList.length < 2 || paramList.length > 3) {
