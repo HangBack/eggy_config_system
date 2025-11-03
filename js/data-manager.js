@@ -4008,38 +4008,226 @@ function initScriptEditor() {
     CodeMirror.registerHelper('hint', 'dataFields', function(editor, options) {
         const cur = editor.getCursor();
         const line = editor.getLine(cur.line);
-        
-        // 检测是否在 data. 或 source[index]. 后面
         const beforeCursor = line.substring(0, cur.ch);
-        const dataMatch = beforeCursor.match(/(?:data|source(?:\[\d+\])?)\.(\w*)$/);
         
-        if (!dataMatch || !window.previewSchemaCache) {
+        if (!window.previewSchemaCache) {
             return null;
         }
         
-        const prefix = dataMatch[1] || '';
         const fields = window.previewSchemaCache.fields || [];
         
-        // 获取所有字段名和标签
-        const suggestions = fields.map(field => ({
-            text: field.name,
-            displayText: `${field.name} - ${field.label || field.name} (${field.type})`
-        }));
-        
-        // 过滤匹配前缀的字段
-        const filtered = prefix ? 
-            suggestions.filter(s => s.text.toLowerCase().startsWith(prefix.toLowerCase())) :
-            suggestions;
-        
-        if (filtered.length === 0) {
-            return null;
+        // 情况1: data. 或 source[index]. - 顶级字段补全
+        const topLevelMatch = beforeCursor.match(/(?:data|source(?:\[\d+\])?)\.(\w*)$/);
+        if (topLevelMatch) {
+            const prefix = topLevelMatch[1] || '';
+            const suggestions = fields.map(field => ({
+                text: field.name,
+                displayText: `${field.name} - ${field.label || field.name} (${field.type})`
+            }));
+            
+            const filtered = prefix ? 
+                suggestions.filter(s => s.text.toLowerCase().startsWith(prefix.toLowerCase())) :
+                suggestions;
+            
+            if (filtered.length === 0) {
+                return null;
+            }
+            
+            return {
+                list: filtered,
+                from: CodeMirror.Pos(cur.line, cur.ch - prefix.length),
+                to: CodeMirror.Pos(cur.line, cur.ch)
+            };
         }
         
-        return {
-            list: filtered,
-            from: CodeMirror.Pos(cur.line, cur.ch - prefix.length),
-            to: CodeMirror.Pos(cur.line, cur.ch)
-        };
+        // 情况2: data.字段名. - 嵌套字段补全 (dict/entry)
+        const nestedMatch = beforeCursor.match(/(?:data|source(?:\[\d+\])?)\.(\w+)\.(\w*)$/);
+        if (nestedMatch) {
+            const parentFieldName = nestedMatch[1];
+            const prefix = nestedMatch[2] || '';
+            
+            // 找到父字段
+            const parentField = fields.find(f => f.name === parentFieldName);
+            if (!parentField) {
+                return null;
+            }
+            
+            let nestedFields = [];
+            
+            // 获取嵌套字段列表 (可能是 fields 或 subfields)
+            const fieldsList = parentField.fields || parentField.subfields;
+            
+            // 根据类型获取嵌套字段
+            if (parentField.type === 'dict' && fieldsList) {
+                // 字典类型
+                nestedFields = fieldsList.map(field => ({
+                    text: field.name,
+                    displayText: `${field.name} - ${field.label || field.name} (${field.type})`
+                }));
+            } else if (parentField.type === 'entry' && fieldsList) {
+                // 条目类型 - 提示这是数组,需要遍历
+                const hints = [{
+                    text: 'forEach(item => {\n        \n    });',
+                    displayText: 'forEach(item => { ... }) - 遍历数组',
+                    hint: function(cm, data, completion) {
+                        const from = data.from || data;
+                        const to = data.to || data;
+                        const cursor = cm.getCursor();
+                        const indent = cm.getLine(cursor.line).match(/^\s*/)[0];
+                        const text = `forEach(item => {\n${indent}    \n${indent}});`;
+                        cm.replaceRange(text, from, to);
+                        // 移动光标到内部
+                        cm.setCursor({ line: cursor.line + 1, ch: indent.length + 4 });
+                    }
+                }, {
+                    text: 'map(item => {\n        \n    })',
+                    displayText: 'map(item => { ... }) - 映射数组',
+                    hint: function(cm, data, completion) {
+                        const from = data.from || data;
+                        const to = data.to || data;
+                        const cursor = cm.getCursor();
+                        const indent = cm.getLine(cursor.line).match(/^\s*/)[0];
+                        const text = `map(item => {\n${indent}    \n${indent}})`;
+                        cm.replaceRange(text, from, to);
+                        // 移动光标到内部
+                        cm.setCursor({ line: cursor.line + 1, ch: indent.length + 4 });
+                    }
+                }, {
+                    text: 'filter(item => )',
+                    displayText: 'filter(item => ...) - 过滤数组',
+                    hint: function(cm, data, completion) {
+                        const from = data.from || data;
+                        const to = data.to || data;
+                        const text = 'filter(item => )';
+                        cm.replaceRange(text, from, to);
+                        // 移动光标到箭头后
+                        const cursor = cm.getCursor();
+                        cm.setCursor({ line: cursor.line, ch: cursor.ch - 1 });
+                    }
+                }, {
+                    text: 'length',
+                    displayText: 'length - 数组长度'
+                }, {
+                    text: '[0]',
+                    displayText: '[index] - 访问元素'
+                }];
+                
+                return {
+                    list: hints,
+                    from: CodeMirror.Pos(cur.line, cur.ch - prefix.length),
+                    to: CodeMirror.Pos(cur.line, cur.ch)
+                };
+            }
+            
+            if (nestedFields.length === 0) {
+                return null;
+            }
+            
+            const filtered = prefix ? 
+                nestedFields.filter(s => s.text.toLowerCase().startsWith(prefix.toLowerCase())) :
+                nestedFields;
+            
+            if (filtered.length === 0) {
+                return null;
+            }
+            
+            return {
+                list: filtered,
+                from: CodeMirror.Pos(cur.line, cur.ch - prefix.length),
+                to: CodeMirror.Pos(cur.line, cur.ch)
+            };
+        }
+        
+        // 情况3: data.条目字段[i]. - entry数组元素的字段补全
+        const entryItemMatch = beforeCursor.match(/(?:data|source(?:\[\d+\])?)\.(\w+)\[.+?\]\.(\w*)$/);
+        if (entryItemMatch) {
+            const parentFieldName = entryItemMatch[1];
+            const prefix = entryItemMatch[2] || '';
+            
+            // 找到父字段
+            const parentField = fields.find(f => f.name === parentFieldName);
+            
+            // 获取嵌套字段列表 (可能是 fields 或 subfields)
+            const nestedFields = parentField?.fields || parentField?.subfields;
+            
+            if (!parentField || parentField.type !== 'entry' || !nestedFields) {
+                return null;
+            }
+            
+            // entry 数组元素的字段
+            const itemFields = nestedFields.map(field => ({
+                text: field.name,
+                displayText: `${field.name} - ${field.label || field.name} (${field.type})`
+            }));
+            
+            const filtered = prefix ? 
+                itemFields.filter(s => s.text.toLowerCase().startsWith(prefix.toLowerCase())) :
+                itemFields;
+            
+            if (filtered.length === 0) {
+                return null;
+            }
+            
+            return {
+                list: filtered,
+                from: CodeMirror.Pos(cur.line, cur.ch - prefix.length),
+                to: CodeMirror.Pos(cur.line, cur.ch)
+            };
+        }
+        
+        // 情况4: item. - forEach/map回调中的item变量补全
+        // 匹配当前行中的 变量名.
+        const currentVarMatch = beforeCursor.match(/\b(\w+)\.(\w*)$/);
+        if (currentVarMatch) {
+            const varName = currentVarMatch[1];
+            const prefix = currentVarMatch[2] || '';
+            
+            // 如果不是 data 或 source，可能是回调变量
+            if (varName !== 'data' && varName !== 'source') {
+                // 向上查找整个编辑器内容，找到这个变量的定义
+                const allText = editor.getValue();
+                const lines = allText.split('\n');
+                let arrayFieldName = null;
+                
+                // 查找 data.字段名.forEach(varName => 或 .map(varName =>
+                for (let i = 0; i <= cur.line; i++) {
+                    const lineText = lines[i];
+                    const callbackMatch = lineText.match(new RegExp(`data\\.(\\w+)\\.(forEach|map|filter)\\s*\\(\\s*${varName}\\s*=>`));
+                    if (callbackMatch) {
+                        arrayFieldName = callbackMatch[1];
+                        break;
+                    }
+                }
+                
+                if (arrayFieldName) {
+                    const parentField = fields.find(f => f.name === arrayFieldName);
+                    const nestedFields = parentField?.fields || parentField?.subfields;
+                    
+                    if (parentField && parentField.type === 'entry' && nestedFields) {
+                        const itemFields = nestedFields.map(field => ({
+                            text: field.name,
+                            displayText: `${field.name} - ${field.label || field.name} (${field.type})`
+                        }));
+                        
+                        const filtered = prefix ? 
+                            itemFields.filter(s => s.text.toLowerCase().startsWith(prefix.toLowerCase())) :
+                            itemFields;
+                        
+                        if (filtered.length === 0) {
+                            return null;
+                        }
+                        
+                        return {
+                            list: filtered,
+                            from: CodeMirror.Pos(cur.line, cur.ch - prefix.length),
+                            to: CodeMirror.Pos(cur.line, cur.ch)
+                        };
+                    }
+                }
+            }
+        }
+        
+        return null;
     });
     
     // 创建 CodeMirror 编辑器
@@ -4082,8 +4270,15 @@ function initScriptEditor() {
             const line = cm.getLine(cursor.line);
             const before = line.substring(0, cursor.ch);
             
-            // 检测 data. 或 source. 或 source[n].
-            if (/(?:data|source(?:\[\d+\])?)\.$/. test(before)) {
+            // 检测各种情况的点号触发补全:
+            // 1. data. 或 source. 或 source[n].
+            // 2. data.字段名.
+            // 3. data.字段名[n].
+            // 4. item. (forEach/map回调中的变量)
+            const shouldTrigger = /(?:data|source)(?:\[\d+\])?(?:\.\w+(?:\[.+?\])?)*\.$/.test(before) ||
+                                  /\b\w+\.$/.test(before); // 匹配任何变量名后的点
+            
+            if (shouldTrigger) {
                 setTimeout(function() {
                     cm.showHint({ 
                         hint: CodeMirror.hint.dataFields, 
@@ -4117,7 +4312,10 @@ function initScriptEditor() {
 // 全局函数：
 //   update(index, newData) - 更新指定行的数据
 //   yield(value) - 输出一条结果（可多次调用，一行产生多个结果）
-// 提示：输入 data. 或 source. 会自动弹出字段补全列表
+// 字段补全：
+//   data. - 顶级字段补全
+//   data.字典字段. - 字典内部字段补全
+//   data.条目字段[0]. - 条目数组元素字段补全
 
 (index, data, source) => {
     // 示例 1：返回数据对象
@@ -4127,14 +4325,18 @@ function initScriptEditor() {
     // update(index, { 年龄: data.年龄 + 1 });
     // return { 姓名: data.姓名, 年龄: data.年龄 };  // 查询结果会显示更新后的年龄
     
-    // 示例 3：一行数据产生多个结果
+    // 示例 3：一行数据产生多个结果（展开条目数组）
     // data.技能列表.forEach(skill => {
-    //     yield({ 角色: data.姓名, 技能: skill });
+    //     yield({ 角色: data.姓名, 技能名: skill.name, 等级: skill.level });
     // });
     
-    // 示例 4：访问其他行数据
-    // const prevRow = source[index - 1];
-    // return { ...data, prev_value: prevRow?.some_field };
+    // 示例 4：访问字典嵌套字段
+    // return { 名称: data.name, 攻击力: data.属性.attack };
+    
+    // 示例 5：更新嵌套字段
+    // update(index, { 
+    //     属性: { ...data.属性, attack: data.属性.attack + 10 }
+    // });
 }`);
     }
 }
@@ -4210,17 +4412,54 @@ function convertFieldValue(value, field) {
             if (!Array.isArray(value)) {
                 throw new Error('list 类型必须是数组');
             }
+            // list 只是简单数组,不需要递归验证
             return value;
             
         case 'entry':
             if (!Array.isArray(value)) {
                 throw new Error('entry 类型必须是数组');
             }
+            // 如果 entry 有定义字段,递归验证每个元素
+            const entryFields = field.fields || field.subfields;
+            if (entryFields && entryFields.length > 0) {
+                return value.map((item, idx) => {
+                    if (typeof item !== 'object' || item === null) {
+                        throw new Error(`entry[${idx}] 必须是对象`);
+                    }
+                    const validatedItem = {};
+                    // 验证并转换每个字段
+                    for (const key in item) {
+                        const subField = entryFields.find(f => f.name === key);
+                        if (subField) {
+                            validatedItem[key] = convertFieldValue(item[key], subField);
+                        } else {
+                            // 保留未定义的字段
+                            validatedItem[key] = item[key];
+                        }
+                    }
+                    return validatedItem;
+                });
+            }
             return value;
             
         case 'dict':
             if (typeof value !== 'object' || Array.isArray(value)) {
                 throw new Error('dict 类型必须是对象');
+            }
+            // 如果 dict 有定义字段,递归验证
+            const dictFields = field.fields || field.subfields;
+            if (dictFields && dictFields.length > 0) {
+                const validatedDict = {};
+                for (const key in value) {
+                    const subField = dictFields.find(f => f.name === key);
+                    if (subField) {
+                        validatedDict[key] = convertFieldValue(value[key], subField);
+                    } else {
+                        // 保留未定义的字段
+                        validatedDict[key] = value[key];
+                    }
+                }
+                return validatedDict;
             }
             return value;
             

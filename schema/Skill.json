@@ -147,5 +147,5 @@
     }
   ],
   "name": "Skill",
-  "script": "// 在此编写处理函数（支持箭头函数或普通函数）\n// 参数：\n//   index - 行索引\n//   data - 当前行数据对象（只读）\n//   source - 整个表的数据数组（只读）\n// 全局函数：\n//   update(index, newData) - 更新指定行的数据\n// 提示：输入 data. 或 source. 会自动弹出字段补全列表\n\n(index, data, source) => {\n    // 示例 1：返回数据对象\n    console.log(123);\n    return data;\n    \n    // 示例 2：更新数据并预览效果\n    // update(index, { 年龄: data.年龄 + 1 });\n    // return { 姓名: data.姓名, 年龄: data.年龄 };  // 查询结果会显示更新后的年龄\n    \n    // 示例 3：访问其他行数据\n    // const prevRow = source[index - 1];\n    // return { ...data, prev_value: prevRow?.some_field };\n}"
+  "script": ""
 }
