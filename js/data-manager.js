@@ -147,6 +147,9 @@ function renderDataRowsList() {
 function createDataRowListItem(dataRow, index) {
     const div = document.createElement('div');
     div.className = 'data-row-list-item';
+    div.draggable = true; // 启用拖动
+    div.dataset.rowIndex = index;
+    
     if (index === selectedDataRowIndex) {
         div.classList.add('active');
     }
@@ -160,6 +163,7 @@ function createDataRowListItem(dataRow, index) {
         </div>
     `;
 
+    // 点击选择
     div.addEventListener('click', () => {
         // 在切换前保存当前编辑的数据到内存
         saveCurrentEditToMemory();
@@ -169,11 +173,231 @@ function createDataRowListItem(dataRow, index) {
         renderDataRowEditor(index);
     });
 
+    // 右键菜单
+    div.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        showRowContextMenu(e, index);
+    });
+
+    // 拖动事件
+    div.addEventListener('dragstart', (e) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', index);
+        div.classList.add('dragging');
+    });
+
+    div.addEventListener('dragend', (e) => {
+        div.classList.remove('dragging');
+        // 移除所有拖动样式
+        document.querySelectorAll('.data-row-list-item').forEach(item => {
+            item.classList.remove('drag-over');
+        });
+    });
+
+    div.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        
+        // 高亮当前拖动目标
+        const afterElement = getDragAfterElement(e.clientY);
+        const draggingElement = document.querySelector('.dragging');
+        
+        if (afterElement == null) {
+            div.classList.add('drag-over');
+        } else {
+            div.classList.remove('drag-over');
+        }
+    });
+
+    div.addEventListener('dragleave', (e) => {
+        div.classList.remove('drag-over');
+    });
+
+    div.addEventListener('drop', (e) => {
+        e.preventDefault();
+        div.classList.remove('drag-over');
+        
+        const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+        const toIndex = index;
+        
+        if (fromIndex !== toIndex) {
+            moveDataRow(fromIndex, toIndex);
+        }
+    });
+
     return div;
 }
 
 function updateDataRowName(index, newName) {
     dataRows[index].name = newName;
+}
+
+// 右键菜单
+function showRowContextMenu(event, rowIndex) {
+    // 移除已存在的菜单
+    const existingMenu = document.querySelector('.context-menu');
+    if (existingMenu) {
+        existingMenu.remove();
+    }
+
+    const menu = document.createElement('div');
+    menu.className = 'context-menu';
+    menu.style.left = event.pageX + 'px';
+    menu.style.top = event.pageY + 'px';
+
+    menu.innerHTML = `
+        <div class="context-menu-item" onclick="insertRowBefore(${rowIndex})">
+            <i class="fas fa-arrow-up"></i>
+            <span>在此之前插入</span>
+        </div>
+        <div class="context-menu-item" onclick="insertRowAfter(${rowIndex})">
+            <i class="fas fa-arrow-down"></i>
+            <span>在此之后插入</span>
+        </div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" onclick="duplicateRow(${rowIndex})">
+            <i class="fas fa-copy"></i>
+            <span>复制此行</span>
+        </div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" onclick="removeDataRow(${rowIndex}); hideContextMenu();">
+            <i class="fas fa-trash"></i>
+            <span>删除此行</span>
+        </div>
+    `;
+
+    document.body.appendChild(menu);
+
+    // 点击其他地方关闭菜单
+    const closeMenu = (e) => {
+        if (!menu.contains(e.target)) {
+            menu.remove();
+            document.removeEventListener('click', closeMenu);
+        }
+    };
+    setTimeout(() => {
+        document.addEventListener('click', closeMenu);
+    }, 0);
+}
+
+function hideContextMenu() {
+    const menu = document.querySelector('.context-menu');
+    if (menu) {
+        menu.remove();
+    }
+}
+
+// 在指定行之前插入新行
+function insertRowBefore(index) {
+    saveCurrentEditToMemory();
+    
+    const newRow = {
+        name: `新数据 ${dataRows.length + 1}`,
+        data: createDefaultDataForSchema(currentSchema)
+    };
+    
+    dataRows.splice(index, 0, newRow);
+    
+    // 更新选中索引
+    if (selectedDataRowIndex >= index) {
+        selectedDataRowIndex++;
+    }
+    
+    renderDataRowsList();
+    hideContextMenu();
+    showSuccess(`已在第 ${index + 1} 行之前插入新行`);
+}
+
+// 在指定行之后插入新行
+function insertRowAfter(index) {
+    saveCurrentEditToMemory();
+    
+    const newRow = {
+        name: `新数据 ${dataRows.length + 1}`,
+        data: createDefaultDataForSchema(currentSchema)
+    };
+    
+    dataRows.splice(index + 1, 0, newRow);
+    
+    // 更新选中索引
+    if (selectedDataRowIndex > index) {
+        selectedDataRowIndex++;
+    }
+    
+    renderDataRowsList();
+    hideContextMenu();
+    showSuccess(`已在第 ${index + 1} 行之后插入新行`);
+}
+
+// 复制行
+function duplicateRow(index) {
+    saveCurrentEditToMemory();
+    
+    const originalRow = dataRows[index];
+    const newRow = {
+        name: originalRow.name + ' (副本)',
+        data: deepClone(originalRow.data)
+    };
+    
+    dataRows.splice(index + 1, 0, newRow);
+    
+    // 更新选中索引
+    if (selectedDataRowIndex > index) {
+        selectedDataRowIndex++;
+    }
+    
+    renderDataRowsList();
+    hideContextMenu();
+    showSuccess(`已复制第 ${index + 1} 行`);
+}
+
+// 移动数据行
+function moveDataRow(fromIndex, toIndex) {
+    saveCurrentEditToMemory();
+    
+    const [movedRow] = dataRows.splice(fromIndex, 1);
+    dataRows.splice(toIndex, 0, movedRow);
+    
+    // 更新选中索引
+    if (selectedDataRowIndex === fromIndex) {
+        selectedDataRowIndex = toIndex;
+    } else if (selectedDataRowIndex > fromIndex && selectedDataRowIndex <= toIndex) {
+        selectedDataRowIndex--;
+    } else if (selectedDataRowIndex < fromIndex && selectedDataRowIndex >= toIndex) {
+        selectedDataRowIndex++;
+    }
+    
+    renderDataRowsList();
+    renderDataRowEditor(selectedDataRowIndex);
+    showSuccess(`已将数据行从 ${fromIndex + 1} 移动到 ${toIndex + 1}`);
+}
+
+// 创建默认数据
+function createDefaultDataForSchema(schema) {
+    if (!schema || !schema.fields) return {};
+    
+    const data = {};
+    schema.fields.forEach(field => {
+        if (field.defaultValue !== undefined) {
+            data[field.name] = field.defaultValue;
+        } else {
+            switch (field.type) {
+                case 'number':
+                    data[field.name] = 0;
+                    break;
+                case 'entry':
+                case 'list':
+                    data[field.name] = [];
+                    break;
+                case 'dict':
+                    data[field.name] = {};
+                    break;
+                default:
+                    data[field.name] = '';
+            }
+        }
+    });
+    return data;
 }
 
 // 将当前编辑器中的数据保存到内存中的 dataRows
@@ -884,6 +1108,18 @@ function createDictInput(field, value, rowIndex) {
                     </div>
                 `;
                 break;
+            case 'flags':
+                const flagsValue = subfieldValue || 0;
+                inputHtml = `
+                    <div class="flags-input-wrapper">
+                        <input type="number" id="${subfieldId}" class="form-control" value="${flagsValue}" 
+                               oninput="updateFlagsFromInput('${subfieldId}', '${rowIndex}', '${field.name}', null, '${subfield.name}')">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="openFlagsModal(${rowIndex}, '${field.name}', ${flagsValue}, '${subfieldId}', null, '${subfield.name}')">
+                            <i class="fas fa-flag"></i>
+                        </button>
+                    </div>
+                `;
+                break;
         }
 
         const rawBadge = subfield.isRaw ? '<span class="raw-badge" title="此字段Lua导出时不加引号">原始</span>' : '';
@@ -979,6 +1215,18 @@ function createListItem(field, value, rowIndex, itemIndex) {
                 <div class="custom-datalist-wrapper" data-datalist-id="${datalistId}">
                     <input type="text" id="${itemId}" class="custom-datalist-input" value="${escapeHtml(value)}" autocomplete="off" placeholder="请输入或选择...">
                     <div class="custom-datalist-dropdown" id="${datalistId}"><div class="custom-datalist-empty">加载中...</div></div>
+                </div>
+            `;
+            break;
+        case 'flags':
+            const flagsValue = value || 0;
+            inputHtml = `
+                <div class="flags-input-wrapper">
+                    <input type="number" id="${itemId}" class="form-control" value="${flagsValue}" 
+                           oninput="updateFlagsFromInput('${itemId}', '${rowIndex}', '${field.name}', ${itemIndex})">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="openFlagsModal(${rowIndex}, '${field.name}', ${flagsValue}, '${itemId}', ${itemIndex})">
+                        <i class="fas fa-flag"></i>
+                    </button>
                 </div>
             `;
             break;
@@ -1122,6 +1370,19 @@ function createEntryItem(field, entry, rowIndex, entryIndex) {
                     </div>
                 `;
                 break;
+
+            case 'flags':
+                const flagsValue = value || 0;
+                inputHtml = `
+                    <div class="flags-input-wrapper">
+                        <input type="number" id="${subfieldId}" class="form-control" value="${flagsValue}" 
+                               oninput="updateFlagsFromInput('${subfieldId}', '${rowIndex}', '${field.name}', ${entryIndex}, '${subfield.name}')">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="openFlagsModal(${rowIndex}, '${field.name}', ${flagsValue}, '${subfieldId}', ${entryIndex}, '${subfield.name}')">
+                            <i class="fas fa-flag"></i>
+                        </button>
+                    </div>
+                `;
+                break;
         }
 
         return `
@@ -1134,7 +1395,9 @@ function createEntryItem(field, entry, rowIndex, entryIndex) {
 
     return `
         <div class="entry-item" data-entry-index="${entryIndex}">
-            ${subfieldsHtml}
+            <div class="entry-item-fields">
+                ${subfieldsHtml}
+            </div>
             <div class="entry-item-actions">
                 <button type="button" class="btn btn-sm btn-danger" onclick="removeEntryItem(${rowIndex}, '${field.name}', ${entryIndex})">
                     <i class="fas fa-trash"></i>
@@ -1439,6 +1702,27 @@ function previewData() {
 
     // 初始化代码编辑器（如果还没有初始化）
     initScriptEditor();
+    
+    // 检查是否需要加载默认脚本
+    if (window.lastPreviewSchemaName !== currentSchemaName) {
+        window.lastPreviewSchemaName = currentSchemaName;
+        
+        // 从 schema 加载保存的脚本，如果没有则使用默认模板
+        const defaultScript = `// 编写数据处理函数，点击右上角"帮助"按钮查看详细说明
+(index, data, source) => {
+    // 返回处理后的数据
+    return data;
+}`;
+        
+        if (scriptEditor) {
+            // 加载 schema 中保存的脚本，如果没有则使用默认模板
+            const savedScript = currentSchema.script || defaultScript;
+            scriptEditor.setValue(savedScript);
+            
+            // 重置脚本编辑状态标记
+            window.scriptEditorDirty = false;
+        }
+    }
 }
 
 function initPreviewScrollSync() {
@@ -1477,8 +1761,11 @@ function initPreviewScrollSync() {
 }
 
 async function closePreviewModal() {
-    // 退出预览时自动保存脚本
-    await savePreviewScript(true);
+    // 检查是否有未保存的更改
+    if (window.scriptEditorDirty) {
+        showWarning('脚本有未保存的更改');
+        return; // 阻止关闭
+    }
 
     const modal = document.getElementById('preview-modal');
     modal.classList.remove('show');
@@ -2412,6 +2699,9 @@ async function savePreviewScript(autoSave = false, event = null) {
         const result = await response.json();
 
         if (result.success) {
+            // 重置未保存标记
+            window.scriptEditorDirty = false;
+            
             if (!autoSave) {
                 // 手动保存时显示成功提示
                 const saveBtn = event?.target;
@@ -3313,26 +3603,58 @@ let currentFlagsRowIndex = -1;
 let currentFlagsFieldName = '';
 let currentFlagsEnum = null;
 
-async function openFlagsModal(rowIndex, fieldName, initialValue) {
+async function openFlagsModal(rowIndex, fieldName, initialValue, fieldId = null, entryIndex = null, subfieldName = null) {
     if (!currentSchema || !currentSchema.fields) return;
 
-    const field = currentSchema.fields.find(f => f.name === fieldName);
-    if (!field || field.type !== 'flags' || !field.dataSource || !field.dataSource.enum) {
+    // 找到字段定义（可能是顶级字段或子字段）
+    let field, flagsField;
+    if (subfieldName) {
+        // 子字段：从顶级字段找到子字段定义
+        field = currentSchema.fields.find(f => f.name === fieldName);
+        if (field) {
+            if (field.type === 'dict' && field.subfields) {
+                flagsField = field.subfields.find(sf => sf.name === subfieldName);
+            } else if (field.type === 'entry' && field.subfields) {
+                flagsField = field.subfields.find(sf => sf.name === subfieldName);
+            }
+        }
+    } else {
+        // 顶级字段
+        field = currentSchema.fields.find(f => f.name === fieldName);
+        flagsField = field;
+    }
+
+    if (!flagsField || flagsField.type !== 'flags' || !flagsField.dataSource || !flagsField.dataSource.enum) {
         showError('标志字段配置错误');
         return;
     }
 
+    // 保存上下文信息
     currentFlagsRowIndex = rowIndex;
     currentFlagsFieldName = fieldName;
+    window.currentFlagsFieldId = fieldId;
+    window.currentFlagsEntryIndex = entryIndex;
+    window.currentFlagsSubfieldName = subfieldName;
 
-    // 从输入框读取当前实际值，而不是使用传入的初始值
-    const fieldId = `field-${rowIndex}-${fieldName}`;
-    const input = document.getElementById(fieldId);
+    // 确定输入框 ID
+    let actualFieldId;
+    if (fieldId) {
+        actualFieldId = fieldId;
+    } else if (entryIndex !== null && subfieldName) {
+        actualFieldId = `entry-${rowIndex}-${fieldName}-${entryIndex}-${subfieldName}`;
+    } else if (subfieldName) {
+        actualFieldId = `dict-${rowIndex}-${fieldName}-${subfieldName}`;
+    } else {
+        actualFieldId = `field-${rowIndex}-${fieldName}`;
+    }
+
+    // 从输入框读取当前实际值
+    const input = document.getElementById(actualFieldId);
     const currentValue = input ? parseInt(input.value) || 0 : (initialValue || 0);
 
     // 加载枚举数据
     try {
-        const response = await fetch(`${API.ENUM}?action=get&name=${encodeURIComponent(field.dataSource.enum)}`);
+        const response = await fetch(`${API.ENUM}?action=get&name=${encodeURIComponent(flagsField.dataSource.enum)}`);
         const result = await response.json();
 
         if (!result.success || !result.data) {
@@ -3345,7 +3667,7 @@ async function openFlagsModal(rowIndex, fieldName, initialValue) {
         // 渲染复选框列表
         const container = document.getElementById('flags-checkboxes');
         container.innerHTML = currentFlagsEnum.values.map(v => {
-            const bitValue = 1 << v.value; // 将位偏移转换为实际标志位值
+            const bitValue = 1 << v.value;
             const isChecked = (currentValue & bitValue) === bitValue;
             return `
                 <label class="flags-checkbox-item">
@@ -3374,14 +3696,45 @@ function updateFlagsValue() {
     let total = 0;
     checkboxes.forEach(cb => {
         const bitOffset = parseInt(cb.getAttribute('data-bit-offset'));
-        total |= (1 << bitOffset); // 使用位移操作计算标志位值
+        total |= (1 << bitOffset);
     });
     document.getElementById('flags-result-value').value = total;
 }
 
+// 从输入框手动更新 checkbox 状态
+function updateFlagsFromManualInput() {
+    const resultInput = document.getElementById('flags-result-value');
+    const value = parseInt(resultInput.value) || 0;
+    
+    const checkboxes = document.querySelectorAll('#flags-checkboxes input[type="checkbox"]');
+    checkboxes.forEach(cb => {
+        const bitOffset = parseInt(cb.getAttribute('data-bit-offset'));
+        const bitValue = 1 << bitOffset;
+        cb.checked = (value & bitValue) === bitValue;
+    });
+}
+
+// 从字段输入框更新（在主界面输入时）
+function updateFlagsFromInput(fieldId, rowIndex, fieldName, entryIndex = null, subfieldName = null) {
+    // 暂时不做处理，只是为了绑定事件
+    // 实际值会在打开模态框时同步
+}
+
 function confirmFlagsSelection() {
     const value = parseInt(document.getElementById('flags-result-value').value) || 0;
-    const fieldId = `field-${currentFlagsRowIndex}-${currentFlagsFieldName}`;
+    
+    // 根据保存的上下文确定字段 ID
+    let fieldId;
+    if (window.currentFlagsFieldId) {
+        fieldId = window.currentFlagsFieldId;
+    } else if (window.currentFlagsEntryIndex !== null && window.currentFlagsSubfieldName) {
+        fieldId = `entry-${currentFlagsRowIndex}-${currentFlagsFieldName}-${window.currentFlagsEntryIndex}-${window.currentFlagsSubfieldName}`;
+    } else if (window.currentFlagsSubfieldName) {
+        fieldId = `dict-${currentFlagsRowIndex}-${currentFlagsFieldName}-${window.currentFlagsSubfieldName}`;
+    } else {
+        fieldId = `field-${currentFlagsRowIndex}-${currentFlagsFieldName}`;
+    }
+    
     const input = document.getElementById(fieldId);
     if (input) {
         input.value = value;
@@ -5021,6 +5374,14 @@ function initScriptEditor() {
 
     // 设置编辑器高度自适应
     scriptEditor.setSize('100%', '100%');
+    
+    // 监听内容变化，标记为未保存
+    scriptEditor.on('change', function (cm, change) {
+        // 只有用户操作导致的变化才标记为 dirty（排除 setValue 等程序操作）
+        if (change.origin !== 'setValue' && change.origin !== undefined) {
+            window.scriptEditorDirty = true;
+        }
+    });
 
     // 监听输入事件，自动触发补全
     scriptEditor.on('inputRead', function (cm, change) {
@@ -5451,3 +5812,20 @@ function checkScriptSyntax(code) {
 }
 
 // ========== 工具函数 ==========
+
+// 拖动辅助函数：获取拖动后应插入的位置
+function getDragAfterElement(y) {
+    const container = document.getElementById('data-rows-list');
+    const draggableElements = [...container.querySelectorAll('.data-row-list-item:not(.dragging)')];
+
+    return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+
+        if (offset < 0 && offset > closest.offset) {
+            return { offset: offset, element: child };
+        } else {
+            return closest;
+        }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+}

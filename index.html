@@ -551,7 +551,7 @@ function(index, data) {
                 </div>
                 <div class="flags-result">
                     <label>组合值：</label>
-                    <input type="number" id="flags-result-value" class="form-control" readonly>
+                    <input type="number" id="flags-result-value" class="form-control" oninput="updateFlagsFromManualInput()">
                 </div>
             </div>
             <div class="modal-footer">

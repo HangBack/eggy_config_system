@@ -70,22 +70,32 @@
       "required": false,
       "subfields": [
         {
-          "defaultValue": "0",
-          "label": "攻击加成",
           "name": "attack",
-          "type": "number"
-        },
-        {
+          "label": "攻击加成",
+          "type": "number",
           "defaultValue": "0",
-          "label": "暴击率",
-          "name": "critical",
-          "type": "number"
+          "luaType": ""
         },
         {
-          "defaultValue": "1.0",
-          "label": "攻击速度",
+          "name": "critical",
+          "label": "暴击率",
+          "type": "number",
+          "defaultValue": "0",
+          "luaType": ""
+        },
+        {
           "name": "speed",
-          "type": "number"
+          "label": "攻击速度",
+          "type": "number",
+          "defaultValue": "1.0",
+          "luaType": ""
+        },
+        {
+          "name": "value",
+          "label": "价值",
+          "type": "number",
+          "defaultValue": "",
+          "luaType": ""
         }
       ],
       "type": "entry"
@@ -98,6 +108,37 @@
       "name": "effects",
       "required": false,
       "type": "list"
+    },
+    {
+      "defaultValue": "",
+      "isRaw": false,
+      "label": "额外属性",
+      "luaType": "",
+      "name": "extra_attr",
+      "options": [],
+      "required": false,
+      "subfields": [
+        {
+          "defaultValue": "",
+          "label": "名称附加颜色",
+          "luaType": "Color",
+          "name": "name_color",
+          "type": "color"
+        },
+        {
+          "dataSource": {
+            "enum": "EffectCob",
+            "enumPrefix": "EffectCob",
+            "type": "enum"
+          },
+          "defaultValue": "",
+          "label": "叠加状态",
+          "luaType": "",
+          "name": "comb_status",
+          "type": "flags"
+        }
+      ],
+      "type": "dict"
     }
   ],
   "name": "Weapon"

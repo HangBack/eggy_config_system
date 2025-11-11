@@ -13,13 +13,15 @@
         {
           "attack": "5",
           "critical": "5",
-          "speed": "1"
+          "speed": "1",
+          "value": 0
         }
       ],
       "effects": [
         "基础武器",
         "无特殊效果"
-      ]
+      ],
+      "extra_attr": ""
     }
   },
   {
@@ -36,14 +38,16 @@
         {
           "attack": "20",
           "critical": "15",
-          "speed": "1.2"
+          "speed": "1.2",
+          "value": 0
         }
       ],
       "effects": [
         "造成火焰伤害",
         "有概率点燃敌人",
         "攻击附带灼烧效果"
-      ]
+      ],
+      "extra_attr": ""
     }
   },
   {
@@ -60,14 +64,16 @@
         {
           "attack": "15",
           "critical": "10",
-          "speed": "0.8"
+          "speed": "0.8",
+          "value": 0
         }
       ],
       "effects": [
         "造成冰霜伤害",
         "减速敌人",
         "增加魔法伤害"
-      ]
+      ],
+      "extra_attr": ""
     }
   },
   {
@@ -84,7 +90,8 @@
         {
           "attack": "30",
           "critical": "25",
-          "speed": "1.5"
+          "speed": "1.5",
+          "value": 0
         }
       ],
       "effects": [
@@ -92,7 +99,8 @@
         "必定暴击",
         "无视护甲",
         "穿透攻击"
-      ]
+      ],
+      "extra_attr": ""
     }
   }
 ]
