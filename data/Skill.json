@@ -4,7 +4,7 @@
     "isRaw": false,
     "data": {
       "id": "1",
-      "name": "火球术",
+      "name": "#f(c:4864fe|s:62)你好#l#f(s:27)世界#l#f(c:d20f0f|s:29)，666，#l#f(c:4864fe|s:29)，，777#l\\n#f(s:64)666#l\\n888",
       "category": "Enum.SkillCategory.Attack",
       "tags": "31",
       "cooldown": "3",
@@ -31,7 +31,7 @@
     "isRaw": false,
     "data": {
       "id": "2",
-      "name": "治疗术",
+      "name": "",
       "category": "Enum.SkillCategory.Heal",
       "tags": 8,
       "cooldown": "5",
@@ -58,7 +58,7 @@
     "isRaw": false,
     "data": {
       "id": "3",
-      "name": "护盾术",
+      "name": "",
       "category": "Enum.SkillCategory.Defense",
       "tags": 2,
       "cooldown": "8",
@@ -85,7 +85,7 @@
     "isRaw": false,
     "data": {
       "id": "4",
-      "name": "群体强化",
+      "name": "",
       "category": "Enum.SkillCategory.Support",
       "tags": 6,
       "cooldown": "15",
@@ -112,7 +112,7 @@
     "isRaw": false,
     "data": {
       "id": "5",
-      "name": "冰冻术",
+      "name": "",
       "category": "Enum.SkillCategory.Control",
       "tags": 17,
       "cooldown": "10",

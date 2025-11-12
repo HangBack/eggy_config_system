@@ -873,6 +873,7 @@ function createFieldEditorHTML(field, index) {
                     <option value="text" ${field.type === 'text' ? 'selected' : ''}>文本</option>
                     <option value="number" ${field.type === 'number' ? 'selected' : ''}>数字</option>
                     <option value="color" ${field.type === 'color' ? 'selected' : ''}>颜色</option>
+                    <option value="richtext" ${field.type === 'richtext' ? 'selected' : ''}>富文本</option>
                     <option value="dict" ${field.type === 'dict' ? 'selected' : ''}>字典</option>
                     <option value="entry" ${field.type === 'entry' ? 'selected' : ''}>条目</option>
                     <option value="list" ${field.type === 'list' ? 'selected' : ''}>列表</option>
@@ -1210,8 +1211,10 @@ function renderFieldTypeSpecific(field, index) {
                         <option value="text" ${elementType === 'text' ? 'selected' : ''}>文本</option>
                         <option value="number" ${elementType === 'number' ? 'selected' : ''}>数字</option>
                         <option value="color" ${elementType === 'color' ? 'selected' : ''}>颜色</option>
+                        <option value="richtext" ${elementType === 'richtext' ? 'selected' : ''}>富文本</option>
                         <option value="option" ${elementType === 'option' ? 'selected' : ''}>选项</option>
                         <option value="datalist" ${elementType === 'datalist' ? 'selected' : ''}>数据列表</option>
+                        <option value="flags" ${elementType === 'flags' ? 'selected' : ''}>标志组合</option>
                     </select>
                 </div>
                 <div id="field-list-type-config-${index}">
@@ -1306,6 +1309,7 @@ function renderSubfields(subfields, parentIndex) {
                         <option value="text" ${subfield.type === 'text' ? 'selected' : ''}>文本</option>
                         <option value="number" ${subfield.type === 'number' ? 'selected' : ''}>数字</option>
                         <option value="color" ${subfield.type === 'color' ? 'selected' : ''}>颜色</option>
+                        <option value="richtext" ${subfield.type === 'richtext' ? 'selected' : ''}>富文本</option>
                         <option value="option" ${subfield.type === 'option' ? 'selected' : ''}>选项</option>
                         <option value="datalist" ${subfield.type === 'datalist' ? 'selected' : ''}>数据列表</option>
                         <option value="flags" ${subfield.type === 'flags' ? 'selected' : ''}>标志组合</option>

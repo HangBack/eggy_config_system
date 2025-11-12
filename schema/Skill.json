@@ -28,7 +28,7 @@
       "label": "技能名称",
       "name": "name",
       "required": true,
-      "type": "text"
+      "type": "richtext"
     },
     {
       "dataSource": {

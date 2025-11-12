@@ -1045,6 +1045,17 @@ function createFieldInput(field, value, rowIndex) {
                 </div>
             `;
 
+        case 'richtext':
+            inputHtml = `
+                <div class="richtext-input-wrapper">
+                    <input type="text" id="${fieldId}" class="form-control" value="${escapeHtml(value)}" ${field.required ? 'required' : ''} readonly style="background-color: #f8f9fa;">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="RichTextEditor.open('${fieldId}', document.getElementById('${fieldId}').value, function(fieldId, newValue) { document.getElementById(fieldId).value = newValue; })">
+                        <i class="fas fa-edit"></i> 编辑
+                    </button>
+                </div>
+            `;
+            break;
+
         case 'flags':
             const flagsValue = value || 0;
             inputHtml = `
@@ -1105,6 +1116,16 @@ function createDictInput(field, value, rowIndex) {
                     <div class="custom-datalist-wrapper" data-datalist-id="${datalistId}">
                         <input type="text" id="${subfieldId}" class="custom-datalist-input" value="${escapeHtml(subfieldValue)}" autocomplete="off" placeholder="请输入或选择...">
                         <div class="custom-datalist-dropdown" id="${datalistId}"><div class="custom-datalist-empty">加载中...</div></div>
+                    </div>
+                `;
+                break;
+            case 'richtext':
+                inputHtml = `
+                    <div class="richtext-input-wrapper">
+                        <input type="text" id="${subfieldId}" class="form-control" value="${escapeHtml(subfieldValue)}" readonly style="background-color: #f8f9fa;">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="openRichTextModal('${subfieldId}', document.getElementById('${subfieldId}').value)">
+                            <i class="fas fa-edit"></i>
+                        </button>
                     </div>
                 `;
                 break;
@@ -1215,6 +1236,16 @@ function createListItem(field, value, rowIndex, itemIndex) {
                 <div class="custom-datalist-wrapper" data-datalist-id="${datalistId}">
                     <input type="text" id="${itemId}" class="custom-datalist-input" value="${escapeHtml(value)}" autocomplete="off" placeholder="请输入或选择...">
                     <div class="custom-datalist-dropdown" id="${datalistId}"><div class="custom-datalist-empty">加载中...</div></div>
+                </div>
+            `;
+            break;
+        case 'richtext':
+            inputHtml = `
+                <div class="richtext-input-wrapper">
+                    <input type="text" id="${itemId}" class="form-control" value="${escapeHtml(value)}" readonly style="background-color: #f8f9fa;">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="openRichTextModal('${itemId}', document.getElementById('${itemId}').value)">
+                        <i class="fas fa-edit"></i>
+                    </button>
                 </div>
             `;
             break;
@@ -1367,6 +1398,17 @@ function createEntryItem(field, entry, rowIndex, entryIndex) {
                         <div class="custom-datalist-dropdown" id="${datalistId}">
                             <div class="custom-datalist-empty">加载中...</div>
                         </div>
+                    </div>
+                `;
+                break;
+
+            case 'richtext':
+                inputHtml = `
+                    <div class="richtext-input-wrapper">
+                        <input type="text" id="${subfieldId}" class="form-control" value="${escapeHtml(value)}" readonly style="background-color: #f8f9fa;">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="openRichTextModal('${subfieldId}', document.getElementById('${subfieldId}').value)">
+                            <i class="fas fa-edit"></i>
+                        </button>
                     </div>
                 `;
                 break;

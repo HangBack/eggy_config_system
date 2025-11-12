@@ -1,0 +1,357 @@
+/* 富文本编辑器样式 - 现代化设计 */
+
+/* 模态框样式覆盖 */
+#richTextModal {
+    z-index: 9999 !important;
+}
+
+#richTextModal .modal-dialog {
+    max-width: 1200px !important;
+    width: 90vw !important;
+    margin: 30px auto !important;
+}
+
+#richTextModal .modal-content {
+    width: 100% !important;
+    max-width: none !important;
+}
+
+.modal-backdrop {
+    z-index: 9998 !important;
+}
+
+/* 模态框主体 */
+.richtext-body {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    max-height: 70vh;
+}
+
+/* 工具栏 - 扁平化设计 */
+.richtext-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* 工具栏分隔线 */
+.toolbar-divider {
+    width: 1px;
+    height: 24px;
+    background: #e0e0e0;
+    margin: 0 4px;
+}
+
+/* 工具栏按钮 */
+.toolbar-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    padding: 4px 8px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    background: #ffffff;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+}
+
+.toolbar-btn:hover {
+    background: #f5f5f5;
+    border-color: #0d6efd;
+}
+
+.toolbar-btn:active,
+.toolbar-btn.active {
+    background: #e3f2fd;
+    border-color: #0d6efd;
+    color: #0d6efd;
+}
+
+.toolbar-btn .btn-text {
+    line-height: 1;
+    user-select: none;
+}
+
+/* 颜色选择器 */
+.toolbar-group input[type="color"] {
+    width: 32px;
+    height: 32px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    cursor: pointer;
+    background: none;
+    padding: 2px;
+}
+
+.toolbar-group input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.toolbar-group input[type="color"]::-webkit-color-swatch {
+    border: none;
+    border-radius: 3px;
+}
+
+.toolbar-group label {
+    font-size: 12px;
+    color: #666;
+    margin: 0;
+}
+
+/* 模式切换 */
+.mode-switcher {
+    display: flex;
+    gap: 8px;
+    padding: 8px 0;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.mode-btn {
+    padding: 6px 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    background: #ffffff;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+.mode-btn:hover {
+    background: #f5f5f5;
+}
+
+.mode-btn.active {
+    background: #0d6efd;
+    color: white;
+    border-color: #0d6efd;
+}
+
+/* 高级格式次级面板 */
+.advanced-panel {
+    padding: 12px;
+    background: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.panel-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.panel-content label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #495057;
+    margin: 0;
+}
+
+.panel-content input[type="range"] {
+    flex: 1;
+    min-width: 150px;
+    max-width: 250px;
+    height: 6px;
+    border-radius: 3px;
+    background: #dee2e6;
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.panel-content input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #0d6efd;
+    cursor: pointer;
+}
+
+.panel-content input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #0d6efd;
+    cursor: pointer;
+    border: none;
+}
+
+.panel-content input[type="color"] {
+    width: 50px;
+    height: 32px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    cursor: pointer;
+    padding: 2px;
+}
+
+.panel-content input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.panel-content input[type="color"]::-webkit-color-swatch {
+    border: none;
+    border-radius: 3px;
+}
+
+.panel-content span {
+    min-width: 40px;
+    text-align: center;
+    font-weight: 600;
+    color: #0d6efd;
+    font-size: 14px;
+}
+
+.panel-content .btn {
+    margin-left: auto;
+}
+
+.panel-content .toolbar-btn {
+    margin: 0 5px;
+}
+
+/* 编辑容器 */
+.richtext-container {
+    display: flex;
+    gap: 10px;
+    min-height: 500px;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* 预览区域（可编辑） */
+.richtext-preview {
+    flex: 1;
+    padding: 20px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background: #ffffff;
+    overflow-y: auto;
+    line-height: 1.8;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    font-size: 14px;
+    display: none;
+}
+
+.richtext-preview:focus {
+    outline: none;
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+}
+
+.richtext-preview [data-segment-id] {
+    cursor: pointer;
+    position: relative;
+}
+
+.richtext-preview [data-segment-id]:hover {
+    background: rgba(13, 110, 253, 0.05);
+}
+
+/* 代码编辑器 */
+.richtext-editor {
+    flex: 1;
+    padding: 20px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    background: #f8f9fa;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    resize: none;
+    display: none;
+}
+
+.richtext-editor:focus {
+    outline: none;
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+}
+
+/* 预览模式：只显示预览 */
+.richtext-container[data-mode="preview"] .richtext-preview {
+    display: block;
+}
+
+.richtext-container[data-mode="preview"] .richtext-editor {
+    display: none;
+}
+
+/* 代码模式：只显示代码 */
+.richtext-container[data-mode="code"] .richtext-preview {
+    display: none;
+}
+
+.richtext-container[data-mode="code"] .richtext-editor {
+    display: block;
+}
+
+/* 分屏模式：两个都显示 */
+.richtext-container[data-mode="split"] .richtext-preview,
+.richtext-container[data-mode="split"] .richtext-editor {
+    display: block;
+}
+
+/* 列表样式 */
+.richtext-preview ul,
+.richtext-preview ol {
+    margin: 8px 0;
+    padding-left: 24px;
+}
+
+.richtext-preview li {
+    margin: 4px 0;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    #richTextModal .modal-dialog {
+        width: 95vw !important;
+        margin: 10px auto !important;
+    }
+    
+    .richtext-toolbar {
+        gap: 4px;
+        padding: 8px;
+    }
+    
+    .toolbar-btn {
+        min-width: 28px;
+        height: 28px;
+        font-size: 12px;
+    }
+    
+    .richtext-container[data-mode="split"] {
+        flex-direction: column;
+    }
+}
