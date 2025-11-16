@@ -4,6 +4,7 @@
 let currentEnum = null;
 let currentEnumName = '';
 let enums = [];
+let filteredEnums = [];
 let isEditingEnum = false;
 
 async function loadEnums() {
@@ -13,7 +14,8 @@ async function loadEnums() {
 
         if (result.success) {
             enums = result.data;
-            renderEnumList();
+            filteredEnums = [...enums];
+            renderEnumFilesList();
         } else {
             console.error('加载枚举失败:', result.error);
             showError('加载枚举失败: ' + result.error);
@@ -24,36 +26,54 @@ async function loadEnums() {
     }
 }
 
-function renderEnumList() {
-    const container = document.getElementById('enum-items');
+function renderEnumFilesList() {
+    const container = document.getElementById('enum-files-list');
     container.innerHTML = '';
 
-    enums.forEach(enumData => {
+    if (filteredEnums.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>没有找到枚举文件</p></div>';
+        return;
+    }
+
+    filteredEnums.forEach(enumData => {
         const item = document.createElement('div');
-        item.className = 'schema-item';
+        item.className = 'enum-file-list-item';
         if (currentEnumName === enumData.name) {
             item.classList.add('active');
         }
 
         item.innerHTML = `
-            <div class="schema-item-header">
-                <div class="schema-item-info">
-                    <h4>${enumData.name}</h4>
-                    <p>${enumData.description || '无描述'}</p>
-                </div>
-            </div>
-            <div class="schema-item-actions">
-                <button class="btn btn-sm btn-secondary" onclick="editEnum('${enumData.name}')">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button class="btn btn-sm btn-danger" onclick="confirmDeleteEnum('${enumData.name}')">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
+            <div class="enum-file-list-item-name">${enumData.name}</div>
+            <div class="enum-file-list-item-desc">${enumData.description || '无描述'}</div>
         `;
+
+        item.addEventListener('click', () => editEnum(enumData.name));
+        
+        // 右键菜单
+        item.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            showEnumContextMenu(e.clientX, e.clientY, enumData.name);
+        });
 
         container.appendChild(item);
     });
+}
+
+// 搜索枚举文件
+function searchEnumFiles() {
+    const searchTerm = document.getElementById('enum-files-search').value.toLowerCase();
+    
+    if (!searchTerm) {
+        filteredEnums = [...enums];
+    } else {
+        filteredEnums = enums.filter(enumData => {
+            const name = enumData.name.toLowerCase();
+            const desc = (enumData.description || '').toLowerCase();
+            return name.includes(searchTerm) || desc.includes(searchTerm);
+        });
+    }
+    
+    renderEnumFilesList();
 }
 
 function addNewEnum() {
@@ -68,20 +88,16 @@ function addNewEnum() {
     isEditingEnum = true;
 
     // 显示编辑器
-    document.getElementById('enum-editor').style.display = 'block';
+    document.getElementById('enum-editor').style.display = 'flex';
     document.getElementById('enum-editor-title').textContent = '新建枚举';
     document.getElementById('export-enum-lua-btn').style.display = 'none';
     document.getElementById('preview-enum-btn').style.display = 'none';
 
-    // 清空表单
-    document.getElementById('enum-name-input').value = '';
-    document.getElementById('enum-desc-input').value = '';
-    document.getElementById('enum-namespace-input').value = 'Enum';
-    document.getElementById('enum-type-select').value = 'number';
-    document.getElementById('enum-values-list').innerHTML = '';
-
-    // 名称输入框只读状态
-    document.getElementById('enum-name-input').readOnly = false;
+    // 渲染编辑器内容
+    renderEnumContentEditor();
+    
+    // 更新文件列表（取消选中状态）
+    renderEnumFilesList();
 }
 
 async function editEnum(name) {
@@ -95,27 +111,18 @@ async function editEnum(name) {
             isEditingEnum = true;
 
             // 显示编辑器
-            document.getElementById('enum-editor').style.display = 'block';
-            document.getElementById('enum-editor-title').textContent = '编辑枚举';
+            document.getElementById('enum-editor').style.display = 'flex';
+            document.getElementById('enum-editor-title').textContent = `编辑枚举: ${name}`;
             document.getElementById('export-enum-lua-btn').style.display = 'inline-block';
-
-            // 填充表单
-            document.getElementById('enum-name-input').value = currentEnum.name;
-            document.getElementById('enum-desc-input').value = currentEnum.description || '';
-            document.getElementById('enum-namespace-input').value = currentEnum.namespace || 'Enum';
-            document.getElementById('enum-type-select').value = currentEnum.type || 'number';
 
             // 根据类型显示/隐藏预览按钮
             updateEnumPreviewButtonVisibility();
 
-            // 名称输入框只读
-            document.getElementById('enum-name-input').readOnly = true;
-
-            // 渲染枚举值列表
-            renderEnumValuesList();
+            // 渲染编辑器内容
+            renderEnumContentEditor();
 
             // 更新列表中的选中状态
-            renderEnumList();
+            renderEnumFilesList();
         } else {
             showError('加载枚举失败: ' + result.error);
         }
@@ -125,11 +132,74 @@ async function editEnum(name) {
     }
 }
 
+// 渲染枚举内容编辑器
+function renderEnumContentEditor() {
+    const container = document.getElementById('enum-content-editor');
+    
+    const isNew = !currentEnumName;
+    
+    container.innerHTML = `
+        <div class="enum-basic-info-grid">
+            <div class="form-group">
+                <label>枚举名称</label>
+                <input type="text" id="enum-name-input" class="form-control" 
+                       placeholder="例如: RodCode" value="${escapeHtml(currentEnum.name)}"
+                       ${isNew ? '' : 'readonly'}>
+            </div>
+
+            <div class="form-group">
+                <label>枚举类型</label>
+                <select id="enum-type-select" class="form-control" onchange="onEnumTypeChange()">
+                    <option value="number" ${currentEnum.type === 'number' ? 'selected' : ''}>数字</option>
+                    <option value="string" ${currentEnum.type === 'string' ? 'selected' : ''}>字符</option>
+                    <option value="flag" ${currentEnum.type === 'flag' ? 'selected' : ''}>标志</option>
+                    <option value="event" ${currentEnum.type === 'event' ? 'selected' : ''}>事件</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>命名空间</label>
+                <input type="text" id="enum-namespace-input" class="form-control" 
+                       placeholder="Enum" value="${escapeHtml(currentEnum.namespace || 'Enum')}">
+            </div>
+            
+            <div class="form-group form-group-full">
+                <label>枚举描述</label>
+                <input type="text" id="enum-desc-input" class="form-control" 
+                       placeholder="请输入枚举描述" value="${escapeHtml(currentEnum.description || '')}">
+            </div>
+        </div>
+
+        <div class="enum-values-container">
+            <div class="enum-values-header">
+                <h4>枚举值</h4>
+                <div class="enum-values-actions">
+                    <button class="btn btn-sm btn-secondary" onclick="addEnumValueBefore(-1)" title="在开头插入">
+                        <i class="fas fa-arrow-up"></i> 顶部插入
+                    </button>
+                    <button class="btn btn-sm btn-primary" onclick="addEnumValue()">
+                        <i class="fas fa-plus"></i> 添加到末尾
+                    </button>
+                </div>
+            </div>
+            <div id="enum-values-list" class="enum-values-list">
+                <!-- 枚举值列表 -->
+            </div>
+        </div>
+    `;
+    
+    // 渲染枚举值
+    renderEnumValuesList();
+}
+
 function renderEnumValuesList() {
     const container = document.getElementById('enum-values-list');
+    if (!container) return;
+    
     container.innerHTML = '';
 
     if (!currentEnum.values || currentEnum.values.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>暂无枚举值，点击上方按钮添加</p></div>';
         return;
     }
 
@@ -183,10 +253,15 @@ function renderEnumValuesList() {
                             </button>
                         </div>
                     </div>
+                    <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px;">
+                        <button class="btn btn-sm btn-secondary" onclick="addEnumValueBefore(${index})" title="在上方插入">
+                            <i class="fas fa-arrow-up"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="removeEnumValue(${index})">
+                            <i class="fas fa-trash"></i> 删除
+                        </button>
+                    </div>
                 </div>
-                <button class="btn btn-sm btn-danger btn-delete" onclick="removeEnumValue(${index})">
-                    <i class="fas fa-trash"></i>
-                </button>
             `;
         } else {
             // 普通枚举类型 - 单行布局
@@ -211,9 +286,14 @@ function renderEnumValuesList() {
                     <input type="text" class="form-control" value="${escapeHtml(value.label || '')}" 
                            onchange="updateEnumValue(${index}, 'label', this.value)">
                 </div>
-                <button class="btn btn-sm btn-danger btn-delete" onclick="removeEnumValue(${index})">
-                    <i class="fas fa-trash"></i>
-                </button>
+                <div style="display: flex; gap: 4px; flex-direction: column; margin-top: 22px;">
+                    <button class="btn btn-sm btn-secondary" onclick="addEnumValueBefore(${index})" title="在上方插入">
+                        <i class="fas fa-arrow-up"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="removeEnumValue(${index})" title="删除">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
             `;
         }
         container.appendChild(item);
@@ -276,9 +356,17 @@ function removeEventParam(enumIndex, paramType, paramIndex) {
 }
 
 function onEnumTypeChange() {
-    const newType = document.getElementById('enum-type-select').value;
-    if (currentEnum) {
-        currentEnum.type = newType;
+    const nameInput = document.getElementById('enum-name-input');
+    const descInput = document.getElementById('enum-desc-input');
+    const namespaceInput = document.getElementById('enum-namespace-input');
+    const typeSelect = document.getElementById('enum-type-select');
+    
+    if (currentEnum && nameInput && descInput && namespaceInput && typeSelect) {
+        currentEnum.name = nameInput.value.trim();
+        currentEnum.description = descInput.value.trim();
+        currentEnum.namespace = namespaceInput.value.trim();
+        currentEnum.type = typeSelect.value;
+        
         // 重新渲染值列表以应用新的UI
         renderEnumValuesList();
     }
@@ -312,6 +400,42 @@ function addEnumValue() {
     renderEnumValuesList();
 }
 
+// 在指定位置前插入新的枚举值
+function addEnumValueBefore(index) {
+    if (!currentEnum.values) {
+        currentEnum.values = [];
+    }
+
+    const enumType = currentEnum.type || 'number';
+    
+    let newValue;
+    if (enumType === 'event') {
+        newValue = {
+            key: '',
+            value: '',
+            label: '',
+            registerParams: [],
+            callbackParams: []
+        };
+    } else {
+        newValue = {
+            key: '',
+            value: enumType === 'string' ? '' : 0,
+            label: ''
+        };
+    }
+
+    if (index < 0) {
+        // 插入到开头
+        currentEnum.values.unshift(newValue);
+    } else {
+        // 插入到指定位置前
+        currentEnum.values.splice(index, 0, newValue);
+    }
+
+    renderEnumValuesList();
+}
+
 function updateEnumValue(index, field, value) {
     if (currentEnum.values && currentEnum.values[index]) {
         currentEnum.values[index][field] = value;
@@ -328,10 +452,20 @@ function removeEnumValue(index) {
 
 async function saveEnum() {
     // 收集基本信息
-    const name = document.getElementById('enum-name-input').value.trim();
-    const description = document.getElementById('enum-desc-input').value.trim();
-    const namespace = document.getElementById('enum-namespace-input').value.trim();
-    const type = document.getElementById('enum-type-select').value;
+    const nameInput = document.getElementById('enum-name-input');
+    const descInput = document.getElementById('enum-desc-input');
+    const namespaceInput = document.getElementById('enum-namespace-input');
+    const typeSelect = document.getElementById('enum-type-select');
+    
+    if (!nameInput || !descInput || !namespaceInput || !typeSelect) {
+        showWarning('无法获取表单元素');
+        return;
+    }
+    
+    const name = nameInput.value.trim();
+    const description = descInput.value.trim();
+    const namespace = namespaceInput.value.trim();
+    const type = typeSelect.value;
 
     // 验证
     if (!name) {
@@ -381,14 +515,21 @@ async function saveEnum() {
         if (result.success) {
             showSuccess(action === 'create' ? '枚举创建成功' : '枚举保存成功');
             currentEnumName = name;
+            currentEnum.name = name;
+            currentEnum.description = description;
+            currentEnum.namespace = namespace;
+            currentEnum.type = type;
+            
             await loadEnums();
-            cancelEnumEdit();
+            
+            // 重新选中当前枚举
+            await editEnum(name);
         } else {
             showError('保存失败: ' + result.error);
         }
     } catch (error) {
         console.error('保存枚举失败:', error);
-        alert('保存枚举失败，请检查网络连接');
+        showError('保存枚举失败，请检查网络连接');
     }
 }
 
@@ -397,7 +538,48 @@ function cancelEnumEdit() {
     currentEnumName = '';
     isEditingEnum = false;
     document.getElementById('enum-editor').style.display = 'none';
-    renderEnumList();
+    renderEnumFilesList();
+}
+
+// 显示枚举右键菜单
+function showEnumContextMenu(x, y, enumName) {
+    // 移除已存在的菜单
+    const existing = document.querySelector('.context-menu');
+    if (existing) {
+        existing.remove();
+    }
+
+    const menu = document.createElement('div');
+    menu.className = 'context-menu';
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
+
+    menu.innerHTML = `
+        <div class="context-menu-item" onclick="editEnum('${enumName}'); closeContextMenu()">
+            <i class="fas fa-edit"></i>
+            <span>编辑</span>
+        </div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" onclick="confirmDeleteEnum('${enumName}'); closeContextMenu()">
+            <i class="fas fa-trash"></i>
+            <span>删除</span>
+        </div>
+    `;
+
+    document.body.appendChild(menu);
+
+    // 点击其他地方关闭菜单
+    setTimeout(() => {
+        document.addEventListener('click', closeContextMenu);
+    }, 0);
+}
+
+function closeContextMenu() {
+    const menu = document.querySelector('.context-menu');
+    if (menu) {
+        menu.remove();
+    }
+    document.removeEventListener('click', closeContextMenu);
 }
 
 function confirmDeleteEnum(name) {
@@ -420,17 +602,17 @@ async function deleteEnum(name) {
         const result = await response.json();
 
         if (result.success) {
-            alert('枚举删除成功');
+            showSuccess('枚举删除成功');
             if (currentEnumName === name) {
                 cancelEnumEdit();
             }
             await loadEnums();
         } else {
-            alert('删除失败: ' + result.error);
+            showError('删除失败: ' + result.error);
         }
     } catch (error) {
         console.error('删除枚举失败:', error);
-        alert('删除枚举失败，请检查网络连接');
+        showError('删除枚举失败，请检查网络连接');
     }
 }
 
@@ -585,8 +767,15 @@ function onEnumTypeChange() {
 // 更新预览按钮的可见性
 function updateEnumPreviewButtonVisibility() {
     const previewBtn = document.getElementById('preview-enum-btn');
-    if (currentEnum && currentEnum.type === 'flag' && currentEnum.values && currentEnum.values.length > 0) {
-        previewBtn.style.display = 'inline-block';
+    if (!previewBtn) return;
+    
+    if (currentEnum && currentEnum.values && currentEnum.values.length > 0) {
+        // 事件类型和标志类型都显示预览按钮
+        if (currentEnum.type === 'flag' || currentEnum.type === 'event') {
+            previewBtn.style.display = 'inline-block';
+        } else {
+            previewBtn.style.display = 'none';
+        }
     } else {
         previewBtn.style.display = 'none';
     }
@@ -645,66 +834,183 @@ function previewEnumValues() {
         // 事件类型：显示事件详细信息
         currentEnum.values.forEach(value => {
             const item = document.createElement('div');
-            item.className = 'enum-preview-item';
-            item.style.flexDirection = 'column';
-            item.style.alignItems = 'flex-start';
+            item.className = 'event-preview-card';
+            item.style.cssText = `
+                background: white;
+                border: 1px solid #dee2e6;
+                border-radius: 8px;
+                padding: 16px;
+                margin-bottom: 16px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            `;
             
+            // 头部：事件名和值
             const headerDiv = document.createElement('div');
-            headerDiv.style.display = 'flex';
-            headerDiv.style.gap = '15px';
-            headerDiv.style.marginBottom = '10px';
+            headerDiv.style.cssText = `
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                margin-bottom: 12px;
+                padding-bottom: 12px;
+                border-bottom: 2px solid #e9ecef;
+            `;
             
             const keyDiv = document.createElement('div');
-            keyDiv.className = 'enum-preview-key';
+            keyDiv.style.cssText = `
+                font-size: 16px;
+                font-weight: 700;
+                color: #2c3e50;
+            `;
             keyDiv.textContent = value.key;
             
             const valueDiv = document.createElement('div');
-            valueDiv.className = 'enum-preview-value';
+            valueDiv.style.cssText = `
+                font-family: 'Courier New', monospace;
+                color: #e74c3c;
+                background: #fef5f5;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 13px;
+            `;
             valueDiv.textContent = `"${value.value}"`;
             
             headerDiv.appendChild(keyDiv);
             headerDiv.appendChild(valueDiv);
             item.appendChild(headerDiv);
             
+            // 事件说明
             if (value.label) {
                 const labelDiv = document.createElement('div');
-                labelDiv.style.marginBottom = '8px';
+                labelDiv.style.cssText = `
+                    color: #555;
+                    font-size: 14px;
+                    line-height: 1.6;
+                    margin-bottom: 12px;
+                    padding: 8px;
+                    background: #f8f9fa;
+                    border-left: 3px solid #3498db;
+                    border-radius: 4px;
+                `;
                 labelDiv.textContent = value.label;
                 item.appendChild(labelDiv);
             }
             
+            // 参数区域容器
+            const paramsContainer = document.createElement('div');
+            paramsContainer.style.cssText = `
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 12px;
+            `;
+            
+            // 注册参数
             if (value.registerParams && value.registerParams.length > 0) {
+                const registerSection = document.createElement('div');
+                registerSection.style.cssText = `
+                    background: #fff9f0;
+                    padding: 10px;
+                    border-radius: 6px;
+                    border: 1px solid #ffe8b3;
+                `;
+                
                 const registerTitle = document.createElement('div');
-                registerTitle.style.fontWeight = 'bold';
-                registerTitle.style.marginTop = '8px';
-                registerTitle.style.marginBottom = '4px';
-                registerTitle.textContent = '注册参数：';
-                item.appendChild(registerTitle);
+                registerTitle.style.cssText = `
+                    font-weight: 600;
+                    color: #e67e22;
+                    margin-bottom: 8px;
+                    font-size: 13px;
+                `;
+                registerTitle.innerHTML = '<i class="fas fa-sign-in-alt"></i> 注册参数';
+                registerSection.appendChild(registerTitle);
                 
                 value.registerParams.forEach(param => {
                     const paramDiv = document.createElement('div');
-                    paramDiv.style.marginLeft = '10px';
-                    paramDiv.style.fontSize = '13px';
-                    paramDiv.textContent = `- ${param.name}: ${param.type}${param.description ? ' ' + param.description : ''}`;
-                    item.appendChild(paramDiv);
+                    paramDiv.style.cssText = `
+                        font-size: 12px;
+                        padding: 4px 0;
+                        color: #333;
+                    `;
+                    
+                    const paramName = document.createElement('span');
+                    paramName.style.cssText = 'font-weight: 600; color: #d68910;';
+                    paramName.textContent = param.name;
+                    
+                    const paramType = document.createElement('span');
+                    paramType.style.cssText = 'color: #16a085; margin-left: 4px;';
+                    paramType.textContent = param.type;
+                    
+                    paramDiv.appendChild(paramName);
+                    paramDiv.appendChild(document.createTextNode(': '));
+                    paramDiv.appendChild(paramType);
+                    
+                    if (param.description) {
+                        const paramDesc = document.createElement('span');
+                        paramDesc.style.cssText = 'color: #7f8c8d; margin-left: 4px; font-style: italic;';
+                        paramDesc.textContent = param.description;
+                        paramDiv.appendChild(paramDesc);
+                    }
+                    
+                    registerSection.appendChild(paramDiv);
                 });
+                
+                paramsContainer.appendChild(registerSection);
             }
             
+            // 回调参数
             if (value.callbackParams && value.callbackParams.length > 0) {
+                const callbackSection = document.createElement('div');
+                callbackSection.style.cssText = `
+                    background: #f0f9ff;
+                    padding: 10px;
+                    border-radius: 6px;
+                    border: 1px solid #b3d9ff;
+                `;
+                
                 const callbackTitle = document.createElement('div');
-                callbackTitle.style.fontWeight = 'bold';
-                callbackTitle.style.marginTop = '8px';
-                callbackTitle.style.marginBottom = '4px';
-                callbackTitle.textContent = '事件数据：';
-                item.appendChild(callbackTitle);
+                callbackTitle.style.cssText = `
+                    font-weight: 600;
+                    color: #2980b9;
+                    margin-bottom: 8px;
+                    font-size: 13px;
+                `;
+                callbackTitle.innerHTML = '<i class="fas fa-arrow-right"></i> 事件数据';
+                callbackSection.appendChild(callbackTitle);
                 
                 value.callbackParams.forEach(param => {
                     const paramDiv = document.createElement('div');
-                    paramDiv.style.marginLeft = '10px';
-                    paramDiv.style.fontSize = '13px';
-                    paramDiv.textContent = `- ${param.name}: ${param.type}${param.description ? ' ' + param.description : ''}`;
-                    item.appendChild(paramDiv);
+                    paramDiv.style.cssText = `
+                        font-size: 12px;
+                        padding: 4px 0;
+                        color: #333;
+                    `;
+                    
+                    const paramName = document.createElement('span');
+                    paramName.style.cssText = 'font-weight: 600; color: #2471a3;';
+                    paramName.textContent = param.name;
+                    
+                    const paramType = document.createElement('span');
+                    paramType.style.cssText = 'color: #16a085; margin-left: 4px;';
+                    paramType.textContent = param.type;
+                    
+                    paramDiv.appendChild(paramName);
+                    paramDiv.appendChild(document.createTextNode(': '));
+                    paramDiv.appendChild(paramType);
+                    
+                    if (param.description) {
+                        const paramDesc = document.createElement('span');
+                        paramDesc.style.cssText = 'color: #7f8c8d; margin-left: 4px; font-style: italic;';
+                        paramDesc.textContent = param.description;
+                        paramDiv.appendChild(paramDesc);
+                    }
+                    
+                    callbackSection.appendChild(paramDiv);
                 });
+                
+                paramsContainer.appendChild(callbackSection);
+            }
+            
+            if (paramsContainer.children.length > 0) {
+                item.appendChild(paramsContainer);
             }
             
             content.appendChild(item);

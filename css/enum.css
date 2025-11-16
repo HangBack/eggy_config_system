@@ -1,44 +1,159 @@
 ﻿/* 枚举管理样式 */
 
 #enum-panel {
-    display: grid;
-    grid-template-columns: 250px 1fr;
-    grid-template-rows: auto 1fr;
-    gap: 0;
+    display: flex;
+    flex-direction: column;
     height: 100%;
 }
 
 #enum-panel .panel-header {
-    grid-column: 1 / -1;
+    flex-shrink: 0;
 }
 
-#enum-panel .enum-list {
-    grid-column: 1 / 2;
-    grid-row: 2;
-    border-right: 1px solid #ddd;
+#enum-panel .enum-editor {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* 枚举编辑器头部 */
+.enum-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid #dee2e6;
+    background: #f8f9fa;
+    flex-shrink: 0;
+}
+
+.enum-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.enum-header-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* 分栏编辑器 */
+.enum-editor .split-editor {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    overflow: hidden;
+}
+
+/* 左侧边栏 - 枚举文件列表 */
+.enum-files-search-container {
+    position: relative;
+    padding: 10px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.enum-files-search-container input {
+    padding-right: 35px;
+}
+
+.enum-files-search-container .search-icon {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #95a5a6;
+    pointer-events: none;
+}
+
+.enum-files-list {
+    flex: 1;
     overflow-y: auto;
+    padding: 10px;
 }
 
-#enum-panel #enum-editor {
-    grid-column: 2 / 3;
-    grid-row: 2;
+.enum-file-list-item {
+    padding: 12px;
+    margin-bottom: 8px;
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.enum-file-list-item:hover {
+    border-color: #27ae60;
+    background: #f0fff4;
+}
+
+.enum-file-list-item.active {
+    border-color: #27ae60;
+    background: #e8f8f0;
+    box-shadow: 0 0 0 3px rgba(39, 174, 96, 0.1);
+}
+
+.enum-file-list-item-name {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 4px;
+}
+
+.enum-file-list-item-desc {
+    font-size: 12px;
+    color: #7f8c8d;
+}
+
+/* 右侧主编辑区域 */
+.enum-content-editor {
     overflow-y: auto;
-    padding: 0;
-}
-
-.enum-values-container {
     padding: 20px;
+    background: #f8f9fa;
 }
 
+.enum-content-editor .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    color: #95a5a6;
+}
+
+.enum-content-editor .empty-state i {
+    font-size: 64px;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.enum-content-editor .empty-state p {
+    font-size: 16px;
+    margin: 0;
+}
+
+/* 基本信息网格 */
 .enum-basic-info-grid {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
     gap: 15px;
     padding: 20px;
+    background: white;
+    border-radius: 8px;
+    margin-bottom: 20px;
 }
 
 .enum-basic-info-grid .form-group-full {
     grid-column: 1 / -1;
+}
+
+/* 枚举值容器 */
+
+/* 枚举值容器 */
+.enum-values-container {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
 }
 
 .enum-values-header {
@@ -63,12 +178,11 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    max-height: 400px;
-    overflow-y: auto;
-    padding: 10px;
-    background: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
+    max-height: none;
+    overflow-y: visible;
+    padding: 0;
+    background: transparent;
+    border: none;
     margin-bottom: 15px;
 }
 
@@ -78,7 +192,7 @@
     gap: 10px;
     align-items: start;
     padding: 12px;
-    background: white;
+    background: #f8f9fa;
     border: 1px solid #dee2e6;
     border-radius: 4px;
 }
@@ -178,8 +292,8 @@
 
 .event-enum-row {
     display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
+    gap: 8px;
+    margin-bottom: 8px;
 }
 
 .event-enum-row .form-group {
@@ -192,9 +306,9 @@
 }
 
 .event-params-list {
-    margin-bottom: 10px;
-    min-height: 50px;
-    padding: 8px;
+    margin-bottom: 8px;
+    min-height: 40px;
+    padding: 6px;
     background: white;
     border: 1px solid #dee2e6;
     border-radius: 4px;
@@ -204,22 +318,24 @@
     color: #aaa;
     font-style: italic;
     text-align: center;
-    padding: 10px;
+    padding: 6px;
+    font-size: 12px;
 }
 
 .event-param-item {
     display: grid;
-    grid-template-columns: 1fr 1.5fr 2fr auto;
-    gap: 8px;
-    margin-bottom: 8px;
-    padding: 8px;
+    grid-template-columns: 1fr 1fr 1.5fr auto;
+    gap: 6px;
+    margin-bottom: 6px;
+    padding: 6px;
     background: #f8f9fa;
     border: 1px solid #dee2e6;
     border-radius: 4px;
 }
 
 .event-param-item input {
-    font-size: 13px;
+    font-size: 12px;
+    padding: 4px 8px;
 }
 
 .event-param-item .param-key {
@@ -237,13 +353,40 @@
 .event-param-item button {
     grid-column: 4;
     height: 100%;
+    padding: 2px 6px;
+    font-size: 11px;
 }
 
 .enum-value-item:has(.event-enum-item) {
     grid-template-columns: 1fr auto;
+    padding: 10px;
 }
 
 .enum-value-item:has(.event-enum-item) .btn-delete {
     margin-top: 0;
+    align-self: flex-start;
+}
+
+/* 事件枚举的紧凑样式调整 */
+.event-enum-item label {
+    font-size: 11px;
+    margin-bottom: 2px;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.event-enum-item input,
+.event-enum-item textarea {
+    font-size: 12px;
+}
+
+.event-enum-item textarea {
+    resize: vertical;
+    min-height: 50px;
+}
+
+.event-enum-item .btn {
+    font-size: 11px;
+    padding: 4px 8px;
 }
 

@@ -234,11 +234,20 @@ function initializeApp() {
     // 绑定枚举面板事件
     document.getElementById('add-enum-btn').addEventListener('click', addNewEnum);
     document.getElementById('save-enum-btn').addEventListener('click', saveEnum);
-    document.getElementById('cancel-enum-btn').addEventListener('click', cancelEnumEdit);
-    document.getElementById('add-enum-value-btn').addEventListener('click', addEnumValue);
     document.getElementById('export-enum-lua-btn').addEventListener('click', exportEnumToLua);
     document.getElementById('preview-enum-btn').addEventListener('click', previewEnumValues);
-    document.getElementById('enum-type-select').addEventListener('change', onEnumTypeChange);
+    
+    // 绑定枚举文件搜索事件
+    const enumFilesSearch = document.getElementById('enum-files-search');
+    if (enumFilesSearch) {
+        enumFilesSearch.addEventListener('input', searchEnumFiles);
+    }
+    
+    // 绑定侧边栏添加枚举按钮
+    const addEnumSidebarBtn = document.getElementById('add-enum-sidebar-btn');
+    if (addEnumSidebarBtn) {
+        addEnumSidebarBtn.addEventListener('click', addNewEnum);
+    }
 
     // 绑定填充枚举模态框事件
     document.getElementById('confirm-fill-enum-btn').addEventListener('click', confirmFillFromEnum);
@@ -305,9 +314,27 @@ function switchTab(tabName) {
     document.getElementById('enum-panel').style.display = tabName === 'enum' ? 'block' : 'none';
     document.getElementById('data-panel').style.display = tabName === 'data' ? 'block' : 'none';
 
-    // 如果切换到枚举面板，加载枚举列表
+    // 如果切换到枚举面板，加载枚举列表并显示编辑器界面
     if (tabName === 'enum') {
-        loadEnums();
+        loadEnums().then(() => {
+            // 显示编辑器布局
+            const enumEditor = document.getElementById('enum-editor');
+            if (enumEditor) {
+                enumEditor.style.display = 'flex';
+            }
+            // 如果没有选中的枚举，显示空状态
+            if (!currentEnumName) {
+                const enumContentEditor = document.getElementById('enum-content-editor');
+                if (enumContentEditor) {
+                    enumContentEditor.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-hand-pointer"></i>
+                            <p>请从左侧选择或添加枚举文件</p>
+                        </div>
+                    `;
+                }
+            }
+        });
     }
 
     // 如果切换到配表面板，加载Schema列表

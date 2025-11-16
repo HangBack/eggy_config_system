@@ -107,24 +107,15 @@
                 </button>
             </div>
 
-            <div class="enum-list">
-                <div class="schema-list-header">
-                    <h3>枚举列表</h3>
-                </div>
-                <div id="enum-items" class="schema-items">
-                    <!-- 枚举项将动态添加 -->
-                </div>
-            </div>
-
-            <div class="schema-editor" id="enum-editor" style="display: none;">
-                <div class="editor-header">
-                    <h3 id="enum-editor-title">编辑枚举</h3>
-                    <div class="editor-actions">
+            <div id="enum-editor" class="enum-editor" style="display: none;">
+                <div class="enum-header">
+                    <h3 id="enum-editor-title">枚举列表</h3>
+                    <div class="enum-header-actions">
                         <button class="btn btn-success" id="save-enum-btn" title="保存枚举 (Ctrl+S)">
                             <i class="fas fa-save"></i> 保存
                         </button>
-                        <button class="btn btn-secondary" id="cancel-enum-btn">
-                            <i class="fas fa-times"></i> 取消
+                        <button class="btn btn-secondary" id="preview-enum-btn" style="display: none;">
+                            <i class="fas fa-eye"></i> 预览
                         </button>
                         <button class="btn btn-primary" id="export-enum-lua-btn" style="display: none;">
                             <i class="fas fa-file-export"></i> 导出
@@ -132,48 +123,36 @@
                     </div>
                 </div>
 
-                <div class="editor-basic-info enum-basic-info-grid">
-                    <div class="form-group">
-                        <label>枚举名称</label>
-                        <input type="text" id="enum-name-input" class="form-control" placeholder="例如: RodCode">
-                    </div>
-
-                    <div class="form-group">
-                        <label>枚举类型</label>
-                        <select id="enum-type-select" class="form-control" onchange="onEnumTypeChange()">
-                            <option value="number">数字</option>
-                            <option value="string">字符</option>
-                            <option value="flag">标志</option>
-                            <option value="event">事件</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>命名空间</label>
-                        <input type="text" id="enum-namespace-input" class="form-control" placeholder="Enum" value="Enum">
-                    </div>
-                    
-                    <div class="form-group form-group-full">
-                        <label>枚举描述</label>
-                        <input type="text" id="enum-desc-input" class="form-control" placeholder="请输入枚举描述">
-                    </div>
-                </div>
-
-                <div class="enum-values-container">
-                    <div class="enum-values-header">
-                        <h4>枚举值</h4>
-                        <div class="enum-values-actions">
-                            <button class="btn btn-sm btn-secondary" id="preview-enum-btn" style="display: none;">
-                                <i class="fas fa-eye"></i> 预览
-                            </button>
+                <div class="split-editor">
+                    <div class="editor-sidebar">
+                        <div class="sidebar-header">
+                            <h4>枚举文件</h4>
+                            <div class="sidebar-header-actions">
+                                <button class="btn btn-sm btn-primary" id="add-enum-sidebar-btn" title="新建枚举">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="enum-files-search-container">
+                            <input type="text" 
+                                   id="enum-files-search" 
+                                   class="form-control" 
+                                   placeholder="搜索枚举文件..."
+                                   autocomplete="off">
+                            <i class="fas fa-search search-icon"></i>
+                        </div>
+                        <div id="enum-files-list" class="enum-files-list">
+                            <!-- 枚举文件列表将动态添加 -->
                         </div>
                     </div>
-                    <div id="enum-values-list" class="enum-values-list">
-                        <!-- 枚举值列表 -->
+                    <div class="editor-main">
+                        <div id="enum-content-editor" class="enum-content-editor">
+                            <div class="empty-state">
+                                <i class="fas fa-hand-pointer"></i>
+                                <p>请从左侧选择或添加枚举文件</p>
+                            </div>
+                        </div>
                     </div>
-                    <button class="btn btn-primary" id="add-enum-value-btn" style="width: 100%;">
-                        <i class="fas fa-plus"></i> 添加枚举值
-                    </button>
                 </div>
             </div>
         </div>
