@@ -9,7 +9,7 @@ let isEditingEnum = false;
 
 async function loadEnums() {
     try {
-        const response = await fetch(`${API.ENUM}?action=list`);
+        const response = await fetch(getApiUrl(API.ENUM, { action: 'list' }));
         const result = await response.json();
 
         if (result.success) {
@@ -38,6 +38,7 @@ function renderEnumFilesList() {
     filteredEnums.forEach(enumData => {
         const item = document.createElement('div');
         item.className = 'enum-file-list-item';
+        item.dataset.enumName = enumData.name;
         if (currentEnumName === enumData.name) {
             item.classList.add('active');
         }
@@ -61,16 +62,15 @@ function renderEnumFilesList() {
 
 // 搜索枚举文件
 function searchEnumFiles() {
-    const searchTerm = document.getElementById('enum-files-search').value.toLowerCase();
+    const searchTerm = document.getElementById('enum-files-search').value.trim();
     
     if (!searchTerm) {
         filteredEnums = [...enums];
     } else {
-        filteredEnums = enums.filter(enumData => {
-            const name = enumData.name.toLowerCase();
-            const desc = (enumData.description || '').toLowerCase();
-            return name.includes(searchTerm) || desc.includes(searchTerm);
-        });
+        filteredEnums = fuzzyFilterAndSort(enums, searchTerm, enumData => [
+            enumData.name,
+            enumData.description || ''
+        ]);
     }
     
     renderEnumFilesList();
@@ -102,7 +102,7 @@ function addNewEnum() {
 
 async function editEnum(name) {
     try {
-        const response = await fetch(`${API.ENUM}?action=get&name=${name}`);
+        const response = await fetch(getApiUrl(API.ENUM, { action: 'get', name }));
         const result = await response.json();
 
         if (result.success) {
@@ -123,6 +123,9 @@ async function editEnum(name) {
 
             // 更新列表中的选中状态
             renderEnumFilesList();
+            
+            // 更新URL参数
+            updateUrlParams();
         } else {
             showError('加载枚举失败: ' + result.error);
         }
@@ -301,6 +304,11 @@ function renderEnumValuesList() {
     
     // 更新预览按钮可见性
     updateEnumPreviewButtonVisibility();
+    
+    // 更新滚动按钮可见性
+    if (typeof updateScrollButtonsVisibility === 'function') {
+        setTimeout(updateScrollButtonsVisibility, 100);
+    }
 }
 
 // 渲染事件参数列表
@@ -506,7 +514,8 @@ async function saveEnum() {
             body: JSON.stringify({
                 action,
                 name,
-                data: enumData
+                data: enumData,
+                project: currentProject
             })
         });
 
@@ -595,7 +604,8 @@ async function deleteEnum(name) {
             },
             body: JSON.stringify({
                 action: 'delete',
-                name
+                name,
+                project: currentProject
             })
         });
 
@@ -1063,7 +1073,7 @@ async function showFillFromEnumDialog() {
 
     // 加载枚举列表
     try {
-        const response = await fetch(`${API.ENUM}?action=list`);
+        const response = await fetch(getApiUrl(API.ENUM, { action: 'list' }));
         const result = await response.json();
 
         if (result.success) {
@@ -1101,7 +1111,7 @@ async function confirmFillFromEnum() {
 
     try {
         // 获取枚举数据
-        const response = await fetch(`${API.ENUM}?action=get&name=${enumName}`);
+        const response = await fetch(getApiUrl(API.ENUM, { action: 'get', name: enumName }));
         const result = await response.json();
 
         if (!result.success) {
@@ -1142,6 +1152,7 @@ async function confirmFillFromEnum() {
             if (existingNames.has(rowName)) {
                 return;
             }
+            
             
             const newRowData = {};
             
@@ -1193,3 +1204,296 @@ async function confirmFillFromEnum() {
         alert('填充枚举失败，请检查网络连接');
     }
 }
+
+// ========== 枚举导入功能 ==========
+
+function openEnumImportModal() {
+    document.getElementById('enum-import-modal').classList.add('show');
+    document.getElementById('enum-import-text').value = '';
+    document.getElementById('enum-import-file').value = '';
+    document.getElementById('import-enum-name').value = '';
+    document.getElementById('import-file-preview').style.display = 'none';
+    switchImportTab('text');
+}
+
+function closeEnumImportModal() {
+    document.getElementById('enum-import-modal').classList.remove('show');
+}
+
+function switchImportTab(tabName) {
+    // 更新tab按钮状态
+    document.querySelectorAll('.import-tab').forEach(btn => {
+        if (btn.dataset.tab === tabName) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    
+    // 显示对应内容
+    document.getElementById('import-text-tab').style.display = tabName === 'text' ? 'block' : 'none';
+    document.getElementById('import-file-tab').style.display = tabName === 'file' ? 'block' : 'none';
+}
+
+// 解析Lua枚举代码
+function parseLuaEnumCode(code) {
+    const result = {
+        name: '',
+        namespace: 'Enum',
+        type: 'number',
+        description: '',
+        values: []
+    };
+    
+    // 尝试解析 local EnumName = { 或 EnumName = {
+    const nameMatch = code.match(/(?:local\s+)?(\w+)\s*=\s*\{/);
+    if (nameMatch) {
+        result.name = nameMatch[1];
+    }
+    
+    // 尝试解析 ---@namespace
+    const namespaceMatch = code.match(/---@namespace\s+(\w+)/);
+    if (namespaceMatch) {
+        result.namespace = namespaceMatch[1];
+    }
+    
+    // 尝试解析 ---@enum 类型
+    const enumTypeMatch = code.match(/---@enum\s+(\w+)/);
+    if (enumTypeMatch) {
+        const enumTypeStr = enumTypeMatch[1];
+        if (enumTypeStr === 'Event') {
+            result.type = 'event';
+        }
+    }
+    
+    // 检查是否是事件枚举（通过检测 --[[ 多行注释格式）
+    const isEventEnum = result.type === 'event' || code.includes('--[[') && (code.includes('注册参数：') || code.includes('事件数据：'));
+    
+    if (isEventEnum) {
+        result.type = 'event';
+        // 解析事件枚举
+        parseEventEnumValues(code, result);
+    } else {
+        // 解析普通枚举值
+        parseNormalEnumValues(code, result);
+    }
+    
+    return result;
+}
+
+/**
+ * 解析事件枚举值
+ */
+function parseEventEnumValues(code, result) {
+    // 匹配事件枚举项：Key = "value", --[[ ... ]]
+    const eventPattern = /(\w+)\s*=\s*"([^"]+)"(?:,?)\s*--\[\[([\s\S]*?)\]\]/g;
+    
+    const bracketMatch = code.match(/\{([\s\S]*?)\}\s*(?:return|$)/);
+    if (!bracketMatch) return;
+    
+    const content = bracketMatch[1];
+    let match;
+    
+    while ((match = eventPattern.exec(content)) !== null) {
+        const key = match[1].trim();
+        const value = match[2].trim();
+        const commentBlock = match[3];
+        
+        const eventValue = {
+            key: key,
+            value: value,
+            label: '',
+            registerParams: [],
+            callbackParams: []
+        };
+        
+        // 解析注释块
+        const lines = commentBlock.split('\n').map(l => l.trim()).filter(l => l);
+        
+        let currentSection = 'label'; // 'label', 'register', 'callback'
+        
+        for (const line of lines) {
+            if (line === '注册参数：') {
+                currentSection = 'register';
+                continue;
+            } else if (line === '事件数据：') {
+                currentSection = 'callback';
+                continue;
+            }
+            
+            if (line.startsWith('- ')) {
+                // 解析参数：- name: type description
+                // 类型可能包含 <> 如 Array<Tile.MutationPoolEntry>
+                const paramMatch = line.match(/^-\s*(\w+):\s*(\S+)\s*(.*)?$/);
+                if (paramMatch) {
+                    const param = {
+                        name: paramMatch[1],
+                        type: paramMatch[2],
+                        description: paramMatch[3] || ''
+                    };
+                    
+                    if (currentSection === 'register') {
+                        eventValue.registerParams.push(param);
+                    } else if (currentSection === 'callback') {
+                        eventValue.callbackParams.push(param);
+                    }
+                }
+            } else if (currentSection === 'label' && line) {
+                // 第一行非参数内容作为标签
+                eventValue.label = line;
+            }
+        }
+        
+        result.values.push(eventValue);
+    }
+}
+
+/**
+ * 解析普通枚举值（number/string/flag）
+ */
+function parseNormalEnumValues(code, result) {
+    // 解析枚举值 - 支持多种格式
+    // 格式1: Key = 1, --注释
+    // 格式2: Key = "string", --注释
+    // 格式3: Key = 1 << 0, --注释 (flag)
+    const valuePattern = /(\w+)\s*=\s*([^,\n]+?)(?:,?\s*--(.*))?$/gm;
+    let hasFlag = false;
+    let hasString = false;
+    
+    const bracketMatch = code.match(/\{([\s\S]*?)\}/);
+    if (bracketMatch) {
+        const content = bracketMatch[1];
+        let match;
+        
+        while ((match = valuePattern.exec(content)) !== null) {
+            const key = match[1].trim();
+            let valueStr = match[2].trim();
+            const comment = match[3] ? match[3].trim() : '';
+            
+            // 移除尾部逗号
+            valueStr = valueStr.replace(/,\s*$/, '');
+            
+            // 跳过多行注释开头（事件枚举会被误匹配）
+            if (valueStr.includes('--[[')) continue;
+            
+            // 判断值类型
+            let value;
+            if (valueStr.includes('<<')) {
+                // flag 类型
+                hasFlag = true;
+                const flagMatch = valueStr.match(/\d+\s*<<\s*(\d+)/);
+                if (flagMatch) {
+                    value = parseInt(flagMatch[1]);
+                } else {
+                    value = 0;
+                }
+            } else if (valueStr.startsWith('"') || valueStr.startsWith("'")) {
+                // 字符串类型
+                hasString = true;
+                value = valueStr.replace(/^["']|["']$/g, '');
+            } else {
+                // 数字类型
+                value = parseInt(valueStr) || 0;
+            }
+            
+            result.values.push({
+                key: key,
+                value: value,
+                label: comment
+            });
+        }
+    }
+    
+    // 根据值类型判断枚举类型
+    if (hasFlag) {
+        result.type = 'flag';
+    } else if (hasString) {
+        result.type = 'string';
+    }
+}
+
+async function confirmEnumImport() {
+    let code = '';
+    
+    // 获取代码
+    const activeTab = document.querySelector('.import-tab.active');
+    if (activeTab && activeTab.dataset.tab === 'file') {
+        code = document.getElementById('import-file-content').textContent;
+    } else {
+        code = document.getElementById('enum-import-text').value;
+    }
+    
+    if (!code.trim()) {
+        showWarning('请输入或选择要导入的枚举代码');
+        return;
+    }
+    
+    // 解析代码
+    const parsed = parseLuaEnumCode(code);
+    
+    // 检查是否有自定义名称
+    const customName = document.getElementById('import-enum-name').value.trim();
+    if (customName) {
+        parsed.name = customName;
+    }
+    
+    if (!parsed.name) {
+        showWarning('无法解析枚举名称，请手动输入');
+        return;
+    }
+    
+    if (parsed.values.length === 0) {
+        showWarning('无法解析枚举值，请检查代码格式');
+        return;
+    }
+    
+    // 检查是否已存在同名枚举
+    const existingEnum = enums.find(e => e.name === parsed.name);
+    if (existingEnum) {
+        if (!confirm(`枚举 "${parsed.name}" 已存在，是否覆盖？`)) {
+            return;
+        }
+    }
+    
+    // 设置当前枚举并进入编辑状态
+    currentEnum = parsed;
+    currentEnumName = existingEnum ? parsed.name : '';
+    isEditingEnum = true;
+    
+    // 显示编辑器
+    document.getElementById('enum-editor').style.display = 'flex';
+    document.getElementById('enum-editor-title').textContent = existingEnum ? `编辑枚举: ${parsed.name}` : '新建枚举 (从导入)';
+    document.getElementById('export-enum-lua-btn').style.display = existingEnum ? 'inline-block' : 'none';
+    
+    updateEnumPreviewButtonVisibility();
+    renderEnumContentEditor();
+    renderEnumFilesList();
+    
+    closeEnumImportModal();
+    showSuccess(`成功导入枚举 "${parsed.name}"，包含 ${parsed.values.length} 个值`);
+}
+
+// 文件选择事件处理
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('enum-import-file');
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const content = event.target.result;
+                    document.getElementById('import-file-content').textContent = content;
+                    document.getElementById('import-file-preview').style.display = 'block';
+                };
+                reader.readAsText(file);
+            }
+        });
+    }
+    
+    // 绑定导入按钮事件
+    const importBtn = document.getElementById('import-enum-btn');
+    if (importBtn) {
+        importBtn.addEventListener('click', openEnumImportModal);
+    }
+});
