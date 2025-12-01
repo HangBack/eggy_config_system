@@ -25,34 +25,46 @@
         <header class="header">
             <h1>配表系统</h1>
             <div class="nav-tabs">
-                <button class="nav-tab active" data-tab="schema">Schema编辑</button>
+                <button class="nav-tab active" data-tab="schema">结构编辑</button>
                 <button class="nav-tab" data-tab="enum">枚举管理</button>
                 <button class="nav-tab" data-tab="data">配表编辑</button>
+                <div class="nav-tab-indicator"></div>
+            </div>
+            <div class="header-right">
+                <div class="project-selector">
+                    <i class="fas fa-folder"></i>
+                    <select id="project-select" class="form-control form-control-sm">
+                        <option value="default">default</option>
+                    </select>
+                    <button class="btn btn-sm btn-outline-secondary" id="manage-projects-btn" title="管理项目">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary" id="copy-link-btn" title="复制当前页面链接">
+                        <i class="fas fa-link"></i>
+                    </button>
+                </div>
             </div>
         </header>
 
-        <!-- Schema编辑面板 -->
+        <!-- Schema编辑面板 --> 
         <div class="panel" id="schema-panel">
             <div class="panel-header">
-                <h2>Schema管理</h2>
-                <button class="btn btn-primary" id="add-schema-btn">
-                    <i class="fas fa-plus"></i> 新建Schema
-                </button>
-            </div>
-
-            <div class="schema-list">
-                <div class="schema-list-header">
-                    <h3>Schema列表</h3>
+                <div class="panel-header-left">
+                    <h2>结构编辑</h2>
+                    <span class="schema-edit-hint" id="schema-edit-hint"></span>
                 </div>
-                <div id="schema-items" class="schema-items">
-                    <!-- Schema项将动态添加 -->
-                </div>
-            </div>
-
-            <div class="schema-editor" id="schema-editor" style="display: none;">
-                <div class="editor-header">
-                    <h3 id="schema-editor-title">编辑Schema</h3>
-                    <div class="editor-actions">
+                <div class="panel-header-actions">
+                    <!-- 默认按钮组 -->
+                    <div class="header-actions-group" id="schema-default-actions">
+                        <button class="btn btn-primary" id="add-schema-btn">
+                            <i class="fas fa-plus"></i> 新建结构
+                        </button>
+                    </div>
+                    <!-- 编辑按钮组 -->
+                    <div class="header-actions-group" id="schema-edit-actions" style="display: none;">
+                        <button class="btn btn-sm btn-outline-secondary toggle-schema-list-btn" id="toggle-schema-list-btn" onclick="toggleSchemaList()">
+                            <i class="fas fa-chevron-down"></i> 展开列表
+                        </button>
                         <button class="btn btn-success" id="save-schema-btn" title="保存 Schema (Ctrl+S)">
                             <i class="fas fa-save"></i> 保存
                         </button>
@@ -61,16 +73,34 @@
                         </button>
                     </div>
                 </div>
+            </div>
 
+            <div class="schema-list" id="schema-list">
+                <div class="schema-list-content">
+                    <div class="schema-search-container">
+                        <input type="text" 
+                               id="schema-search" 
+                               class="form-control" 
+                               placeholder="搜索结构..."
+                               autocomplete="off">
+                        <i class="fas fa-search search-icon"></i>
+                    </div>
+                    <div id="schema-items" class="schema-items">
+                        <!-- 结构项将动态添加 -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="schema-editor" id="schema-editor" style="display: none;">
                 <div class="editor-basic-info">
                     <div class="form-group">
-                        <label>Schema名称</label>
-                        <input type="text" id="schema-name-input" class="form-control" placeholder="请输入Schema名称">
+                        <label>结构名称</label>
+                        <input type="text" id="schema-name-input" class="form-control" placeholder="请输入结构名称">
                     </div>
 
                     <div class="form-group">
-                        <label>Schema描述</label>
-                        <input type="text" id="schema-desc-input" class="form-control" placeholder="请输入Schema描述">
+                        <label>结构描述</label>
+                        <input type="text" id="schema-desc-input" class="form-control" placeholder="请输入结构描述">
                     </div>
                 </div>
 
@@ -116,6 +146,9 @@
                         </button>
                         <button class="btn btn-secondary" id="preview-enum-btn" style="display: none;">
                             <i class="fas fa-eye"></i> 预览
+                        </button>
+                        <button class="btn btn-info" id="import-enum-btn">
+                            <i class="fas fa-file-import"></i> 导入
                         </button>
                         <button class="btn btn-primary" id="export-enum-lua-btn" style="display: none;">
                             <i class="fas fa-file-export"></i> 导出
@@ -233,6 +266,16 @@
         </div>
     </div>
 
+    <!-- 滚动定位按钮 -->
+    <div id="scroll-buttons" class="scroll-buttons">
+        <button class="scroll-btn" id="scroll-top-btn" title="滚动到顶部">
+            <i class="fas fa-arrow-up"></i>
+        </button>
+        <button class="scroll-btn" id="scroll-bottom-btn" title="滚动到底部">
+            <i class="fas fa-arrow-down"></i>
+        </button>
+    </div>
+
     <!-- 导出Lua模态框 -->
     <div id="export-lua-modal" class="modal">
         <div class="modal-content modal-large">
@@ -294,14 +337,22 @@
         <div class="modal-content modal-large">
             <div class="modal-header">
                 <h3>数据预览</h3>
-                <button class="btn-close" onclick="closePreviewModal()">
-                    <i class="fas fa-times"></i>
-                </button>
+                <div class="modal-header-actions">
+                    <button class="btn btn-sm btn-secondary" id="toggle-script-btn" onclick="togglePreviewScript()" title="显示脚本">
+                        <i class="fas fa-code"></i> 脚本
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" id="download-preview-btn">
+                        <i class="fas fa-download"></i> 下载CSV
+                    </button>
+                    <button class="btn-close" onclick="closePreviewModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
             </div>
             <div class="modal-body">
                 <div class="preview-layout">
                     <!-- 左侧：脚本编辑器 -->
-                    <div class="preview-left-panel">
+                    <div class="preview-left-panel" id="preview-left-panel">
                         <div class="script-executor-panel">
                             <div class="script-header">
                                 <h4>
@@ -420,9 +471,6 @@ function(index, data) {
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-success" id="download-preview-btn">
-                    <i class="fas fa-download"></i> 下载CSV
-                </button>
                 <button class="btn btn-secondary" onclick="closePreviewModal()">
                     <i class="fas fa-times"></i> 关闭
                 </button>
@@ -487,6 +535,65 @@ function(index, data) {
             </div>
             <div class="modal-actions">
                 <button class="btn btn-secondary" id="close-enum-preview-btn">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 枚举导入模态框 -->
+    <div id="enum-import-modal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>导入枚举</h3>
+                <button class="btn-close" onclick="closeEnumImportModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>导入方式</label>
+                    <div class="import-tabs">
+                        <button class="btn btn-sm import-tab active" data-tab="text" onclick="switchImportTab('text')">
+                            <i class="fas fa-code"></i> 粘贴代码
+                        </button>
+                        <button class="btn btn-sm import-tab" data-tab="file" onclick="switchImportTab('file')">
+                            <i class="fas fa-file-upload"></i> 上传文件
+                        </button>
+                    </div>
+                </div>
+                <div id="import-text-tab" class="import-tab-content">
+                    <div class="form-group">
+                        <label>Lua 枚举代码</label>
+                        <textarea id="enum-import-text" class="form-control" rows="12" 
+                            placeholder="粘贴 Lua 枚举代码，例如：
+local ItemType = {
+    Weapon = 1, --武器
+    Armor = 2, --防具
+    Consumable = 3, --消耗品
+}
+return ItemType"></textarea>
+                    </div>
+                </div>
+                <div id="import-file-tab" class="import-tab-content" style="display: none;">
+                    <div class="form-group">
+                        <label>选择 Lua 文件</label>
+                        <input type="file" id="enum-import-file" class="form-control" accept=".lua">
+                    </div>
+                    <div id="import-file-preview" class="code-container" style="display: none;">
+                        <pre id="import-file-content" class="lua-code"></pre>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>枚举名称（可选，留空则从代码解析）</label>
+                    <input type="text" id="import-enum-name" class="form-control" placeholder="例如：ItemType">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="confirmEnumImport()">
+                    <i class="fas fa-check"></i> 导入
+                </button>
+                <button class="btn btn-secondary" onclick="closeEnumImportModal()">
+                    <i class="fas fa-times"></i> 取消
+                </button>
             </div>
         </div>
     </div>
@@ -746,6 +853,37 @@ function(index, data) {
     <!-- 富文本编辑器容器 -->
     <div id="richtext-editor-container"></div>
 
+    <!-- 项目管理模态框 -->
+    <div class="modal" id="project-modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3>项目管理</h3>
+                <button class="btn-close" onclick="closeProjectModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label>新建项目</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="new-project-name" class="form-control" placeholder="输入项目名称...">
+                        <button class="btn btn-primary" id="create-project-btn" style="white-space: nowrap;">
+                            <i class="fas fa-plus"></i> 创建
+                        </button>
+                    </div>
+                    <small class="text-muted">项目名称只能包含字母、数字、下划线和中划线</small>
+                </div>
+                <div class="form-group">
+                    <label>现有项目</label>
+                    <div id="project-list" class="project-list">
+                        <!-- 项目列表将动态添加 -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeProjectModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <!-- CodeMirror 语法高亮库 -->
@@ -756,14 +894,14 @@ function(index, data) {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/javascript-hint.min.js"></script>
-    
+
     <!-- JavaScript文件 -->
     <script src="js/common.js"></script>
     <script src="js/enum-manager.js"></script>
     <script src="js/schema-manager.js"></script>
     <script src="js/data-manager.js"></script>
-    <!-- 富文本编辑器 -->
-    <script src="components/richtext-editor.js"></script>
+    <!-- 富文本编辑器 v2 -->
+    <script src="components/richtext-editor-v2.js"></script>
     <script>
         // 加载富文本编辑器 HTML 模板
         fetch('components/richtext-editor.html')
