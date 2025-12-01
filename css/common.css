@@ -24,36 +24,154 @@ body {
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 15px;
 }
 
 .header h1 {
     font-size: 24px;
-    margin-bottom: 15px;
     color: #2c3e50;
+    margin: 0;
 }
 
 .nav-tabs {
     display: flex;
     gap: 10px;
+    flex: 1;
+    justify-content: center;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.project-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+}
+
+.project-selector i {
+    color: #6c757d;
+}
+
+.project-selector select {
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    padding: 2px 8px;
+    cursor: pointer;
+    min-width: 120px;
+}
+
+.project-selector select:focus {
+    outline: none;
+}
+
+.project-selector .btn {
+    padding: 4px 8px;
+}
+
+/* 项目管理模态框 */
+.project-list {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+}
+
+.project-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid #e9ecef;
+    transition: background 0.2s;
+}
+
+.project-list-item:last-child {
+    border-bottom: none;
+}
+
+.project-list-item:hover {
+    background: #f8f9fa;
+}
+
+.project-list-item.active {
+    background: #e3f2fd;
+}
+
+.project-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.project-name {
+    font-weight: 500;
+    color: #2c3e50;
+}
+
+.project-stats {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.project-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.project-actions .btn {
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+.nav-tabs {
+    display: flex;
+    gap: 10px;
+    flex: 1;
+    justify-content: center;
+    position: relative;
 }
 
 .nav-tab {
     padding: 10px 20px;
     border: none;
-    background: #ecf0f1;
+    background: transparent;
     cursor: pointer;
     border-radius: 4px;
     font-size: 14px;
-    transition: all 0.3s;
+    transition: color 0.3s;
+    position: relative;
+    z-index: 1;
+    color: #7f8c8d;
 }
 
 .nav-tab:hover {
-    background: #bdc3c7;
+    color: #2c3e50;
 }
 
 .nav-tab.active {
-    background: #3498db;
     color: white;
+}
+
+.nav-tab-indicator {
+    position: absolute;
+    height: 100%;
+    background: #3498db;
+    border-radius: 4px;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 0;
 }
 
 /* 面板样式 */
@@ -203,4 +321,48 @@ body {
 
 .toast-info i {
     color: #3498db;
+}
+
+/* 滚动定位按钮 */
+.scroll-buttons {
+    position: fixed;
+    right: 30px;
+    bottom: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 100;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;
+}
+
+.scroll-buttons.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.scroll-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    transition: all 0.2s;
+}
+
+.scroll-btn:hover {
+    background: #3498db;
+    color: white;
+    transform: scale(1.1);
+}
+
+.scroll-btn:active {
+    transform: scale(0.95);
 }

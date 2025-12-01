@@ -47,6 +47,12 @@
     overflow: hidden;
 }
 
+/* 枚举编辑器的主区域需要正确的溢出设置 */
+.enum-editor .editor-main {
+    overflow-y: auto;
+    min-height: 0; /* 重要：允许 grid 子元素收缩 */
+}
+
 /* 左侧边栏 - 枚举文件列表 */
 .enum-files-search-container {
     position: relative;
@@ -390,3 +396,45 @@
     padding: 4px 8px;
 }
 
+/* 导入模态框样式 */
+.import-tabs {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.import-tab {
+    background: #e9ecef;
+    border: 1px solid #dee2e6;
+    color: #495057;
+}
+
+.import-tab.active {
+    background: #27ae60;
+    border-color: #27ae60;
+    color: white;
+}
+
+.import-tab-content {
+    animation: fadeIn 0.2s;
+}
+
+#enum-import-text {
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+#import-file-preview {
+    margin-top: 15px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+#import-file-preview pre {
+    margin: 0;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    font-size: 12px;
+}

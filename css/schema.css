@@ -1,13 +1,86 @@
-﻿/* Schema管理样式 */
+﻿/* Schema编辑样式 */
 
-.schema-list {
-    margin-bottom: 20px;
+/* Panel Header 扩展样式 */
+.panel-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
-.schema-list-header h3 {
-    font-size: 16px;
+.schema-edit-hint {
+    font-size: 14px;
+    color: #6c757d;
+    font-weight: normal;
+}
+
+.panel-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.header-actions-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.header-actions-group.fade-out {
+    opacity: 0;
+    transform: translateY(-10px);
+}
+
+.header-actions-group.fade-in {
+    opacity: 0;
+    transform: translateY(10px);
+}
+
+/* Schema列表 */
+.schema-list {
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+.schema-list-content {
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.schema-list.collapsed {
+    pointer-events: none;
+}
+
+.schema-list.collapsed .schema-list-content {
+    transform: translateY(-100%);
+    opacity: 0;
+}
+
+.toggle-schema-list-btn {
+    padding: 4px 10px;
+    font-size: 12px;
+}
+
+/* Schema搜索框 */
+.schema-search-container {
+    position: relative;
+    padding: 10px 0;
     margin-bottom: 15px;
-    color: #34495e;
+}
+
+.schema-search-container input {
+    padding-right: 35px;
+}
+
+.schema-search-container .search-icon {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #95a5a6;
+    pointer-events: none;
 }
 
 .schema-items {
@@ -66,9 +139,19 @@
 
 /* Schema编辑器 */
 .schema-editor {
-    border-top: 2px solid #ecf0f1;
-    padding-top: 20px;
-    margin-top: 20px;
+    padding-top: 10px;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .editor-header {
@@ -343,6 +426,28 @@
     margin-left: 5px;
     font-weight: 600;
     cursor: help;
+}
+
+/* 颜色输入框样式（用于预览背景色等） */
+.color-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.color-input-wrapper .color-picker {
+    width: 40px;
+    height: 34px;
+    padding: 2px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.color-input-wrapper .color-text {
+    flex: 1;
+    font-family: monospace;
 }
 
 /* 数据行列表 */
