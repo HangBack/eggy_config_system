@@ -6,15 +6,63 @@ import os
 app = Flask(__name__)
 CORS(app)  # 允许跨域请求
 
-# 数据存储目录
-DATA_DIR = 'data'
-SCHEMA_DIR = 'schema'
-ENUM_DIR = 'enum'
+# 项目根目录（包含所有项目文件夹）
+PROJECTS_ROOT = 'projects'
 
-# 确保目录存在
-os.makedirs(DATA_DIR, exist_ok=True)
-os.makedirs(SCHEMA_DIR, exist_ok=True)
-os.makedirs(ENUM_DIR, exist_ok=True)
+# 默认项目名（兼容旧结构）
+DEFAULT_PROJECT = 'default'
+
+# 确保项目根目录存在
+os.makedirs(PROJECTS_ROOT, exist_ok=True)
+
+
+def get_project_path(project=None):
+    """获取项目目录路径"""
+    if not project:
+        project = DEFAULT_PROJECT
+    return os.path.join(PROJECTS_ROOT, project)
+
+
+def get_project_dirs(project=None):
+    """获取项目的子目录路径"""
+    project_path = get_project_path(project)
+    return {
+        'data': os.path.join(project_path, 'data'),
+        'schema': os.path.join(project_path, 'schema'),
+        'enum': os.path.join(project_path, 'enum')
+    }
+
+
+def ensure_project_dirs(project=None):
+    """确保项目目录存在"""
+    dirs = get_project_dirs(project)
+    for dir_path in dirs.values():
+        os.makedirs(dir_path, exist_ok=True)
+
+
+# 兼容旧结构：迁移旧数据到默认项目
+def migrate_old_structure():
+    """将旧的 data/schema/enum 目录迁移到 projects/default/"""
+    old_dirs = ['data', 'schema', 'enum']
+    default_project_path = get_project_path(DEFAULT_PROJECT)
+    
+    for old_dir in old_dirs:
+        if os.path.exists(old_dir) and os.path.isdir(old_dir):
+            new_dir = os.path.join(default_project_path, old_dir)
+            if not os.path.exists(new_dir):
+                os.makedirs(new_dir, exist_ok=True)
+            # 移动文件
+            for filename in os.listdir(old_dir):
+                old_path = os.path.join(old_dir, filename)
+                new_path = os.path.join(new_dir, filename)
+                if os.path.isfile(old_path) and not os.path.exists(new_path):
+                    import shutil
+                    shutil.copy2(old_path, new_path)
+                    print(f'迁移文件: {old_path} -> {new_path}')
+
+
+# 初始化：确保默认项目存在
+ensure_project_dirs(DEFAULT_PROJECT)
 
 # Lua ValueType 缓存
 lua_value_types = []
@@ -92,19 +140,22 @@ def parse_enum_lua():
         print(f'解析 enum.lua 失败: {e}')
 
 
-def get_schema_path(name):
+def get_schema_path(name, project=None):
     """获取schema文件路径"""
-    return os.path.join(SCHEMA_DIR, f'{name}.json')
+    dirs = get_project_dirs(project)
+    return os.path.join(dirs['schema'], f'{name}.json')
 
 
-def get_data_path(name):
+def get_data_path(name, project=None):
     """获取数据文件路径"""
-    return os.path.join(DATA_DIR, f'{name}.json')
+    dirs = get_project_dirs(project)
+    return os.path.join(dirs['data'], f'{name}.json')
 
 
-def get_enum_path(name):
+def get_enum_path(name, project=None):
     """获取枚举文件路径"""
-    return os.path.join(ENUM_DIR, f'{name}.json')
+    dirs = get_project_dirs(project)
+    return os.path.join(dirs['enum'], f'{name}.json')
 
 
 def read_json_file(filepath):
@@ -130,14 +181,18 @@ def write_json_file(filepath, data):
         return False
 
 
-def list_schemas():
+def list_schemas(project=None):
     """列出所有schema"""
     schemas = []
+    dirs = get_project_dirs(project)
+    schema_dir = dirs['schema']
     try:
-        for filename in os.listdir(SCHEMA_DIR):
+        if not os.path.exists(schema_dir):
+            return schemas
+        for filename in os.listdir(schema_dir):
             if filename.endswith('.json'):
                 schema_name = filename[:-5]
-                schema_data = read_json_file(get_schema_path(schema_name))
+                schema_data = read_json_file(get_schema_path(schema_name, project))
                 if schema_data:
                     schemas.append(schema_data)
     except Exception as e:
@@ -145,14 +200,18 @@ def list_schemas():
     return schemas
 
 
-def list_enums():
+def list_enums(project=None):
     """列出所有枚举"""
     enums = []
+    dirs = get_project_dirs(project)
+    enum_dir = dirs['enum']
     try:
-        for filename in os.listdir(ENUM_DIR):
+        if not os.path.exists(enum_dir):
+            return enums
+        for filename in os.listdir(enum_dir):
             if filename.endswith('.json'):
                 enum_name = filename[:-5]
-                enum_data = read_json_file(get_enum_path(enum_name))
+                enum_data = read_json_file(get_enum_path(enum_name, project))
                 if enum_data:
                     enums.append(enum_data)
     except Exception as e:
@@ -160,9 +219,153 @@ def list_enums():
     return enums
 
 
+# ==================== 项目管理 API ====================
+
+@app.route('/api/projects', methods=['GET', 'POST'])
+def projects_handler():
+    """项目管理API - 列出、创建、删除项目"""
+    
+    if request.method == 'GET':
+        # 列出所有项目
+        projects = []
+        try:
+            if os.path.exists(PROJECTS_ROOT):
+                for name in os.listdir(PROJECTS_ROOT):
+                    project_path = os.path.join(PROJECTS_ROOT, name)
+                    if os.path.isdir(project_path):
+                        # 获取项目统计信息
+                        dirs = get_project_dirs(name)
+                        schema_count = 0
+                        enum_count = 0
+                        if os.path.exists(dirs['schema']):
+                            schema_count = len([f for f in os.listdir(dirs['schema']) if f.endswith('.json')])
+                        if os.path.exists(dirs['enum']):
+                            enum_count = len([f for f in os.listdir(dirs['enum']) if f.endswith('.json')])
+                        
+                        projects.append({
+                            'name': name,
+                            'schemaCount': schema_count,
+                            'enumCount': enum_count
+                        })
+        except Exception as e:
+            print(f"列出项目错误: {e}")
+        
+        return jsonify({
+            'success': True,
+            'data': projects
+        })
+    
+    elif request.method == 'POST':
+        try:
+            data = request.get_json()
+            action = data.get('action')
+            name = data.get('name')
+            
+            if not action or not name:
+                return jsonify({
+                    'success': False,
+                    'error': '缺少必要参数'
+                }), 400
+            
+            # 验证项目名称（只允许字母、数字、下划线、中划线）
+            import re
+            if not re.match(r'^[\w\-]+$', name):
+                return jsonify({
+                    'success': False,
+                    'error': '项目名称只能包含字母、数字、下划线和中划线'
+                }), 400
+            
+            if action == 'create':
+                project_path = get_project_path(name)
+                
+                if os.path.exists(project_path):
+                    return jsonify({
+                        'success': False,
+                        'error': f'项目 "{name}" 已存在'
+                    }), 400
+                
+                ensure_project_dirs(name)
+                return jsonify({
+                    'success': True,
+                    'message': f'项目 "{name}" 创建成功'
+                })
+            
+            elif action == 'delete':
+                if name == DEFAULT_PROJECT:
+                    return jsonify({
+                        'success': False,
+                        'error': '不能删除默认项目'
+                    }), 400
+                
+                project_path = get_project_path(name)
+                
+                if not os.path.exists(project_path):
+                    return jsonify({
+                        'success': False,
+                        'error': f'项目 "{name}" 不存在'
+                    }), 404
+                
+                import shutil
+                shutil.rmtree(project_path)
+                return jsonify({
+                    'success': True,
+                    'message': f'项目 "{name}" 已删除'
+                })
+            
+            elif action == 'rename':
+                new_name = data.get('newName')
+                if not new_name:
+                    return jsonify({
+                        'success': False,
+                        'error': '缺少新名称'
+                    }), 400
+                
+                if not re.match(r'^[\w\-]+$', new_name):
+                    return jsonify({
+                        'success': False,
+                        'error': '项目名称只能包含字母、数字、下划线和中划线'
+                    }), 400
+                
+                old_path = get_project_path(name)
+                new_path = get_project_path(new_name)
+                
+                if not os.path.exists(old_path):
+                    return jsonify({
+                        'success': False,
+                        'error': f'项目 "{name}" 不存在'
+                    }), 404
+                
+                if os.path.exists(new_path):
+                    return jsonify({
+                        'success': False,
+                        'error': f'项目 "{new_name}" 已存在'
+                    }), 400
+                
+                os.rename(old_path, new_path)
+                return jsonify({
+                    'success': True,
+                    'message': f'项目已重命名为 "{new_name}"'
+                })
+            
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': f'不支持的操作: {action}'
+                }), 400
+        
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': f'处理请求失败: {str(e)}'
+            }), 500
+
+
 @app.route('/api/schema', methods=['GET', 'POST'])
 def schema_handler():
     """Schema API接口 - 处理schema的增删改查"""
+    
+    # 获取项目参数
+    project = request.args.get('project') or (request.get_json() or {}).get('project')
     
     if request.method == 'GET':
         # 查询操作
@@ -170,7 +373,7 @@ def schema_handler():
         
         if action == 'list':
             # 列出所有schema
-            schemas = list_schemas()
+            schemas = list_schemas(project)
             return jsonify({
                 'success': True,
                 'data': schemas
@@ -185,7 +388,7 @@ def schema_handler():
                     'error': '缺少schema名称'
                 }), 400
             
-            schema_data = read_json_file(get_schema_path(name))
+            schema_data = read_json_file(get_schema_path(name, project))
             if schema_data is None:
                 return jsonify({
                     'success': False,
@@ -212,7 +415,8 @@ def schema_handler():
             
             if action == 'create':
                 # 创建schema
-                schema_path = get_schema_path(name)
+                ensure_project_dirs(project)
+                schema_path = get_schema_path(name, project)
                 
                 # 检查是否已存在
                 if os.path.exists(schema_path):
@@ -224,7 +428,7 @@ def schema_handler():
                 schema_data = data.get('data', {})
                 if write_json_file(schema_path, schema_data):
                     # 同时创建空的数据文件
-                    write_json_file(get_data_path(name), [])
+                    write_json_file(get_data_path(name, project), [])
                     
                     return jsonify({
                         'success': True,
@@ -238,7 +442,7 @@ def schema_handler():
             
             elif action == 'update':
                 # 更新schema
-                schema_path = get_schema_path(name)
+                schema_path = get_schema_path(name, project)
                 
                 # 检查是否存在
                 if not os.path.exists(schema_path):
@@ -261,8 +465,8 @@ def schema_handler():
             
             elif action == 'delete':
                 # 删除schema
-                schema_path = get_schema_path(name)
-                data_path = get_data_path(name)
+                schema_path = get_schema_path(name, project)
+                data_path = get_data_path(name, project)
                 
                 try:
                     # 删除schema文件
@@ -300,6 +504,9 @@ def schema_handler():
 def data_handler():
     """Data API接口 - 处理配表数据的增删改查"""
     
+    # 获取项目参数
+    project = request.args.get('project') or (request.get_json() or {}).get('project')
+    
     if request.method == 'GET':
         # 查询操作
         action = request.args.get('action', 'get')
@@ -312,7 +519,7 @@ def data_handler():
             }), 400
         
         # 检查schema是否存在
-        schema_path = get_schema_path(name)
+        schema_path = get_schema_path(name, project)
         if not os.path.exists(schema_path):
             return jsonify({
                 'success': False,
@@ -320,7 +527,7 @@ def data_handler():
             }), 404
         
         # 读取数据
-        data_path = get_data_path(name)
+        data_path = get_data_path(name, project)
         data = read_json_file(data_path)
         
         # 如果数据文件不存在，返回空数组
@@ -339,6 +546,7 @@ def data_handler():
             req_data = request.get_json()
             action = req_data.get('action')
             name = req_data.get('name')
+            project = req_data.get('project', project)
             
             if not action or not name:
                 return jsonify({
@@ -347,14 +555,14 @@ def data_handler():
                 }), 400
             
             # 检查schema是否存在
-            schema_path = get_schema_path(name)
+            schema_path = get_schema_path(name, project)
             if not os.path.exists(schema_path):
                 return jsonify({
                     'success': False,
                     'error': f'Schema "{name}" 不存在'
                 }), 404
             
-            data_path = get_data_path(name)
+            data_path = get_data_path(name, project)
             
             if action == 'update':
                 # 更新数据
@@ -388,13 +596,16 @@ def data_handler():
 def enum_handler():
     """Enum API接口 - 处理枚举的增删改查"""
     
+    # 获取项目参数
+    project = request.args.get('project') or (request.get_json() or {}).get('project')
+    
     if request.method == 'GET':
         # 查询操作
         action = request.args.get('action', 'list')
         
         if action == 'list':
             # 列出所有枚举
-            enums = list_enums()
+            enums = list_enums(project)
             return jsonify({
                 'success': True,
                 'data': enums
@@ -409,7 +620,7 @@ def enum_handler():
                     'error': '缺少枚举名称'
                 }), 400
             
-            enum_data = read_json_file(get_enum_path(name))
+            enum_data = read_json_file(get_enum_path(name, project))
             if enum_data is None:
                 return jsonify({
                     'success': False,
@@ -427,6 +638,7 @@ def enum_handler():
             data = request.get_json()
             action = data.get('action')
             name = data.get('name')
+            project = data.get('project', project)
             
             if not action or not name:
                 return jsonify({
@@ -436,7 +648,8 @@ def enum_handler():
             
             if action == 'create':
                 # 创建枚举
-                enum_path = get_enum_path(name)
+                ensure_project_dirs(project)
+                enum_path = get_enum_path(name, project)
                 
                 # 检查是否已存在
                 if os.path.exists(enum_path):
@@ -459,7 +672,7 @@ def enum_handler():
             
             elif action == 'update':
                 # 更新枚举
-                enum_path = get_enum_path(name)
+                enum_path = get_enum_path(name, project)
                 
                 # 检查是否存在
                 if not os.path.exists(enum_path):
@@ -482,7 +695,7 @@ def enum_handler():
             
             elif action == 'delete':
                 # 删除枚举
-                enum_path = get_enum_path(name)
+                enum_path = get_enum_path(name, project)
                 
                 try:
                     # 删除枚举文件
@@ -533,6 +746,9 @@ def health_check():
 if __name__ == '__main__':
     print('配表系统后端服务启动中...')
     
+    # 迁移旧数据结构到新的项目结构
+    migrate_old_structure()
+    
     # 解析 enum.lua
     parse_enum_lua()
     
@@ -540,6 +756,7 @@ if __name__ == '__main__':
     print('Schema API: http://localhost:5001/api/schema')
     print('Enum API: http://localhost:5001/api/enum')
     print('Data API: http://localhost:5001/api/data')
+    print('Projects API: http://localhost:5001/api/projects')
     print('Lua Types API: http://localhost:5001/api/lua-types')
     print('按 Ctrl+C 停止服务')
     app.run(host='0.0.0.0', port=5001, debug=True)

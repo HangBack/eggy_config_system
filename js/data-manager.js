@@ -3,7 +3,7 @@
     const dropdownElement = document.getElementById('data-schema-select-dropdown');
 
     try {
-        const response = await fetch(`${API.SCHEMA}?action=list`);
+        const response = await fetch(getApiUrl(API.SCHEMA, { action: 'list' }));
         const result = await response.json();
 
         if (result.success) {
@@ -52,7 +52,7 @@ async function loadDataForSchema() {
 
     try {
         // 加载Schema定义
-        const schemaResponse = await fetch(`${API.SCHEMA}?action=get&name=${encodeURIComponent(schemaName)}`);
+        const schemaResponse = await fetch(getApiUrl(API.SCHEMA, { action: 'get', name: schemaName }));
         const schemaResult = await schemaResponse.json();
 
         if (!schemaResult.success) {
@@ -66,7 +66,7 @@ async function loadDataForSchema() {
         currentSchemaName = schemaName;
 
         // 加载数据
-        const dataResponse = await fetch(`${API.DATA}?action=get&name=${encodeURIComponent(schemaName)}`);
+        const dataResponse = await fetch(getApiUrl(API.DATA, { action: 'get', name: schemaName }));
         const dataResult = await dataResponse.json();
 
         dataRows = [];
@@ -108,6 +108,9 @@ async function loadDataForSchema() {
         document.getElementById('import-data-btn').style.display = 'inline-flex';
         document.getElementById('preview-data-btn').style.display = 'inline-flex';
         document.getElementById('export-lua-btn').style.display = 'inline-flex';
+        
+        // 更新URL参数
+        updateUrlParams();
     } catch (error) {
         console.error('加载数据错误:', error);
         showError('加载数据失败');
@@ -120,13 +123,12 @@ function renderDataRowsList() {
 
     // 获取搜索关键词
     const searchInput = document.getElementById('data-rows-search');
-    const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    const searchTerm = searchInput ? searchInput.value.trim() : '';
 
-    // 过滤数据行
-    const filteredRows = dataRows.filter((dataRow, index) => {
-        if (!searchTerm) return true;
-        return dataRow.name.toLowerCase().includes(searchTerm);
-    });
+    // 使用模糊匹配过滤数据行
+    const filteredRows = searchTerm 
+        ? fuzzyFilterAndSort(dataRows, searchTerm, dataRow => dataRow.name)
+        : dataRows;
 
     // 渲染过滤后的数据行
     filteredRows.forEach((dataRow) => {
@@ -171,6 +173,9 @@ function createDataRowListItem(dataRow, index) {
         selectedDataRowIndex = index;
         renderDataRowsList();
         renderDataRowEditor(index);
+        
+        // 更新URL参数
+        updateUrlParams();
     });
 
     // 右键菜单
@@ -385,6 +390,9 @@ function createDefaultDataForSchema(schema) {
                 case 'number':
                     data[field.name] = 0;
                     break;
+                case 'boolean':
+                    data[field.name] = false;
+                    break;
                 case 'entry':
                 case 'list':
                     data[field.name] = [];
@@ -438,7 +446,20 @@ function saveCurrentEditToMemory() {
         } else {
             const input = document.querySelector(`#field-${selectedDataRowIndex}-${field.name}`);
             if (input) {
-                currentData[field.name] = input.value;
+                // 处理 boolean-toggle 按钮
+                if (input.classList.contains('boolean-toggle')) {
+                    currentData[field.name] = input.dataset.value === 'true';
+                } else if (field.type === 'timestamp') {
+                    // 时间戳：将 datetime-local 值转换为 Unix 时间戳
+                    if (input.value) {
+                        const date = new Date(input.value);
+                        currentData[field.name] = Math.floor(date.getTime() / 1000);
+                    } else {
+                        currentData[field.name] = 0;
+                    }
+                } else {
+                    currentData[field.name] = input.value;
+                }
             } else {
                 // 如果输入框不存在，保持原有数据
                 currentData[field.name] = getFieldValue(dataRows[selectedDataRowIndex].data, field.name) || '';
@@ -550,7 +571,7 @@ async function getFieldOptions(field) {
         const enumName = field.dataSource.enum;
         const enumPrefix = field.dataSource.enumPrefix || '';
         try {
-            const response = await fetch(`${API.ENUM}?action=get&name=${encodeURIComponent(enumName)}`);
+            const response = await fetch(getApiUrl(API.ENUM, { action: 'get', name: enumName }));
             const result = await response.json();
 
             if (result.success && result.data && result.data.values) {
@@ -617,17 +638,15 @@ function initCustomDatalist(inputElement, dropdownElement, options) {
         dropdownElement.innerHTML = optionsHtml;
     }
 
-    // 过滤选项
+    // 过滤选项 - 使用全局模糊匹配函数
     function filterOptions(searchText) {
         if (!searchText) return currentOptions;
 
-        const search = searchText.toLowerCase();
-        return currentOptions.filter(opt => {
+        return fuzzyFilterAndSort(currentOptions, searchText, opt => {
             if (typeof opt === 'object') {
-                return opt.value.toLowerCase().includes(search) ||
-                    (opt.label && opt.label.toLowerCase().includes(search));
+                return [opt.value, opt.label || ''];
             }
-            return opt.toLowerCase().includes(search);
+            return opt;
         });
     }
 
@@ -988,6 +1007,29 @@ function createFieldInput(field, value, rowIndex) {
             `;
             break;
 
+        case 'boolean':
+            const boolValue = value === true || value === 'true' || value === 1 || value === '1';
+            inputHtml = `
+                <div class="boolean-input-wrapper">
+                    <button type="button" id="${fieldId}" class="boolean-toggle ${boolValue ? 'active' : ''}" 
+                            onclick="toggleBoolean('${fieldId}')" data-value="${boolValue}"></button>
+                </div>
+            `;
+            break;
+
+        case 'timestamp':
+            // 时间戳，使用 datetime-local 输入，存储为 Unix 时间戳
+            const tsValue = value ? timestampToDatetimeLocal(value) : '';
+            inputHtml = `
+                <div class="timestamp-input-wrapper">
+                    <input type="datetime-local" id="${fieldId}" class="form-control" 
+                           value="${tsValue}" ${field.required ? 'required' : ''}
+                           onchange="updateTimestampFromDatetime('${fieldId}', this.value)">
+                    <input type="hidden" id="${fieldId}-value" value="${value || ''}">
+                </div>
+            `;
+            break;
+
         case 'option':
             // 使用占位符，稍后异步加载选项
             inputHtml = `<select id="${fieldId}" class="form-control linked-field" data-field-name="${field.name}" ${field.required ? 'required' : ''}>
@@ -1046,10 +1088,11 @@ function createFieldInput(field, value, rowIndex) {
             `;
 
         case 'richtext':
+            const rtBgColor = field.previewBackground || '#1a1a2e';
             inputHtml = `
                 <div class="richtext-input-wrapper">
                     <input type="text" id="${fieldId}" class="form-control" value="${escapeHtml(value)}" ${field.required ? 'required' : ''} readonly style="background-color: #f8f9fa;">
-                    <button type="button" class="btn btn-primary btn-sm" onclick="RichTextEditor.open('${fieldId}', document.getElementById('${fieldId}').value, function(fieldId, newValue) { document.getElementById(fieldId).value = newValue; })">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="openRichTextEditor('${fieldId}', '${field.name}')">
                         <i class="fas fa-edit"></i> 编辑
                     </button>
                 </div>
@@ -1107,6 +1150,25 @@ function createDictInput(field, value, rowIndex) {
                     </div>
                 `;
                 break;
+            case 'boolean':
+                const boolVal = subfieldValue === true || subfieldValue === 'true' || subfieldValue === 1 || subfieldValue === '1';
+                inputHtml = `
+                    <div class="boolean-input-wrapper">
+                        <button type="button" id="${subfieldId}" class="boolean-toggle ${boolVal ? 'active' : ''}" 
+                                onclick="toggleBoolean('${subfieldId}')" data-value="${boolVal}"></button>
+                    </div>
+                `;
+                break;
+            case 'timestamp':
+                const dictTsVal = subfieldValue ? timestampToDatetimeLocal(subfieldValue) : '';
+                inputHtml = `
+                    <div class="timestamp-input-wrapper">
+                        <input type="datetime-local" id="${subfieldId}" class="form-control" value="${dictTsVal}"
+                               onchange="updateTimestampFromDatetime('${subfieldId}', this.value)">
+                        <input type="hidden" id="${subfieldId}-value" value="${subfieldValue || ''}">
+                    </div>
+                `;
+                break;
             case 'option':
                 inputHtml = `<select id="${subfieldId}" class="form-control linked-field" data-field-name="${subfield.name}"><option value="">-- 加载中... --</option></select>`;
                 break;
@@ -1120,10 +1182,11 @@ function createDictInput(field, value, rowIndex) {
                 `;
                 break;
             case 'richtext':
+                const dictRichtextBg = subfield.previewBackground || '#1a1a2e';
                 inputHtml = `
                     <div class="richtext-input-wrapper">
                         <input type="text" id="${subfieldId}" class="form-control" value="${escapeHtml(subfieldValue)}" readonly style="background-color: #f8f9fa;">
-                        <button type="button" class="btn btn-primary btn-sm" onclick="openRichTextModal('${subfieldId}', document.getElementById('${subfieldId}').value)">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="openRichTextModal('${subfieldId}', document.getElementById('${subfieldId}').value, '${dictRichtextBg}')">
                             <i class="fas fa-edit"></i>
                         </button>
                     </div>
@@ -1227,6 +1290,25 @@ function createListItem(field, value, rowIndex, itemIndex) {
                 </div>
             `;
             break;
+        case 'boolean':
+            const listBoolVal = value === true || value === 'true' || value === 1 || value === '1';
+            inputHtml = `
+                <div class="boolean-input-wrapper">
+                    <button type="button" id="${itemId}" class="boolean-toggle ${listBoolVal ? 'active' : ''}" 
+                            onclick="toggleBoolean('${itemId}')" data-value="${listBoolVal}"></button>
+                </div>
+            `;
+            break;
+        case 'timestamp':
+            const listTsVal = value ? timestampToDatetimeLocal(value) : '';
+            inputHtml = `
+                <div class="timestamp-input-wrapper">
+                    <input type="datetime-local" id="${itemId}" class="form-control" value="${listTsVal}"
+                           onchange="updateTimestampFromDatetime('${itemId}', this.value)">
+                    <input type="hidden" id="${itemId}-value" value="${value || ''}">
+                </div>
+            `;
+            break;
         case 'option':
             inputHtml = `<select id="${itemId}" class="form-control linked-field" data-field-name="${field.name}"><option value="">-- 加载中... --</option></select>`;
             break;
@@ -1240,10 +1322,11 @@ function createListItem(field, value, rowIndex, itemIndex) {
             `;
             break;
         case 'richtext':
+            const listRichtextBg = field.previewBackground || '#1a1a2e';
             inputHtml = `
                 <div class="richtext-input-wrapper">
                     <input type="text" id="${itemId}" class="form-control" value="${escapeHtml(value)}" readonly style="background-color: #f8f9fa;">
-                    <button type="button" class="btn btn-primary btn-sm" onclick="openRichTextModal('${itemId}', document.getElementById('${itemId}').value)">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="openRichTextModal('${itemId}', document.getElementById('${itemId}').value, '${listRichtextBg}')">
                         <i class="fas fa-edit"></i>
                     </button>
                 </div>
@@ -1334,10 +1417,23 @@ function removeListItem(rowIndex, fieldName, itemIndex) {
 function collectListDataFromContainer(container, field) {
     const items = container.querySelectorAll('.list-item');
     const values = [];
+    const elementType = field.elementType || 'text';
+    
     items.forEach((item, idx) => {
-        const input = item.querySelector('input, select');
+        // 排除 type="color" 的输入框，优先选择文本输入框
+        const input = item.querySelector('input:not([type="color"]), select');
         if (input) {
-            values.push(input.value);
+            // 处理 timestamp 类型
+            if (elementType === 'timestamp') {
+                if (input.value) {
+                    const date = new Date(input.value);
+                    values.push(Math.floor(date.getTime() / 1000));
+                } else {
+                    values.push(0);
+                }
+            } else {
+                values.push(input.value);
+            }
         }
     });
     return values;
@@ -1377,6 +1473,26 @@ function createEntryItem(field, entry, rowIndex, entryIndex) {
                 `;
                 break;
 
+            case 'boolean':
+                const entryBoolVal = value === true || value === 'true' || value === 1 || value === '1';
+                inputHtml = `
+                    <div class="boolean-input-wrapper">
+                        <button type="button" id="${subfieldId}" class="boolean-toggle ${entryBoolVal ? 'active' : ''}" 
+                                onclick="toggleBoolean('${subfieldId}')" data-value="${entryBoolVal}"></button>
+                    </div>
+                `;
+                break;
+
+            case 'timestamp':
+                const entryTsDisplayVal = value ? timestampToDatetimeLocal(value) : '';
+                inputHtml = `
+                    <div class="timestamp-input-wrapper">
+                        <input type="datetime-local" id="${subfieldId}" class="form-control timestamp-input" 
+                               value="${entryTsDisplayVal}" onchange="updateTimestampFromDatetime('${subfieldId}', this.value)">
+                    </div>
+                `;
+                break;
+
             case 'option':
                 // 使用占位符，稍后异步加载选项
                 inputHtml = `<select id="${subfieldId}" class="form-control">
@@ -1403,10 +1519,11 @@ function createEntryItem(field, entry, rowIndex, entryIndex) {
                 break;
 
             case 'richtext':
+                const entryRichtextBg = subfield.previewBackground || '#1a1a2e';
                 inputHtml = `
                     <div class="richtext-input-wrapper">
                         <input type="text" id="${subfieldId}" class="form-control" value="${escapeHtml(value)}" readonly style="background-color: #f8f9fa;">
-                        <button type="button" class="btn btn-primary btn-sm" onclick="openRichTextModal('${subfieldId}', document.getElementById('${subfieldId}').value)">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="openRichTextModal('${subfieldId}', document.getElementById('${subfieldId}').value, '${entryRichtextBg}')">
                             <i class="fas fa-edit"></i>
                         </button>
                     </div>
@@ -1620,7 +1737,8 @@ async function saveData() {
             body: JSON.stringify({
                 action: 'update',
                 name: currentSchemaName,
-                data: dataWithMeta
+                data: dataWithMeta,
+                project: currentProject
             })
         });
 
@@ -1653,7 +1771,7 @@ async function saveData() {
 // 重新加载当前配表数据（不改变UI状态）
 async function reloadCurrentData() {
     try {
-        const dataResponse = await fetch(`${API.DATA}?action=get&name=${encodeURIComponent(currentSchemaName)}`);
+        const dataResponse = await fetch(getApiUrl(API.DATA, { action: 'get', name: currentSchemaName }));
         const dataResult = await dataResponse.json();
 
         if (dataResult.success) {
@@ -1802,6 +1920,27 @@ function initPreviewScrollSync() {
     resizeObserver.observe(table);
 }
 
+// 切换脚本编辑器面板显示
+function togglePreviewScript() {
+    const leftPanel = document.querySelector('.preview-left-panel');
+    const toggleBtn = document.getElementById('toggle-script-btn');
+    
+    if (!leftPanel || !toggleBtn) return;
+    
+    const isShowing = leftPanel.classList.toggle('show');
+    
+    // 更新按钮状态
+    toggleBtn.classList.toggle('active', isShowing);
+    toggleBtn.title = isShowing ? '隐藏脚本' : '显示脚本';
+    
+    // 如果显示脚本面板，刷新 CodeMirror 编辑器
+    if (isShowing && scriptEditor) {
+        setTimeout(() => {
+            scriptEditor.refresh();
+        }, 350); // 等待动画完成后刷新
+    }
+}
+
 async function closePreviewModal() {
     // 检查是否有未保存的更改
     if (window.scriptEditorDirty) {
@@ -1811,6 +1950,17 @@ async function closePreviewModal() {
 
     const modal = document.getElementById('preview-modal');
     modal.classList.remove('show');
+
+    // 重置脚本面板状态
+    const leftPanel = document.querySelector('.preview-left-panel');
+    const toggleBtn = document.getElementById('toggle-script-btn');
+    if (leftPanel) {
+        leftPanel.classList.remove('show');
+    }
+    if (toggleBtn) {
+        toggleBtn.classList.remove('active');
+        toggleBtn.title = '显示脚本';
+    }
 
     // 清除缓存数据
     window.previewDataCache = null;
@@ -2300,6 +2450,20 @@ function formatCellValueByField(value, field) {
                 <span>${escapeHtml(String(value))}</span>
             </div>`;
 
+        case 'boolean':
+            // 布尔字段
+            const boolVal = value === true || value === 'true' || value === 1 || value === '1';
+            return `<span class="boolean-value ${boolVal ? 'true' : 'false'}">${boolVal ? '● true' : '○ false'}</span>`;
+
+        case 'timestamp':
+            // 时间戳字段 - 显示可读的日期时间
+            if (value && !isNaN(value)) {
+                const date = new Date(parseInt(value) * 1000);
+                const formatted = date.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+                return `<span class="timestamp-value">${escapeHtml(formatted)}</span>`;
+            }
+            return '<span class="empty-value">nil</span>';
+
         case 'option':
         case 'datalist':
             // 选项字段：如果有枚举或关联表，可以显示对应的标签
@@ -2734,7 +2898,8 @@ async function savePreviewScript(autoSave = false, event = null) {
             body: JSON.stringify({
                 action: 'update',
                 name: currentSchemaName,
-                data: currentSchema
+                data: currentSchema,
+                project: currentProject
             })
         });
 
@@ -2818,10 +2983,27 @@ function collectDictDataFromContainer(container, field) {
     const subfields = field.subfields || [];
 
     subfields.forEach(subfield => {
-        const input = container.querySelector(`input[id*="${subfield.name}"], select[id*="${subfield.name}"]`);
+        // 处理 boolean-toggle 按钮
+        const boolBtn = container.querySelector(`button.boolean-toggle[id*="${subfield.name}"]`);
+        if (boolBtn) {
+            setFieldValue(dict, subfield.name, boolBtn.dataset.value === 'true');
+            return;
+        }
+        // 排除 type="color" 的输入框，优先选择文本输入框
+        const input = container.querySelector(`input[id*="${subfield.name}"]:not([type="color"]), select[id*="${subfield.name}"]`);
         if (input) {
-            // 使用工具函数设置字段值，如果字段名是纯数字则使用数字键
-            setFieldValue(dict, subfield.name, input.value);
+            // 处理 timestamp 类型
+            if (subfield.type === 'timestamp') {
+                if (input.value) {
+                    const date = new Date(input.value);
+                    setFieldValue(dict, subfield.name, Math.floor(date.getTime() / 1000));
+                } else {
+                    setFieldValue(dict, subfield.name, 0);
+                }
+            } else {
+                // 使用工具函数设置字段值，如果字段名是纯数字则使用数字键
+                setFieldValue(dict, subfield.name, input.value);
+            }
         }
     });
 
@@ -2837,10 +3019,27 @@ function collectEntryDataFromContainer(container, field) {
         const subfields = field.subfields || [];
 
         subfields.forEach(subfield => {
-            const input = item.querySelector(`input[id*="${subfield.name}"], select[id*="${subfield.name}"]`);
+            // 处理 boolean-toggle 按钮
+            const boolBtn = item.querySelector(`button.boolean-toggle[id*="${subfield.name}"]`);
+            if (boolBtn) {
+                setFieldValue(entry, subfield.name, boolBtn.dataset.value === 'true');
+                return;
+            }
+            // 排除 type="color" 的输入框，优先选择文本输入框
+            const input = item.querySelector(`input[id*="${subfield.name}"]:not([type="color"]), select[id*="${subfield.name}"]`);
             if (input) {
-                // 使用工具函数设置字段值，如果字段名是纯数字则使用数字键
-                setFieldValue(entry, subfield.name, input.value);
+                // 处理 timestamp 类型
+                if (subfield.type === 'timestamp') {
+                    if (input.value) {
+                        const date = new Date(input.value);
+                        setFieldValue(entry, subfield.name, Math.floor(date.getTime() / 1000));
+                    } else {
+                        setFieldValue(entry, subfield.name, 0);
+                    }
+                } else {
+                    // 使用工具函数设置字段值，如果字段名是纯数字则使用数字键
+                    setFieldValue(entry, subfield.name, input.value);
+                }
             }
         });
 
@@ -2995,7 +3194,8 @@ async function saveSchemaExportConfig() {
             body: JSON.stringify({
                 action: 'update',
                 name: currentSchemaName,
-                data: currentSchema
+                data: currentSchema,
+                project: currentProject
             })
         });
     } catch (error) {
@@ -3110,6 +3310,10 @@ function getCsvType(field) {
             return 'Str';
         case 'color':
             return 'ImageKey';
+        case 'boolean':
+            return 'Bool';
+        case 'timestamp':
+            return 'Int';
         case 'option':
             return 'Str';
         case 'datalist':
@@ -3119,6 +3323,8 @@ function getCsvType(field) {
             const elemType = field.elementType || 'text';
             if (elemType === 'number') {
                 return 'ListInt';
+            } else if (elemType === 'boolean') {
+                return 'ListBool';
             } else if (elemType === 'text' || elemType === 'option' || elemType === 'datalist') {
                 return 'ListStr';
             } else {
@@ -3286,6 +3492,10 @@ function getLuaType(field, parentName = '') {
         case 'text':
             return 'string';
         case 'color':
+            return 'integer';
+        case 'boolean':
+            return 'boolean';
+        case 'timestamp':
             return 'integer';
         case 'option':
             return 'string';
@@ -3467,6 +3677,20 @@ function formatLuaValue(value, type, isRaw = false) {
         case 'number':
             return String(value);
 
+        case 'boolean':
+            // 布尔值直接输出 true/false
+            if (typeof value === 'boolean') {
+                return value ? 'true' : 'false';
+            }
+            if (typeof value === 'string') {
+                return value.toLowerCase() === 'true' || value === '1' ? 'true' : 'false';
+            }
+            return value ? 'true' : 'false';
+
+        case 'timestamp':
+            // 时间戳直接输出整数
+            return String(parseInt(value) || 0);
+
         case 'color':
             // 颜色值确保以 0x 开头
             const colorStr = String(value).toUpperCase();
@@ -3488,6 +3712,11 @@ function formatLuaValue(value, type, isRaw = false) {
             }
             return formatLuaString(String(value));
 
+        case 'richtext':
+            // 富文本：将 Markdown 格式转换为 #f(...)...#l 格式
+            const convertedRichtext = convertMarkdownToRichText(String(value));
+            return formatLuaString(convertedRichtext);
+
         default:
             // 检查是否是数字
             if (!isNaN(value) && value !== '') {
@@ -3503,6 +3732,57 @@ function formatLuaString(str) {
         return `'${str.replace(/'/g, "\\'")}'`;
     }
     return `"${str}"`;
+}
+
+/**
+ * 将 Markdown 格式的富文本转换为 #f(...)...#l 格式
+ * 支持：
+ * - # 标题 → #f(s:40|o:000000|O:1|b:1)标题#l
+ * - **加粗** → #f(o:000000|O:1|b:1)加粗#l
+ * - __下划线__ → #f(u:000000)下划线#l
+ * - ~~删除线~~ → #f(h:ff0000)删除线#l
+ * - {c:颜色}文字{/c} → #f(c:颜色)文字#l
+ * - {s:大小}文字{/s} → #f(s:大小)文字#l
+ * - {glow:颜色,大小}文字{/glow} → #f(g:颜色|G:大小)文字#l
+ * - {shadow:颜色,x,y}文字{/shadow} → #f(y:颜色|Y:x,y)文字#l
+ * - {outline:颜色,大小}文字{/outline} → #f(o:颜色|O:大小)文字#l
+ */
+function convertMarkdownToRichText(text) {
+    if (!text) return '';
+    
+    let result = text;
+    
+    // 标题：# 到 #### (必须在行首)
+    result = result.replace(/^#### (.+)$/gm, '#f(s:18|o:000000|O:1|b:1)$1#l');
+    result = result.replace(/^### (.+)$/gm, '#f(s:24|o:000000|O:1|b:1)$1#l');
+    result = result.replace(/^## (.+)$/gm, '#f(s:32|o:000000|O:1|b:1)$1#l');
+    result = result.replace(/^# (.+)$/gm, '#f(s:40|o:000000|O:1|b:1)$1#l');
+    
+    // 加粗：**text**
+    result = result.replace(/\*\*(.+?)\*\*/g, '#f(o:000000|O:1|b:1)$1#l');
+    
+    // 下划线：__text__
+    result = result.replace(/__(.+?)__/g, '#f(u:000000)$1#l');
+    
+    // 删除线：~~text~~
+    result = result.replace(/~~(.+?)~~/g, '#f(h:ff0000)$1#l');
+    
+    // 颜色：{c:颜色}文字{/c}
+    result = result.replace(/\{c:([0-9a-fA-F]{6})\}(.+?)\{\/c\}/g, '#f(c:$1)$2#l');
+    
+    // 字号：{s:大小}文字{/s}
+    result = result.replace(/\{s:(\d+)\}(.+?)\{\/s\}/g, '#f(s:$1)$2#l');
+    
+    // 发光：{glow:颜色,大小}文字{/glow}
+    result = result.replace(/\{glow:([0-9a-fA-F]{6}),([0-9.]+)\}(.+?)\{\/glow\}/g, '#f(g:$1|G:$2)$3#l');
+    
+    // 阴影：{shadow:颜色,x,y}文字{/shadow}
+    result = result.replace(/\{shadow:([0-9a-fA-F]{6}),(\d+),(\d+)\}(.+?)\{\/shadow\}/g, '#f(y:$1|Y:$2,$3)$4#l');
+    
+    // 描边：{outline:颜色,大小}文字{/outline}
+    result = result.replace(/\{outline:([0-9a-fA-F]{6}),([0-9.]+)\}(.+?)\{\/outline\}/g, '#f(o:$1|O:$2)$3#l');
+    
+    return result;
 }
 
 function formatLuaKey(key) {
@@ -3641,6 +3921,54 @@ function downloadPreviewCsv() {
 
 // ========== 标志组合模态框 ==========
 
+/**
+ * 打开富文本编辑器
+ * @param {string} fieldId - 输入框的 ID
+ * @param {string} fieldName - 字段名称（用于查找 schema 中的配置）
+ */
+function openRichTextEditor(fieldId, fieldName) {
+    if (!currentSchema || !currentSchema.fields) return;
+    
+    // 查找字段定义
+    const field = currentSchema.fields.find(f => f.name === fieldName);
+    if (!field) return;
+    
+    const value = document.getElementById(fieldId).value;
+    const bgColor = field.previewBackground || '#1a1a2e';
+    
+    RichTextEditor.open(
+        fieldId,
+        value,
+        function(fieldId, newValue) {
+            document.getElementById(fieldId).value = newValue;
+        },
+        bgColor,
+        function(fieldId, newBgColor) {
+            // 背景色改变时更新 schema
+            field.previewBackground = newBgColor;
+            // 标记为已修改（如果有这个功能的话）
+        }
+    );
+}
+
+/**
+ * 打开富文本编辑器（子字段用，简化版）
+ * @param {string} fieldId - 输入框的 ID
+ * @param {string} value - 初始值
+ * @param {string} bgColor - 预览背景色（可选）
+ */
+function openRichTextModal(fieldId, value, bgColor) {
+    RichTextEditor.open(
+        fieldId,
+        value,
+        function(fieldId, newValue) {
+            document.getElementById(fieldId).value = newValue;
+        },
+        bgColor || '#1a1a2e', // 默认背景色
+        null // 不保存背景色
+    );
+}
+
 let currentFlagsRowIndex = -1;
 let currentFlagsFieldName = '';
 let currentFlagsEnum = null;
@@ -3696,7 +4024,7 @@ async function openFlagsModal(rowIndex, fieldName, initialValue, fieldId = null,
 
     // 加载枚举数据
     try {
-        const response = await fetch(`${API.ENUM}?action=get&name=${encodeURIComponent(flagsField.dataSource.enum)}`);
+        const response = await fetch(getApiUrl(API.ENUM, { action: 'get', name: flagsField.dataSource.enum }));
         const result = await response.json();
 
         if (!result.success || !result.data) {
@@ -3935,6 +4263,15 @@ function parseCSVValue(value, field) {
         case 'number':
         case 'flags':
             return String(parseInt(value) || 0);
+
+        case 'boolean':
+            // 解析布尔值
+            const lowerVal = String(value).toLowerCase();
+            return lowerVal === 'true' || lowerVal === '1' || lowerVal === 'yes';
+
+        case 'timestamp':
+            // 时间戳是整数（秒）
+            return parseInt(value) || 0;
 
         case 'color':
             // CSV中是十进制数字，转换为十六进制
@@ -4276,7 +4613,7 @@ function extractLuaFieldValue(entryContent, fieldName) {
 // 解析Lua值根据字段类型
 function parseLuaValue(value, field) {
     if (!value || value === 'nil') {
-        return field.type === 'list' || field.type === 'entry' ? [] : (field.type === 'dict' ? {} : '');
+        return field.type === 'list' || field.type === 'entry' ? [] : (field.type === 'dict' ? {} : (field.type === 'boolean' ? false : (field.type === 'timestamp' ? 0 : '')));
     }
 
     value = value.trim();
@@ -4285,6 +4622,14 @@ function parseLuaValue(value, field) {
         case 'number':
         case 'flags':
             return String(parseInt(value) || 0);
+
+        case 'boolean':
+            // 解析 Lua 布尔值
+            return value === 'true' || value === '1';
+
+        case 'timestamp':
+            // 时间戳是整数（秒）
+            return parseInt(value) || 0;
 
         case 'color':
             // 保持十六进制格式
@@ -5725,6 +6070,22 @@ function convertFieldValue(value, field) {
             }
             return num;
 
+        case 'boolean':
+            // 转换为布尔值
+            if (typeof value === 'boolean') return value;
+            if (typeof value === 'string') {
+                return value.toLowerCase() === 'true' || value === '1';
+            }
+            return Boolean(value);
+
+        case 'timestamp':
+            // 时间戳是整数（秒）
+            const ts = parseInt(value);
+            if (isNaN(ts)) {
+                throw new Error(`无法转换为时间戳: ${value}`);
+            }
+            return ts;
+
         case 'text':
             return String(value);
 
@@ -5850,6 +6211,15 @@ function checkScriptSyntax(code) {
         } else {
             warningDiv.style.display = 'none';
         }
+    }
+}
+
+// 选择数据行（供外部调用，如URL恢复）
+function selectDataRow(index) {
+    if (index >= 0 && index < dataRows.length) {
+        selectedDataRowIndex = index;
+        renderDataRowsList();
+        renderDataRowEditor(index);
     }
 }
 

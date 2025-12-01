@@ -42,13 +42,12 @@ function initCustomDatalist(inputElement, dropdownElement, options) {
     function filterOptions(searchText) {
         if (!searchText) return currentOptions;
         
-        const search = searchText.toLowerCase();
-        return currentOptions.filter(opt => {
+        // 使用全局模糊匹配函数
+        return fuzzyFilterAndSort(currentOptions, searchText, opt => {
             if (typeof opt === 'object') {
-                return opt.value.toLowerCase().includes(search) || 
-                       (opt.label && opt.label.toLowerCase().includes(search));
+                return [opt.value, opt.label || ''];
             }
-            return opt.toLowerCase().includes(search);
+            return opt;
         });
     }
     
@@ -159,28 +158,49 @@ async function loadLuaValueTypes() {
 
 async function loadSchemas() {
     try {
-        const response = await fetch(`${API.SCHEMA}?action=list`);
+        const response = await fetch(getApiUrl(API.SCHEMA, { action: 'list' }));
         const result = await response.json();
         
         if (result.success) {
             schemas = result.data || [];
             renderSchemaList();
         } else {
-            showError('加载Schema列表失败: ' + result.error);
+            showError('加载结构列表失败: ' + result.error);
         }
     } catch (error) {
-        console.error('加载Schema列表错误:', error);
-        showError('加载Schema列表失败');
+        console.error('加载结构列表错误:', error);
+        showError('加载结构列表失败');
     }
 }
 
-function renderSchemaList() {
+// 搜索Schema
+function searchSchemas() {
+    const searchTerm = document.getElementById('schema-search').value.trim();
+    renderSchemaList(searchTerm);
+}
+
+function renderSchemaList(searchTerm = '') {
     const container = document.getElementById('schema-items');
     container.innerHTML = '';
+    
+    // 使用模糊匹配过滤schemas
+    let filteredSchemas = schemas;
+    if (searchTerm) {
+        filteredSchemas = fuzzyFilterAndSort(schemas, searchTerm, schema => [
+            schema.name,
+            schema.description || ''
+        ]);
+    }
+    
+    if (filteredSchemas.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>没有找到匹配的Schema</p></div>';
+        return;
+    }
 
-    schemas.forEach(schema => {
+    filteredSchemas.forEach(schema => {
         const item = document.createElement('div');
         item.className = 'schema-item';
+        item.dataset.schemaName = schema.name;
         
         const fieldCount = schema.fields ? schema.fields.length : 0;
         
@@ -204,7 +224,7 @@ function renderSchemaList() {
     });
 
     if (schemas.length === 0) {
-        container.innerHTML = '<p style="color: #95a5a6; text-align: center; padding: 20px;">暂无Schema，请点击"新建Schema"按钮创建</p>';
+        container.innerHTML = '<p style="color: #95a5a6; text-align: center; padding: 20px;">暂无结构，请点击"新建结构"按钮创建</p>';
     }
 }
 
@@ -234,13 +254,16 @@ async function addNewSchema() {
         namespaceInput.value = 'Tile';
     }
 
-    document.getElementById('schema-editor-title').textContent = '新建Schema';
     document.getElementById('schema-name-input').value = '';
     document.getElementById('schema-name-input').disabled = false;
     document.getElementById('schema-desc-input').value = '';
     document.getElementById('fields-list').innerHTML = '';
     document.getElementById('field-editor-container').innerHTML = '<div class="empty-state"><i class="fas fa-hand-pointer"></i><p>请从左侧选择或添加字段</p></div>';
     document.getElementById('schema-editor').style.display = 'block';
+    
+    // 折叠Schema列表并切换按钮
+    collapseSchemaList();
+    switchToEditActions('');
 }
 
 async function editSchema(schemaName) {
@@ -250,7 +273,7 @@ async function editSchema(schemaName) {
             await loadEnums();
         }
         
-        const response = await fetch(`${API.SCHEMA}?action=get&name=${encodeURIComponent(schemaName)}`);
+        const response = await fetch(getApiUrl(API.SCHEMA, { action: 'get', name: schemaName }));
         const result = await response.json();
         
         if (result.success) {
@@ -259,7 +282,6 @@ async function editSchema(schemaName) {
             currentSchema = result.data;
             selectedFieldIndex = -1;
 
-            document.getElementById('schema-editor-title').textContent = '编辑Schema';
             document.getElementById('schema-name-input').value = schemaName;
             document.getElementById('schema-name-input').disabled = true;
             document.getElementById('schema-desc-input').value = currentSchema.description || '';
@@ -285,12 +307,19 @@ async function editSchema(schemaName) {
             renderFieldsList();
             document.getElementById('field-editor-container').innerHTML = '<div class="empty-state"><i class="fas fa-hand-pointer"></i><p>请从左侧选择字段</p></div>';
             document.getElementById('schema-editor').style.display = 'block';
+            
+            // 折叠Schema列表并切换按钮
+            collapseSchemaList();
+            switchToEditActions(schemaName);
+            
+            // 更新URL参数
+            updateUrlParams();
         } else {
-            showError('加载Schema失败: ' + result.error);
+            showError('加载结构失败: ' + result.error);
         }
     } catch (error) {
-        console.error('加载Schema错误:', error);
-        showError('加载Schema失败');
+        console.error('加载结构错误:', error);
+        showError('加载结构失败');
     }
 }
 
@@ -299,13 +328,13 @@ async function saveSchema() {
     const description = document.getElementById('schema-desc-input').value.trim();
 
     if (!name) {
-        showWarning('请输入Schema名称');
+        showWarning('请输入结构名称');
         return;
     }
 
-    // 验证Schema名称格式
+    // 验证结构名称格式
     if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
-        showWarning('Schema名称只能包含字母、数字、下划线和连字符');
+        showWarning('结构名称只能包含字母、数字、下划线和连字符');
         return;
     }
 
@@ -346,7 +375,8 @@ async function saveSchema() {
             body: JSON.stringify({
                 action: action,
                 name: name,
-                data: currentSchema
+                data: currentSchema,
+                project: currentProject
             })
         });
 
@@ -361,11 +391,14 @@ async function saveSchema() {
                 }
             }
             
-            showSuccess(isEditMode ? 'Schema更新成功' : 'Schema创建成功');
+            showSuccess(isEditMode ? '结构更新成功' : '结构创建成功');
             
-            // 如果数据管理器中正在编辑此 schema 的数据，刷新数据表
-            if (typeof currentSchemaName !== 'undefined' && currentSchemaName === name) {
-                console.log('检测到当前正在编辑的数据表对应此 Schema，自动刷新...');
+            // 检查配表编辑器是否正在编辑此结构的数据
+            const dataSchemaSelect = document.getElementById('data-schema-select');
+            const currentDataSchemaName = dataSchemaSelect ? dataSchemaSelect.value.trim() : '';
+            
+            if (currentDataSchemaName === name) {
+                console.log('检测到配表编辑器正在使用此结构，自动刷新...');
                 // 保存当前选中的数据行索引和滚动位置
                 const savedIndex = typeof selectedDataRowIndex !== 'undefined' ? selectedDataRowIndex : -1;
                 const editorContainer = document.getElementById('data-row-editor-container');
@@ -397,11 +430,11 @@ async function saveSchema() {
             cancelSchemaEdit();
             loadSchemas();
         } else {
-            showError('保存Schema失败: ' + result.error);
+            showError('保存结构失败: ' + result.error);
         }
     } catch (error) {
-        console.error('保存Schema错误:', error);
-        showError('保存Schema失败');
+        console.error('保存结构错误:', error);
+        showError('保存结构失败');
     }
 }
 
@@ -716,10 +749,137 @@ function cancelSchemaEdit() {
     currentSchema = null;
     currentSchemaName = '';
     selectedFieldIndex = -1;
+    
+    // 展开Schema列表并切换按钮
+    expandSchemaList();
+    switchToDefaultActions();
+}
+
+// 切换到编辑按钮组
+function switchToEditActions(schemaName) {
+    const defaultActions = document.getElementById('schema-default-actions');
+    const editActions = document.getElementById('schema-edit-actions');
+    const editHint = document.getElementById('schema-edit-hint');
+    
+    if (defaultActions && editActions) {
+        // 淡出默认按钮
+        defaultActions.classList.add('fade-out');
+        
+        setTimeout(() => {
+            defaultActions.style.display = 'none';
+            defaultActions.classList.remove('fade-out');
+            
+            // 淡入编辑按钮
+            editActions.style.display = 'flex';
+            editActions.classList.add('fade-in');
+            
+            requestAnimationFrame(() => {
+                editActions.classList.remove('fade-in');
+            });
+        }, 150);
+    }
+    
+    // 更新提示文字
+    if (editHint) {
+        editHint.textContent = schemaName ? `- ${schemaName}` : '- 新建';
+    }
+}
+
+// 切换到默认按钮组
+function switchToDefaultActions() {
+    const defaultActions = document.getElementById('schema-default-actions');
+    const editActions = document.getElementById('schema-edit-actions');
+    const editHint = document.getElementById('schema-edit-hint');
+    
+    if (defaultActions && editActions) {
+        // 淡出编辑按钮
+        editActions.classList.add('fade-out');
+        
+        setTimeout(() => {
+            editActions.style.display = 'none';
+            editActions.classList.remove('fade-out');
+            
+            // 淡入默认按钮
+            defaultActions.style.display = 'flex';
+            defaultActions.classList.add('fade-in');
+            
+            requestAnimationFrame(() => {
+                defaultActions.classList.remove('fade-in');
+            });
+        }, 150);
+    }
+    
+    // 清除提示文字
+    if (editHint) {
+        editHint.textContent = '';
+    }
+}
+
+// Schema列表折叠控制
+function collapseSchemaList() {
+    const schemaList = document.getElementById('schema-list');
+    const content = schemaList?.querySelector('.schema-list-content');
+    const toggleBtn = document.getElementById('toggle-schema-list-btn');
+    
+    if (schemaList && content) {
+        // 记录当前高度
+        const height = content.offsetHeight;
+        schemaList.style.height = height + 'px';
+        
+        // 强制重绘
+        schemaList.offsetHeight;
+        
+        // 添加过渡并折叠
+        schemaList.style.transition = 'height 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+        schemaList.classList.add('collapsed');
+        schemaList.style.height = '0px';
+    }
+    if (toggleBtn) {
+        toggleBtn.innerHTML = '<i class="fas fa-chevron-down"></i> 展开列表';
+    }
+}
+
+function expandSchemaList() {
+    const schemaList = document.getElementById('schema-list');
+    const content = schemaList?.querySelector('.schema-list-content');
+    const toggleBtn = document.getElementById('toggle-schema-list-btn');
+    
+    if (schemaList && content) {
+        // 临时移除collapsed获取真实高度
+        schemaList.classList.remove('collapsed');
+        const height = content.offsetHeight;
+        schemaList.classList.add('collapsed');
+        
+        // 强制重绘
+        schemaList.offsetHeight;
+        
+        // 展开动画
+        schemaList.style.height = height + 'px';
+        schemaList.classList.remove('collapsed');
+        
+        // 动画完成后清除固定高度
+        setTimeout(() => {
+            schemaList.style.height = '';
+            schemaList.style.transition = '';
+        }, 400);
+    }
+    if (toggleBtn) {
+        toggleBtn.innerHTML = '<i class="fas fa-chevron-up"></i> 收起列表';
+    }
+}
+
+function toggleSchemaList() {
+    const schemaList = document.getElementById('schema-list');
+    const toggleBtn = document.getElementById('toggle-schema-list-btn');
+    if (schemaList && schemaList.classList.contains('collapsed')) {
+        expandSchemaList();
+    } else if (schemaList) {
+        collapseSchemaList();
+    }
 }
 
 async function deleteSchema(schemaName) {
-    showModal(`确定要删除Schema "${schemaName}" 吗？这将同时删除关联的配表数据。`, async () => {
+    showModal(`确定要删除结构 "${schemaName}" 吗？这将同时删除关联的配表数据。`, async () => {
         try {
             const response = await fetch(API.SCHEMA, {
                 method: 'POST',
@@ -728,21 +888,22 @@ async function deleteSchema(schemaName) {
                 },
                 body: JSON.stringify({
                     action: 'delete',
-                    name: schemaName
+                    name: schemaName,
+                    project: currentProject
                 })
             });
 
             const result = await response.json();
             
             if (result.success) {
-                showSuccess('Schema删除成功');
+                showSuccess('结构删除成功');
                 loadSchemas();
             } else {
-                showError('删除Schema失败: ' + result.error);
+                showError('删除结构失败: ' + result.error);
             }
         } catch (error) {
-            console.error('删除Schema错误:', error);
-            showError('删除Schema失败');
+            console.error('删除结构错误:', error);
+            showError('删除结构失败');
         }
     });
 }
@@ -786,6 +947,9 @@ function renderFieldsList() {
 function createFieldListItem(field, index) {
     const div = document.createElement('div');
     div.className = 'field-list-item';
+    div.draggable = true;
+    div.dataset.index = index;
+    
     if (index === selectedFieldIndex) {
         div.classList.add('active');
     }
@@ -793,10 +957,16 @@ function createFieldListItem(field, index) {
     const typeMap = {
         'text': '文本',
         'number': '数字',
+        'boolean': '布尔',
+        'timestamp': '时间戳',
+        'color': '颜色',
+        'richtext': '富文本',
         'dict': '字典',
         'entry': '条目',
+        'list': '列表',
         'option': '选项',
-        'datalist': '数据列表'
+        'datalist': '数据列表',
+        'flags': '标志组合'
     };
     
     div.innerHTML = `
@@ -807,8 +977,8 @@ function createFieldListItem(field, index) {
         <div class="field-list-item-label">${escapeHtml(field.label || '无标签')}</div>
     `;
     
+    // 点击选中
     div.addEventListener('click', () => {
-        // 如果要切换到的字段与当前字段不同，先保存当前字段
         if (selectedFieldIndex !== -1 && selectedFieldIndex !== index) {
             saveCurrentFieldChanges();
         }
@@ -817,7 +987,198 @@ function createFieldListItem(field, index) {
         renderFieldEditor(index);
     });
     
+    // 右键菜单
+    div.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        showFieldContextMenu(e, index);
+    });
+    
+    // 拖拽排序
+    div.addEventListener('dragstart', (e) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', index);
+        div.classList.add('dragging');
+    });
+    
+    div.addEventListener('dragend', () => {
+        div.classList.remove('dragging');
+        document.querySelectorAll('.field-list-item').forEach(item => {
+            item.classList.remove('drag-over');
+        });
+    });
+    
+    div.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        div.classList.add('drag-over');
+    });
+    
+    div.addEventListener('dragleave', () => {
+        div.classList.remove('drag-over');
+    });
+    
+    div.addEventListener('drop', (e) => {
+        e.preventDefault();
+        div.classList.remove('drag-over');
+        
+        const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+        const toIndex = index;
+        
+        if (fromIndex !== toIndex) {
+            moveField(fromIndex, toIndex);
+        }
+    });
+    
     return div;
+}
+
+// 字段右键菜单
+function showFieldContextMenu(event, fieldIndex) {
+    const existingMenu = document.querySelector('.context-menu');
+    if (existingMenu) existingMenu.remove();
+    
+    const menu = document.createElement('div');
+    menu.className = 'context-menu';
+    menu.style.left = event.pageX + 'px';
+    menu.style.top = event.pageY + 'px';
+    
+    menu.innerHTML = `
+        <div class="context-menu-item" onclick="insertFieldBefore(${fieldIndex})">
+            <i class="fas fa-arrow-up"></i>
+            <span>在此之前插入</span>
+        </div>
+        <div class="context-menu-item" onclick="insertFieldAfter(${fieldIndex})">
+            <i class="fas fa-arrow-down"></i>
+            <span>在此之后插入</span>
+        </div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" onclick="duplicateField(${fieldIndex})">
+            <i class="fas fa-copy"></i>
+            <span>复制字段</span>
+        </div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" onclick="deleteFieldAt(${fieldIndex})">
+            <i class="fas fa-trash"></i>
+            <span>删除字段</span>
+        </div>
+    `;
+    
+    document.body.appendChild(menu);
+    
+    const closeMenu = (e) => {
+        if (!menu.contains(e.target)) {
+            menu.remove();
+            document.removeEventListener('click', closeMenu);
+        }
+    };
+    setTimeout(() => document.addEventListener('click', closeMenu), 0);
+}
+
+// 在指定位置之前插入字段
+function insertFieldBefore(index) {
+    if (selectedFieldIndex !== -1) saveCurrentFieldChanges();
+    
+    const newField = {
+        name: '',
+        label: '',
+        type: 'text',
+        required: false,
+        defaultValue: ''
+    };
+    
+    currentSchema.fields.splice(index, 0, newField);
+    
+    if (selectedFieldIndex >= index) selectedFieldIndex++;
+    selectedFieldIndex = index;
+    
+    renderFieldsList();
+    renderFieldEditor(index);
+    hideFieldContextMenu();
+}
+
+// 在指定位置之后插入字段
+function insertFieldAfter(index) {
+    if (selectedFieldIndex !== -1) saveCurrentFieldChanges();
+    
+    const newField = {
+        name: '',
+        label: '',
+        type: 'text',
+        required: false,
+        defaultValue: ''
+    };
+    
+    currentSchema.fields.splice(index + 1, 0, newField);
+    
+    if (selectedFieldIndex > index) selectedFieldIndex++;
+    selectedFieldIndex = index + 1;
+    
+    renderFieldsList();
+    renderFieldEditor(index + 1);
+    hideFieldContextMenu();
+}
+
+// 复制字段
+function duplicateField(index) {
+    if (selectedFieldIndex !== -1) saveCurrentFieldChanges();
+    
+    const original = currentSchema.fields[index];
+    const copy = JSON.parse(JSON.stringify(original));
+    copy.name = copy.name + '_copy';
+    
+    currentSchema.fields.splice(index + 1, 0, copy);
+    
+    if (selectedFieldIndex > index) selectedFieldIndex++;
+    selectedFieldIndex = index + 1;
+    
+    renderFieldsList();
+    renderFieldEditor(index + 1);
+    hideFieldContextMenu();
+}
+
+// 删除指定位置的字段
+function deleteFieldAt(index) {
+    if (currentSchema.fields.length <= 1) {
+        showError('至少需要保留一个字段');
+        hideFieldContextMenu();
+        return;
+    }
+    
+    currentSchema.fields.splice(index, 1);
+    
+    if (selectedFieldIndex === index) {
+        selectedFieldIndex = Math.min(index, currentSchema.fields.length - 1);
+    } else if (selectedFieldIndex > index) {
+        selectedFieldIndex--;
+    }
+    
+    renderFieldsList();
+    renderFieldEditor(selectedFieldIndex);
+    hideFieldContextMenu();
+}
+
+// 移动字段
+function moveField(fromIndex, toIndex) {
+    if (selectedFieldIndex !== -1) saveCurrentFieldChanges();
+    
+    const [movedField] = currentSchema.fields.splice(fromIndex, 1);
+    currentSchema.fields.splice(toIndex, 0, movedField);
+    
+    if (selectedFieldIndex === fromIndex) {
+        selectedFieldIndex = toIndex;
+    } else if (selectedFieldIndex > fromIndex && selectedFieldIndex <= toIndex) {
+        selectedFieldIndex--;
+    } else if (selectedFieldIndex < fromIndex && selectedFieldIndex >= toIndex) {
+        selectedFieldIndex++;
+    }
+    
+    renderFieldsList();
+    renderFieldEditor(selectedFieldIndex);
+}
+
+function hideFieldContextMenu() {
+    const menu = document.querySelector('.context-menu');
+    if (menu) menu.remove();
 }
 
 async function renderFieldEditor(index) {
@@ -872,6 +1233,8 @@ function createFieldEditorHTML(field, index) {
                 <select id="field-type-${index}" class="form-control">
                     <option value="text" ${field.type === 'text' ? 'selected' : ''}>文本</option>
                     <option value="number" ${field.type === 'number' ? 'selected' : ''}>数字</option>
+                    <option value="boolean" ${field.type === 'boolean' ? 'selected' : ''}>布尔</option>
+                    <option value="timestamp" ${field.type === 'timestamp' ? 'selected' : ''}>时间戳</option>
                     <option value="color" ${field.type === 'color' ? 'selected' : ''}>颜色</option>
                     <option value="richtext" ${field.type === 'richtext' ? 'selected' : ''}>富文本</option>
                     <option value="dict" ${field.type === 'dict' ? 'selected' : ''}>字典</option>
@@ -1080,6 +1443,54 @@ function bindFieldEditorEvents(index) {
             });
         }
     }
+    
+    // 5. 初始化 richtext 类型的背景色配置
+    if (field.type === 'richtext') {
+        const bgColorPicker = document.getElementById(`field-richtext-bg-${index}`);
+        const bgColorText = document.getElementById(`field-richtext-bg-text-${index}`);
+        if (bgColorPicker && bgColorText) {
+            const updateBgColor = (value) => {
+                currentSchema.fields[index].previewBackground = value;
+                bgColorPicker.value = value;
+                bgColorText.value = value;
+            };
+            
+            bgColorPicker.addEventListener('input', () => {
+                updateBgColor(bgColorPicker.value);
+            });
+            
+            bgColorText.addEventListener('input', () => {
+                const value = bgColorText.value.trim();
+                if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+                    updateBgColor(value);
+                }
+            });
+        }
+    }
+    
+    // 6. 初始化 list 类型 richtext 元素的背景色配置
+    if (field.type === 'list' && field.elementType === 'richtext') {
+        const bgColorPicker = document.getElementById(`field-list-richtext-bg-${index}`);
+        const bgColorText = document.getElementById(`field-list-richtext-bg-text-${index}`);
+        if (bgColorPicker && bgColorText) {
+            const updateBgColor = (value) => {
+                currentSchema.fields[index].previewBackground = value;
+                bgColorPicker.value = value;
+                bgColorText.value = value;
+            };
+            
+            bgColorPicker.addEventListener('input', () => {
+                updateBgColor(bgColorPicker.value);
+            });
+            
+            bgColorText.addEventListener('input', () => {
+                const value = bgColorText.value.trim();
+                if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+                    updateBgColor(value);
+                }
+            });
+        }
+    }
 }
 
 function renderFieldTypeSpecific(field, index) {
@@ -1210,6 +1621,8 @@ function renderFieldTypeSpecific(field, index) {
                     <select id="field-list-elementtype-${index}" class="form-control" onchange="updateListElementType(${index}, this.value)">
                         <option value="text" ${elementType === 'text' ? 'selected' : ''}>文本</option>
                         <option value="number" ${elementType === 'number' ? 'selected' : ''}>数字</option>
+                        <option value="boolean" ${elementType === 'boolean' ? 'selected' : ''}>布尔</option>
+                        <option value="timestamp" ${elementType === 'timestamp' ? 'selected' : ''}>时间戳</option>
                         <option value="color" ${elementType === 'color' ? 'selected' : ''}>颜色</option>
                         <option value="richtext" ${elementType === 'richtext' ? 'selected' : ''}>富文本</option>
                         <option value="option" ${elementType === 'option' ? 'selected' : ''}>选项</option>
@@ -1256,6 +1669,15 @@ function renderFieldTypeSpecific(field, index) {
                                 </div>
                             `}
                         </div>
+                    ` : elementType === 'richtext' ? `
+                        <div class="form-group">
+                            <label>预览背景色</label>
+                            <div class="color-input-wrapper">
+                                <input type="color" id="field-list-richtext-bg-${index}" class="color-picker" value="${field.previewBackground || '#1a1a2e'}">
+                                <input type="text" id="field-list-richtext-bg-text-${index}" class="form-control color-text" value="${field.previewBackground || '#1a1a2e'}" placeholder="#1a1a2e">
+                            </div>
+                            <small class="form-text text-muted">仅用于预览显示，不导出到数据</small>
+                        </div>
                     ` : ''}
                 </div>
             </div>
@@ -1278,6 +1700,20 @@ function renderFieldTypeSpecific(field, index) {
                     <label>枚举前缀（可选）</label>
                     <input type="text" id="field-flags-enum-prefix-${index}" class="form-control" value="${escapeHtml(enumPrefix)}" placeholder="例如: Enum.SkillCategory">
                     <small class="form-text text-muted">用于 Lua 导出时的注释</small>
+                </div>
+            </div>
+        `;
+    } else if (field.type === 'richtext') {
+        const previewBackground = field.previewBackground || '#1a1a2e';
+        return `
+            <div class="richtext-config">
+                <div class="form-group">
+                    <label>预览背景色</label>
+                    <div class="color-input-wrapper">
+                        <input type="color" id="field-richtext-bg-${index}" class="color-picker" value="${previewBackground}">
+                        <input type="text" id="field-richtext-bg-text-${index}" class="form-control color-text" value="${previewBackground}" placeholder="#1a1a2e">
+                    </div>
+                    <small class="form-text text-muted">仅用于预览显示，不导出到数据</small>
                 </div>
             </div>
         `;
@@ -1308,6 +1744,8 @@ function renderSubfields(subfields, parentIndex) {
                     <select class="form-control subfield-type" onchange="updateSubfieldType(${parentIndex}, ${subIndex}, this.value)">
                         <option value="text" ${subfield.type === 'text' ? 'selected' : ''}>文本</option>
                         <option value="number" ${subfield.type === 'number' ? 'selected' : ''}>数字</option>
+                        <option value="boolean" ${subfield.type === 'boolean' ? 'selected' : ''}>布尔</option>
+                        <option value="timestamp" ${subfield.type === 'timestamp' ? 'selected' : ''}>时间戳</option>
                         <option value="color" ${subfield.type === 'color' ? 'selected' : ''}>颜色</option>
                         <option value="richtext" ${subfield.type === 'richtext' ? 'selected' : ''}>富文本</option>
                         <option value="option" ${subfield.type === 'option' ? 'selected' : ''}>选项</option>
@@ -1445,6 +1883,18 @@ function renderSubfieldTypeSpecific(subfield, parentIndex, subIndex) {
                 <label>枚举前缀（可选）</label>
                 <input type="text" class="form-control subfield-flags-enum-prefix" value="${escapeHtml(subfield.dataSource?.enumPrefix || '')}" placeholder="例如: ConfigType">
                 <small class="form-text text-muted">导出时为 前缀.枚举值，留空则直接使用枚举值</small>
+            </div>
+        `;
+    } else if (subfield.type === 'richtext') {
+        const previewBackground = subfield.previewBackground || '#1a1a2e';
+        return `
+            <div class="form-group">
+                <label>预览背景色</label>
+                <div class="color-input-wrapper">
+                    <input type="color" class="color-picker subfield-richtext-bg" value="${previewBackground}" id="subfield-richtext-bg-${parentIndex}-${subIndex}">
+                    <input type="text" class="form-control color-text subfield-richtext-bg-text" value="${previewBackground}" placeholder="#1a1a2e" id="subfield-richtext-bg-text-${parentIndex}-${subIndex}">
+                </div>
+                <small class="form-text text-muted">仅用于预览显示，不导出到数据</small>
             </div>
         `;
     }
@@ -1630,6 +2080,37 @@ function updateListElementType(fieldIndex, elementType) {
                     `}
                 </div>
             `;
+        } else if (elementType === 'richtext') {
+            const previewBackground = field.previewBackground || '#1a1a2e';
+            configContainer.innerHTML = `
+                <div class="form-group">
+                    <label>预览背景色</label>
+                    <div class="color-input-wrapper">
+                        <input type="color" id="field-list-richtext-bg-${fieldIndex}" class="color-picker" value="${previewBackground}">
+                        <input type="text" id="field-list-richtext-bg-text-${fieldIndex}" class="form-control color-text" value="${previewBackground}" placeholder="#1a1a2e">
+                    </div>
+                    <small class="form-text text-muted">仅用于预览显示，不导出到数据</small>
+                </div>
+            `;
+            // 绑定背景色事件
+            setTimeout(() => {
+                const bgColorPicker = document.getElementById(`field-list-richtext-bg-${fieldIndex}`);
+                const bgColorText = document.getElementById(`field-list-richtext-bg-text-${fieldIndex}`);
+                if (bgColorPicker && bgColorText) {
+                    const updateBgColor = (value) => {
+                        field.previewBackground = value;
+                        bgColorPicker.value = value;
+                        bgColorText.value = value;
+                    };
+                    bgColorPicker.addEventListener('input', () => updateBgColor(bgColorPicker.value));
+                    bgColorText.addEventListener('input', () => {
+                        const value = bgColorText.value.trim();
+                        if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+                            updateBgColor(value);
+                        }
+                    });
+                }
+            }, 0);
         } else {
             configContainer.innerHTML = '';
         }
@@ -1768,6 +2249,24 @@ function updateSubfieldType(parentIndex, subIndex, type) {
                     label: e.description || e.name
                 }));
                 initCustomDatalist(enumInput, enumDropdown, enumOptions);
+            }
+        } else if (type === 'richtext') {
+            // 初始化 richtext 类型的背景色事件
+            const bgColorPicker = document.getElementById(`subfield-richtext-bg-${parentIndex}-${subIndex}`);
+            const bgColorText = document.getElementById(`subfield-richtext-bg-text-${parentIndex}-${subIndex}`);
+            if (bgColorPicker && bgColorText) {
+                const updateBgColor = (value) => {
+                    subfield.previewBackground = value;
+                    bgColorPicker.value = value;
+                    bgColorText.value = value;
+                };
+                bgColorPicker.addEventListener('input', () => updateBgColor(bgColorPicker.value));
+                bgColorText.addEventListener('input', () => {
+                    const value = bgColorText.value.trim();
+                    if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+                        updateBgColor(value);
+                    }
+                });
             }
         }
     }
@@ -2192,6 +2691,14 @@ function collectFields() {
                     }
                 }
             }
+            
+            // 收集 richtext 元素类型的预览背景色
+            if (field.elementType === 'richtext') {
+                const bgColorPicker = document.getElementById(`field-list-richtext-bg-${index}`);
+                if (bgColorPicker) {
+                    field.previewBackground = bgColorPicker.value;
+                }
+            }
         } else if (field.type === 'flags') {
             // 收集标志组合类型的配置
             const flagsEnumSelect = document.getElementById(`field-flags-enum-${index}`);
@@ -2206,6 +2713,12 @@ function collectFields() {
             if (enumPrefixInput) {
                 if (!field.dataSource) field.dataSource = {};
                 field.dataSource.enumPrefix = enumPrefixInput.value.trim();
+            }
+        } else if (field.type === 'richtext') {
+            // 收集富文本类型的预览背景色配置
+            const bgColorPicker = document.getElementById(`field-richtext-bg-${index}`);
+            if (bgColorPicker) {
+                field.previewBackground = bgColorPicker.value;
             }
         }
     });
@@ -2294,6 +2807,12 @@ function collectSubfields(parentIndex) {
             if (enumPrefixElement) {
                 if (!subfield.dataSource) subfield.dataSource = {};
                 subfield.dataSource.enumPrefix = enumPrefixElement.value.trim();
+            }
+        } else if (subfield.type === 'richtext') {
+            // 收集 richtext 类型的预览背景色
+            const bgColorElement = element.querySelector('.subfield-richtext-bg');
+            if (bgColorElement) {
+                subfield.previewBackground = bgColorElement.value;
             }
         }
 
