@@ -1,0 +1,23 @@
+{
+  "name": "EffectCob",
+  "description": "效果状态",
+  "namespace": "Enum",
+  "type": "flag",
+  "values": [
+    {
+      "key": "恢复",
+      "value": 1,
+      "label": ""
+    },
+    {
+      "key": "速度",
+      "value": 2,
+      "label": ""
+    },
+    {
+      "key": "攻击",
+      "value": 3,
+      "label": ""
+    }
+  ]
+}

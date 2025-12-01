@@ -1,0 +1,247 @@
+[
+  {
+    "name": "春节活动公告",
+    "isRaw": false,
+    "data": {
+      "id": "1",
+      "title": "2025新春佳节活动开启！",
+      "content": "# 新春快乐\\n\\n亲爱的冒险者们：\\n\\n**春节活动**正式开启！活动期间将有丰厚奖励等你来拿！\\n\\n## 活动内容\\n\\n1. 每日登录可获得{c:ff0000}红包奖励{/c}\\n2. 完成新春任务获得{glow:ffd700,1.5}限定坐骑{/glow}\\n3. 充值返利{s:24}最高200%{/s}\\n\\n~~原价998的礼包~~现在只需{c:e74c3c}**198元**{/c}！\\n\\n{shadow:ffffff,2,2}祝大家新年快乐！{/shadow}",
+      "type": "Enum.AnnouncementType.Event",
+      "tags": "23",
+      "priority": "high",
+      "themeColor": "0xe74c3c",
+      "isEnabled": "true",
+      "sortOrder": "1000",
+      "linkedSkill": "",
+      "rewardItems": [
+        "新春红包",
+        "烟花礼盒",
+        "限定头像框"
+      ],
+      "rewardAmounts": [
+        "10",
+        "5",
+        "1"
+      ],
+      "displayTime": [
+        {
+          "startDate": 1737763200,
+          "endDate": 1739145600,
+          "duration": "384",
+          "repeatDaily": "false"
+        }
+      ],
+      "conditions": [
+        {
+          "minLevel": "1",
+          "maxLevel": "999",
+          "vipOnly": "false",
+          "platform": "all"
+        }
+      ],
+      "extraData": "{banner = \"spring_festival.png\"}"
+    }
+  },
+  {
+    "name": "版本更新公告",
+    "isRaw": false,
+    "data": {
+      "id": "2",
+      "title": "V2.5.0 版本更新说明",
+      "content": "# 版本更新 V2.5.0\\n\\n## 新增内容\\n\\n- **全新职业**：{c:9b59b6}暗影刺客{/c}正式上线\\n- 新增{s:20}10个{/s}主线副本\\n- 新增{glow:00ff00,1.0}传说级武器{/glow}系统\\n\\n## 优化调整\\n\\n1. 优化了战斗流畅度\\n2. __修复了技能CD异常的问题__\\n3. ~~移除了旧版本的排行榜系统~~\\n\\n## 已知问题\\n\\n{c:ff6600}部分机型可能出现闪退，正在紧急修复中{/c}\\n\\n{outline:3498db,2}感谢各位玩家的支持！{/outline}",
+      "type": "Enum.AnnouncementType.Update",
+      "tags": "3",
+      "priority": "normal",
+      "themeColor": "0x3498db",
+      "isEnabled": "true",
+      "sortOrder": "900",
+      "linkedSkill": "火球术",
+      "rewardItems": [
+        "更新补偿礼包"
+      ],
+      "rewardAmounts": [
+        "1"
+      ],
+      "displayTime": [
+        {
+          "startDate": 1732982400,
+          "endDate": 1733500800,
+          "duration": "168",
+          "repeatDaily": "false"
+        }
+      ],
+      "conditions": [
+        {
+          "minLevel": "1",
+          "maxLevel": "999",
+          "vipOnly": "false",
+          "platform": "all"
+        }
+      ],
+      "extraData": ""
+    }
+  },
+  {
+    "name": "服务器维护公告",
+    "isRaw": false,
+    "data": {
+      "id": "3",
+      "title": "12月5日例行维护公告",
+      "content": "# 服务器维护通知\\n\\n{c:e74c3c}**重要通知**{/c}\\n\\n维护时间：{s:22}12月5日 02:00 - 06:00{/s}\\n\\n预计时长：{glow:ffd700,1.0}4小时{/glow}\\n\\n## 维护内容\\n\\n- 服务器数据备份\\n- 系统安全升级\\n- 修复已知BUG\\n\\n{shadow:333333,1,1}维护期间无法登录游戏，请提前做好准备{/shadow}\\n\\n__维护完成后将发放补偿奖励__",
+      "type": "Enum.AnnouncementType.Maintenance",
+      "tags": "1",
+      "priority": "urgent",
+      "themeColor": "0xf39c12",
+      "isEnabled": "true",
+      "sortOrder": "950",
+      "linkedSkill": "",
+      "rewardItems": [
+        "维护补偿",
+        "体力药水"
+      ],
+      "rewardAmounts": [
+        "100",
+        "10"
+      ],
+      "displayTime": [
+        {
+          "startDate": 1733241600,
+          "endDate": 1733328000,
+          "duration": "48",
+          "repeatDaily": "false"
+        }
+      ],
+      "conditions": [
+        {
+          "minLevel": "1",
+          "maxLevel": "999",
+          "vipOnly": "false",
+          "platform": "all"
+        }
+      ],
+      "extraData": "{countdown = true}"
+    }
+  },
+  {
+    "name": "新手指引",
+    "isRaw": false,
+    "data": {
+      "id": "4",
+      "title": "欢迎来到冒险世界！",
+      "content": "# 新手入门指南\\n\\n{c:27ae60}欢迎加入冒险者的行列！{/c}\\n\\n## 基础操作\\n\\n- 点击屏幕移动角色\\n- 长按技能按钮释放技能\\n- 双击敌人进行自动攻击\\n\\n## 快速成长技巧\\n\\n1. {s:18}每日任务{/s}可获得大量经验\\n2. **副本挑战**掉落稀有装备\\n3. {glow:9b59b6,0.8}公会活动{/glow}奖励丰厚\\n\\n## 联系我们\\n\\n如有问题请联系：__support@game.com__\\n\\n{outline:e74c3c,1.5}祝您游戏愉快！{/outline}",
+      "type": "Enum.AnnouncementType.System",
+      "tags": "2",
+      "priority": "low",
+      "themeColor": "0x27ae60",
+      "isEnabled": "true",
+      "sortOrder": "100",
+      "linkedSkill": "",
+      "rewardItems": [
+        "新手礼包",
+        "经验卡",
+        "金币袋"
+      ],
+      "rewardAmounts": [
+        "1",
+        "3",
+        "5"
+      ],
+      "displayTime": [],
+      "conditions": [
+        {
+          "minLevel": "1",
+          "maxLevel": "10",
+          "vipOnly": "false",
+          "platform": "all"
+        }
+      ],
+      "extraData": ""
+    }
+  },
+  {
+    "name": "紧急修复公告",
+    "isRaw": false,
+    "data": {
+      "id": "5",
+      "title": "【紧急】充值异常修复公告",
+      "content": "# 紧急公告\\n\\n{c:e74c3c}**紧急通知**{/c}\\n\\n我们检测到部分玩家在{s:20}12月1日 14:00-16:00{/s}期间出现{glow:ff0000,1.2}充值异常{/glow}的问题。\\n\\n## 问题描述\\n\\n~~充值后未到账~~ 已修复\\n\\n## 补偿方案\\n\\n受影响的玩家将获得：\\n\\n1. **充值金额200%返还**\\n2. {c:ffd700}VIP体验卡 x 3天{/c}\\n3. 限定称号_「__幸运星__」_\\n\\n{shadow:ffffff,2,2}{s:24}对此造成的不便，我们深表歉意！{/s}{/shadow}\\n\\n补偿将在{outline:27ae60,1}24小时内{/outline}通过邮件发放。",
+      "type": "Enum.AnnouncementType.Emergency",
+      "tags": "17",
+      "priority": "urgent",
+      "themeColor": "0xc0392b",
+      "isEnabled": "true",
+      "sortOrder": "999",
+      "linkedSkill": "",
+      "rewardItems": [
+        "充值返还",
+        "VIP体验卡",
+        "限定称号"
+      ],
+      "rewardAmounts": [
+        "200",
+        "3",
+        "1"
+      ],
+      "displayTime": [
+        {
+          "startDate": 1732982400,
+          "endDate": 1733155200,
+          "duration": "72",
+          "repeatDaily": "false"
+        }
+      ],
+      "conditions": [
+        {
+          "minLevel": "1",
+          "maxLevel": "999",
+          "vipOnly": "false",
+          "platform": "all"
+        }
+      ],
+      "extraData": "{affectedUsers = \"payment_issue_20251201\"}"
+    }
+  },
+  {
+    "name": "VIP专属福利",
+    "isRaw": false,
+    "data": {
+      "id": "6",
+      "title": "VIP专属双倍奖励周",
+      "content": "# VIP尊享福利\\n\\n{glow:ffd700,2.0}尊贵的VIP玩家{/glow}\\n\\n本周所有VIP玩家可享受：\\n\\n- **经验获取** ×{c:ff6600}2{/c}\\n- **金币掉落** ×{c:ffd700}2{/c}\\n- **副本奖励** ×{c:9b59b6}2{/c}\\n\\n## 额外礼包\\n\\n{s:20}VIP等级越高，礼包越丰厚！{/s}\\n\\n| VIP等级 | 钻石 | 金币 |\\n|---------|------|------|\\n| VIP1-3 | 100 | 10000 |\\n| VIP4-6 | 300 | 30000 |\\n| VIP7+ | 500 | 50000 |\\n\\n{outline:e74c3c,2}{shadow:ffffff,1,1}感谢您一直以来的支持！{/shadow}{/outline}",
+      "type": "Enum.AnnouncementType.Event",
+      "tags": "29",
+      "priority": "high",
+      "themeColor": "0xf1c40f",
+      "isEnabled": "true",
+      "sortOrder": "800",
+      "linkedSkill": "",
+      "rewardItems": [
+        "钻石",
+        "金币",
+        "双倍卡"
+      ],
+      "rewardAmounts": [
+        "100",
+        "10000",
+        "7"
+      ],
+      "displayTime": [
+        {
+          "startDate": 1733068800,
+          "endDate": 1733673600,
+          "duration": "168",
+          "repeatDaily": "false"
+        }
+      ],
+      "conditions": [
+        {
+          "minLevel": "10",
+          "maxLevel": "999",
+          "vipOnly": "true",
+          "platform": "all"
+        }
+      ],
+      "extraData": "{vipBonus = true}"
+    }
+  }
+]

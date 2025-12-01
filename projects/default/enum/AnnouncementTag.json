@@ -1,0 +1,33 @@
+{
+  "name": "AnnouncementTag",
+  "description": "公告标签（可多选）",
+  "type": "flag",
+  "namespace": "Enum",
+  "values": [
+    {
+      "key": "Important",
+      "value": 0,
+      "label": "重要"
+    },
+    {
+      "key": "New",
+      "value": 1,
+      "label": "新内容"
+    },
+    {
+      "key": "Hot",
+      "value": 2,
+      "label": "热门"
+    },
+    {
+      "key": "Limited",
+      "value": 3,
+      "label": "限时"
+    },
+    {
+      "key": "Reward",
+      "value": 4,
+      "label": "有奖励"
+    }
+  ]
+}

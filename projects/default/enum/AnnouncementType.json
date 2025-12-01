@@ -1,0 +1,33 @@
+{
+  "name": "AnnouncementType",
+  "description": "公告类型",
+  "type": "number",
+  "namespace": "Enum",
+  "values": [
+    {
+      "key": "System",
+      "value": 1,
+      "label": "系统公告"
+    },
+    {
+      "key": "Event",
+      "value": 2,
+      "label": "活动公告"
+    },
+    {
+      "key": "Update",
+      "value": 3,
+      "label": "更新公告"
+    },
+    {
+      "key": "Maintenance",
+      "value": 4,
+      "label": "维护公告"
+    },
+    {
+      "key": "Emergency",
+      "value": 5,
+      "label": "紧急公告"
+    }
+  ]
+}

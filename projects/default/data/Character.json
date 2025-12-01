@@ -1,0 +1,158 @@
+[
+  {
+    "name": "艾莉娅",
+    "isRaw": false,
+    "data": {
+      "id": "1",
+      "name": "艾莉娅",
+      "description": "一位年轻的剑士，擅长近战攻击",
+      "level": "1",
+      "mainColor": "0xB19191",
+      "class": "战士",
+      "rarity": "Enum.ItemRarity.Rare",
+      "weapon": "铁剑",
+      "attributes": [
+        {
+          "hp": "150",
+          "mp": "50",
+          "attack": "25",
+          "defense": "15"
+        }
+      ],
+      "skills": [
+        "火球术",
+        "护盾术"
+      ],
+      "tags": [
+        "近战",
+        "高攻击",
+        "坦克"
+      ]
+    }
+  },
+  {
+    "name": "梅林",
+    "isRaw": false,
+    "data": {
+      "id": "2",
+      "name": "梅林",
+      "description": "强大的法师，掌握多种元素魔法",
+      "level": "1",
+      "mainColor": "0x4A90E2",
+      "class": "法师",
+      "rarity": "Enum.ItemRarity.Epic",
+      "weapon": "冰霜法杖",
+      "attributes": [
+        {
+          "hp": "80",
+          "mp": "200",
+          "attack": "15",
+          "defense": "8"
+        }
+      ],
+      "skills": [
+        "火球术",
+        "冰冻术",
+        "群体强化"
+      ],
+      "tags": [
+        "远程",
+        "高魔法",
+        "控制"
+      ]
+    }
+  },
+  {
+    "name": "罗宾",
+    "isRaw": false,
+    "data": {
+      "id": "3",
+      "name": "罗宾",
+      "description": "敏捷的弓箭手，精准的远程打击者",
+      "level": "1",
+      "mainColor": "0x2ECC71",
+      "class": "弓箭手",
+      "rarity": "Enum.ItemRarity.Legendary",
+      "weapon": "传说弓",
+      "attributes": [
+        {
+          "hp": "100",
+          "mp": "80",
+          "attack": "30",
+          "defense": "10"
+        }
+      ],
+      "skills": [
+        "火球术"
+      ],
+      "tags": [
+        "远程",
+        "高暴击",
+        "敏捷"
+      ]
+    }
+  },
+  {
+    "name": "莉莉丝",
+    "isRaw": false,
+    "data": {
+      "id": "4",
+      "name": "莉莉丝",
+      "description": "神圣的牧师，队伍的生命之源",
+      "level": "1",
+      "mainColor": "0xF39C12",
+      "class": "牧师",
+      "rarity": "Enum.ItemRarity.Epic",
+      "weapon": "冰霜法杖",
+      "attributes": [
+        {
+          "hp": "90",
+          "mp": "150",
+          "attack": "10",
+          "defense": "12"
+        }
+      ],
+      "skills": [
+        "治疗术",
+        "护盾术",
+        "群体强化"
+      ],
+      "tags": [
+        "辅助",
+        "治疗",
+        "支援"
+      ]
+    }
+  },
+  {
+    "name": "影",
+    "isRaw": false,
+    "data": {
+      "id": "5",
+      "name": "影",
+      "description": "神秘的刺客，致命的背刺大师",
+      "level": "1",
+      "mainColor": "0x9B59B6",
+      "class": "刺客",
+      "rarity": "Enum.ItemRarity.Rare",
+      "weapon": "火焰之刃",
+      "attributes": [
+        {
+          "hp": "110",
+          "mp": "70",
+          "attack": "35",
+          "defense": "8"
+        }
+      ],
+      "skills": [
+        "火球术",
+        "冰冻术"
+      ],
+      "tags": [
+        "近战",
+        "高爆发",
+        "暗杀"
+      ]
+    }
+  }
+]

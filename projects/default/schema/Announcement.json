@@ -1,0 +1,214 @@
+{
+  "description": "游戏公告配置表 - 展示所有字段类型",
+  "exportConfig": {
+    "namespace": "Config",
+    "requires": [],
+    "tableKeyType": "number"
+  },
+  "fields": [
+    {
+      "defaultValue": "1",
+      "label": "公告ID",
+      "luaType": "",
+      "name": "id",
+      "required": true,
+      "type": "number"
+    },
+    {
+      "defaultValue": "",
+      "isRaw": false,
+      "label": "公告标题",
+      "name": "title",
+      "required": true,
+      "type": "text"
+    },
+    {
+      "defaultValue": "",
+      "isRaw": false,
+      "label": "公告内容（富文本）",
+      "name": "content",
+      "required": true,
+      "type": "richtext"
+    },
+    {
+      "dataSource": {
+        "enum": "AnnouncementType",
+        "enumPrefix": "Enum.AnnouncementType",
+        "type": "enum"
+      },
+      "defaultValue": "",
+      "isRaw": true,
+      "label": "公告类型",
+      "name": "type",
+      "required": true,
+      "type": "option"
+    },
+    {
+      "dataSource": {
+        "enum": "AnnouncementTag",
+        "enumPrefix": "Enum.AnnouncementTag",
+        "type": "enum"
+      },
+      "defaultValue": "0",
+      "label": "公告标签",
+      "name": "tags",
+      "required": false,
+      "type": "flags"
+    },
+    {
+      "dataSource": {
+        "type": "manual"
+      },
+      "defaultValue": "normal",
+      "isRaw": false,
+      "label": "优先级",
+      "name": "priority",
+      "options": [
+        {
+          "label": "低",
+          "value": "low"
+        },
+        {
+          "label": "普通",
+          "value": "normal"
+        },
+        {
+          "label": "高",
+          "value": "high"
+        },
+        {
+          "label": "紧急",
+          "value": "urgent"
+        }
+      ],
+      "required": true,
+      "type": "option"
+    },
+    {
+      "defaultValue": "0x3498db",
+      "label": "主题颜色",
+      "luaType": "",
+      "name": "themeColor",
+      "required": false,
+      "type": "color"
+    },
+    {
+      "defaultValue": "true",
+      "label": "是否启用",
+      "name": "isEnabled",
+      "required": true,
+      "type": "boolean"
+    },
+    {
+      "defaultValue": "100",
+      "label": "排序权重",
+      "luaType": "",
+      "name": "sortOrder",
+      "required": false,
+      "type": "number"
+    },
+    {
+      "dataSource": {
+        "schema": "Skill",
+        "type": "linked"
+      },
+      "defaultValue": "",
+      "isRaw": false,
+      "label": "关联技能",
+      "name": "linkedSkill",
+      "required": false,
+      "type": "datalist"
+    },
+    {
+      "defaultValue": [],
+      "itemType": "text",
+      "label": "奖励物品列表",
+      "name": "rewardItems",
+      "required": false,
+      "type": "list"
+    },
+    {
+      "defaultValue": [],
+      "itemType": "number",
+      "label": "奖励数量列表",
+      "name": "rewardAmounts",
+      "required": false,
+      "type": "list"
+    },
+    {
+      "defaultValue": [],
+      "label": "显示时间配置",
+      "name": "displayTime",
+      "required": false,
+      "subfields": [
+        {
+          "defaultValue": "",
+          "label": "开始时间",
+          "name": "startDate",
+          "type": "timestamp"
+        },
+        {
+          "defaultValue": "",
+          "label": "结束时间",
+          "name": "endDate",
+          "type": "timestamp"
+        },
+        {
+          "defaultValue": "24",
+          "label": "持续时长(小时)",
+          "name": "duration",
+          "type": "number"
+        },
+        {
+          "defaultValue": "false",
+          "label": "每日重复",
+          "name": "repeatDaily",
+          "type": "boolean"
+        }
+      ],
+      "type": "entry"
+    },
+    {
+      "defaultValue": [],
+      "label": "显示条件",
+      "name": "conditions",
+      "required": false,
+      "subfields": [
+        {
+          "defaultValue": "1",
+          "label": "最低等级",
+          "name": "minLevel",
+          "type": "number"
+        },
+        {
+          "defaultValue": "999",
+          "label": "最高等级",
+          "name": "maxLevel",
+          "type": "number"
+        },
+        {
+          "defaultValue": "false",
+          "label": "仅VIP可见",
+          "name": "vipOnly",
+          "type": "boolean"
+        },
+        {
+          "defaultValue": "all",
+          "label": "平台限制",
+          "name": "platform",
+          "type": "text"
+        }
+      ],
+      "type": "entry"
+    },
+    {
+      "defaultValue": "",
+      "isRaw": true,
+      "label": "扩展数据",
+      "name": "extraData",
+      "required": false,
+      "type": "text"
+    }
+  ],
+  "name": "Announcement"
+}

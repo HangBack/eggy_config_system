@@ -1,0 +1,146 @@
+{
+  "description": "武器配置表",
+  "exportConfig": {
+    "namespace": "Tile",
+    "requires": [],
+    "tableKeyType": "string"
+  },
+  "fields": [
+    {
+      "defaultValue": "1",
+      "label": "武器ID",
+      "name": "id",
+      "required": true,
+      "type": "number"
+    },
+    {
+      "defaultValue": "",
+      "isRaw": false,
+      "label": "武器名称",
+      "luaType": "",
+      "name": "name",
+      "required": true,
+      "type": "text"
+    },
+    {
+      "dataSource": {
+        "enum": "ItemType",
+        "enumPrefix": "Enum.ItemType",
+        "type": "enum"
+      },
+      "defaultValue": "",
+      "isRaw": true,
+      "label": "武器类型",
+      "name": "type",
+      "required": true,
+      "type": "option"
+    },
+    {
+      "defaultValue": "10",
+      "label": "伤害值",
+      "luaType": "",
+      "name": "damage",
+      "required": true,
+      "type": "number"
+    },
+    {
+      "dataSource": {
+        "enum": "ItemRarity",
+        "enumPrefix": "Enum.ItemRarity",
+        "type": "enum"
+      },
+      "defaultValue": "",
+      "isRaw": true,
+      "label": "稀有度",
+      "luaType": "",
+      "name": "rarity",
+      "required": true,
+      "type": "option"
+    },
+    {
+      "defaultValue": "#4A90E2",
+      "label": "图标颜色",
+      "name": "iconColor",
+      "required": false,
+      "type": "color"
+    },
+    {
+      "defaultValue": [],
+      "label": "附加属性",
+      "name": "stats",
+      "required": false,
+      "subfields": [
+        {
+          "defaultValue": "0",
+          "label": "攻击加成",
+          "luaType": "",
+          "name": "attack",
+          "type": "number"
+        },
+        {
+          "defaultValue": "0",
+          "label": "暴击率",
+          "luaType": "",
+          "name": "critical",
+          "type": "number"
+        },
+        {
+          "defaultValue": "1.0",
+          "label": "攻击速度",
+          "luaType": "",
+          "name": "speed",
+          "type": "number"
+        },
+        {
+          "defaultValue": "",
+          "label": "价值",
+          "luaType": "",
+          "name": "value",
+          "type": "number"
+        }
+      ],
+      "type": "entry"
+    },
+    {
+      "defaultValue": [],
+      "elementType": "text",
+      "isRaw": false,
+      "label": "特殊效果",
+      "name": "effects",
+      "required": false,
+      "type": "list"
+    },
+    {
+      "defaultValue": "",
+      "isRaw": false,
+      "label": "额外属性",
+      "luaType": "",
+      "name": "extra_attr",
+      "options": [],
+      "required": false,
+      "subfields": [
+        {
+          "defaultValue": "",
+          "label": "名称附加颜色",
+          "luaType": "Color",
+          "name": "name_color",
+          "type": "color"
+        },
+        {
+          "dataSource": {
+            "enum": "EffectCob",
+            "enumPrefix": "EffectCob",
+            "type": "enum"
+          },
+          "defaultValue": "",
+          "label": "叠加状态",
+          "luaType": "",
+          "name": "comb_status",
+          "type": "flags"
+        }
+      ],
+      "type": "dict"
+    }
+  ],
+  "name": "Weapon"
+}

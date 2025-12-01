@@ -1,0 +1,9 @@
+{
+  "name": "adsa",
+  "description": "awf",
+  "fields": [],
+  "exportConfig": {
+    "namespace": "Tile",
+    "requires": []
+  }
+}

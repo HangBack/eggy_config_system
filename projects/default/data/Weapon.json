@@ -1,0 +1,106 @@
+[
+  {
+    "name": "铁剑",
+    "isRaw": false,
+    "data": {
+      "id": "1",
+      "name": "铁剑",
+      "type": "Enum.ItemType.Weapon",
+      "damage": "15",
+      "rarity": "Enum.ItemRarity.Common",
+      "iconColor": "0x8B8B8B",
+      "stats": [
+        {
+          "attack": "5",
+          "critical": "5",
+          "speed": "1",
+          "value": 0
+        }
+      ],
+      "effects": [
+        "基础武器",
+        "无特殊效果"
+      ],
+      "extra_attr": ""
+    }
+  },
+  {
+    "name": "火焰之刃",
+    "isRaw": false,
+    "data": {
+      "id": "2",
+      "name": "火焰之刃",
+      "type": "Enum.ItemType.Weapon",
+      "damage": "45",
+      "rarity": "Enum.ItemRarity.Epic",
+      "iconColor": "0xFF4500",
+      "stats": [
+        {
+          "attack": "20",
+          "critical": "15",
+          "speed": "1.2",
+          "value": 0
+        }
+      ],
+      "effects": [
+        "造成火焰伤害",
+        "有概率点燃敌人",
+        "攻击附带灼烧效果"
+      ],
+      "extra_attr": ""
+    }
+  },
+  {
+    "name": "冰霜法杖",
+    "isRaw": false,
+    "data": {
+      "id": "3",
+      "name": "冰霜法杖",
+      "type": "Enum.ItemType.Weapon",
+      "damage": "35",
+      "rarity": "Enum.ItemRarity.Rare",
+      "iconColor": "0x00BFFF",
+      "stats": [
+        {
+          "attack": "15",
+          "critical": "10",
+          "speed": "0.8",
+          "value": 0
+        }
+      ],
+      "effects": [
+        "造成冰霜伤害",
+        "减速敌人",
+        "增加魔法伤害"
+      ],
+      "extra_attr": ""
+    }
+  },
+  {
+    "name": "传说弓",
+    "isRaw": false,
+    "data": {
+      "id": "4",
+      "name": "传说弓",
+      "type": "Enum.ItemType.Weapon",
+      "damage": "60",
+      "rarity": "Enum.ItemRarity.Legendary",
+      "iconColor": "0xFFD700",
+      "stats": [
+        {
+          "attack": "30",
+          "critical": "25",
+          "speed": "1.5",
+          "value": 0
+        }
+      ],
+      "effects": [
+        "远程攻击",
+        "必定暴击",
+        "无视护甲",
+        "穿透攻击"
+      ],
+      "extra_attr": ""
+    }
+  }
+]

@@ -1,0 +1,536 @@
+{
+  "name": "Event",
+  "description": "",
+  "namespace": "Enum",
+  "type": "event",
+  "values": [
+    {
+      "key": "ANY_MUTATION_POOL_ROLL_ENDED",
+      "value": "ANY_MUTATION_POOL_ROLL_ENDED",
+      "label": "任意突变池结束抽取",
+      "registerParams": [],
+      "callbackParams": [
+        {
+          "name": "code",
+          "type": "Enum.MutationCode",
+          "description": "抽到的突变"
+        }
+      ]
+    },
+    {
+      "key": "ANY_MUTATION_POOL_ROLL_START",
+      "value": "ANY_MUTATION_POOL_ROLL_START",
+      "label": "任意突变池开始抽取",
+      "registerParams": [],
+      "callbackParams": [
+        {
+          "name": "entries",
+          "type": "Array<Tile.MutationPoolEntry>",
+          "description": "抽取的条目"
+        },
+        {
+          "name": "max_quality",
+          "type": "Fixed",
+          "description": "最大质量"
+        },
+        {
+          "name": "luck",
+          "type": "Fixed",
+          "description": "幸运值"
+        }
+      ]
+    },
+    {
+      "key": "ANY_FISH_POOL_ROLL_ENDED",
+      "value": "ANY_FISH_POOL_ROLL_ENDED",
+      "label": "任意鱼池结束抽取",
+      "registerParams": [],
+      "callbackParams": [
+        {
+          "name": "fish",
+          "type": "Schema.FishData",
+          "description": "抽到的鱼"
+        }
+      ]
+    },
+    {
+      "key": "ANY_FISH_POOL_ROLL_START",
+      "value": "ANY_FISH_POOL_ROLL_START",
+      "label": "任意鱼池开始抽取",
+      "registerParams": [],
+      "callbackParams": [
+        {
+          "name": "entries",
+          "type": "Array<Tile.FishPoolEntry>",
+          "description": "抽取的条目"
+        },
+        {
+          "name": "max_quality",
+          "type": "Fixed",
+          "description": "最大质量"
+        },
+        {
+          "name": "luck",
+          "type": "Fixed",
+          "description": "幸运值"
+        }
+      ]
+    },
+    {
+      "key": "PLAYER_FISHING_COMPLETE",
+      "value": "PLAYER_FISHING_COMPLETE",
+      "label": "玩家钓鱼完成事件",
+      "registerParams": [],
+      "callbackParams": [
+        {
+          "name": "player",
+          "type": "Manager.PlayerSystem.Player",
+          "description": "玩家"
+        },
+        {
+          "name": "fish",
+          "type": "Schema.FishData",
+          "description": "鱼类数据"
+        }
+      ]
+    },
+    {
+      "key": "PLAYER_SELECT_EQUIPMENT",
+      "value": "PLAYER_SELECT_EQUIPMENT",
+      "label": "玩家选择装备事件",
+      "registerParams": [],
+      "callbackParams": [
+        {
+          "name": "player",
+          "type": "Manager.PlayerSystem.Player",
+          "description": "玩家"
+        },
+        {
+          "name": "equipment_type",
+          "type": "string",
+          "description": "装备类型"
+        },
+        {
+          "name": "equipment_id",
+          "type": "integer",
+          "description": "装备ID"
+        }
+      ]
+    },
+    {
+      "key": "PLAYER_USE_ROD",
+      "value": "PLAYER_USE_ROD",
+      "label": "玩家使用鱼竿事件",
+      "registerParams": [],
+      "callbackParams": [
+        {
+          "name": "player",
+          "type": "Manager.PlayerSystem.Player",
+          "description": "玩家"
+        }
+      ]
+    },
+    {
+      "key": "ANY_PLAYER_POTION_ENDED",
+      "value": "ANY_PLAYER_POTION_ENDED",
+      "label": "任意玩家药效结束",
+      "registerParams": [],
+      "callbackParams": [
+        {
+          "name": "player",
+          "type": "Manager.PlayerSystem.Player",
+          "description": "玩家"
+        },
+        {
+          "name": "code",
+          "type": "Enum.PotionCode",
+          "description": "药水代码"
+        }
+      ]
+    },
+    {
+      "key": "ANY_PLAYER_POTION_STARTED",
+      "value": "ANY_PLAYER_POTION_STARTED",
+      "label": "任意玩家药效开始",
+      "registerParams": [],
+      "callbackParams": [
+        {
+          "name": "player",
+          "type": "Manager.PlayerSystem.Player",
+          "description": "玩家"
+        },
+        {
+          "name": "code",
+          "type": "Enum.PotionCode",
+          "description": "药水代码"
+        },
+        {
+          "name": "attributes",
+          "type": "table",
+          "description": "额外属性"
+        }
+      ]
+    },
+    {
+      "key": "ANY_PLAYER_FISH_HOOK",
+      "value": "ANY_PLAYER_FISH_HOOK",
+      "label": "玩家钓鱼上钩事件",
+      "registerParams": [],
+      "callbackParams": [
+        {
+          "name": "player",
+          "type": "Manager.PlayerSystem.Player",
+          "description": "玩家对象"
+        },
+        {
+          "name": "fish_pool",
+          "type": "Manager.FishPoolSystem.FishPool",
+          "description": "鱼池对象"
+        }
+      ]
+    },
+    {
+      "key": "ANY_PLAYER_FISH_RETRACT",
+      "value": "ANY_PLAYER_FISH_RETRACT",
+      "label": "玩家钓鱼收竿事件",
+      "registerParams": [],
+      "callbackParams": [
+        {
+          "name": "player",
+          "type": "Manager.PlayerSystem.Player",
+          "description": "玩家对象"
+        },
+        {
+          "name": "fish_pool",
+          "type": "Manager.FishPoolSystem.FishPool",
+          "description": "鱼池对象"
+        }
+      ]
+    },
+    {
+      "key": "ANY_PLAYER_UPDATE_COIN",
+      "value": "ANY_PLAYER_UPDATE_COIN",
+      "label": "玩家金币更新事件",
+      "registerParams": [],
+      "callbackParams": [
+        {
+          "name": "player",
+          "type": "Manager.PlayerSystem.Player",
+          "description": "玩家对象"
+        },
+        {
+          "name": "amount",
+          "type": "string",
+          "description": "更新后的金币数量"
+        }
+      ]
+    },
+    {
+      "key": "ANY_PLAYER_RETRACT_BAIT_COMPLETE",
+      "value": "ANY_PLAYER_RETRACT_BAIT_COMPLETE",
+      "label": "玩家收回鱼饵完成事件",
+      "registerParams": [],
+      "callbackParams": [
+        {
+          "name": "player",
+          "type": "Manager.PlayerSystem.Player",
+          "description": "玩家对象"
+        }
+      ]
+    },
+    {
+      "key": "ANY_PLAYER_ROD_THROWN",
+      "value": "ANY_PLAYER_ROD_THROWN",
+      "label": "玩家抛出鱼竿事件",
+      "registerParams": [],
+      "callbackParams": [
+        {
+          "name": "player",
+          "type": "Manager.PlayerSystem.Player",
+          "description": "玩家对象"
+        }
+      ]
+    },
+    {
+      "key": "ANY_PLAYER_GAIN_FISH",
+      "value": "ANY_PLAYER_GAIN_FISH",
+      "label": "玩家获得鱼类事件",
+      "registerParams": [],
+      "callbackParams": [
+        {
+          "name": "player",
+          "type": "Manager.PlayerSystem.Player",
+          "description": "玩家对象"
+        },
+        {
+          "name": "fish",
+          "type": "Tile.FishInstance",
+          "description": "鱼实例对象"
+        }
+      ]
+    },
+    {
+      "key": "REFRESH_SHOP",
+      "value": "REFRESH_SHOP",
+      "label": "刷新商店事件",
+      "registerParams": [],
+      "callbackParams": [
+        {
+          "name": "player",
+          "type": "Manager.PlayerSystem.Player",
+          "description": "玩家对象"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "description": "商店名称"
+        }
+      ]
+    },
+    {
+      "key": "ANY_PLAYER_START_FISHING",
+      "value": "ANY_PLAYER_START_FISHING",
+      "label": "玩家开始钓鱼事件",
+      "registerParams": [],
+      "callbackParams": [
+        {
+          "name": "player",
+          "type": "Manager.PlayerSystem.Player",
+          "description": "玩家对象"
+        }
+      ]
+    },
+    {
+      "key": "ANY_PLAYER_BOUGHT",
+      "value": "ANY_PLAYER_BOUGHT",
+      "label": "玩家购买商品事件",
+      "registerParams": [],
+      "callbackParams": [
+        {
+          "name": "player",
+          "type": "Manager.PlayerSystem.Player",
+          "description": "玩家"
+        },
+        {
+          "name": "type",
+          "type": "Enum.ItemType",
+          "description": "物品类型"
+        },
+        {
+          "name": "code",
+          "type": "AnyCode",
+          "description": "物品代码"
+        }
+      ]
+    },
+    {
+      "key": "ANY_PLAYER_LEVEL_UP",
+      "value": "ANY_PLAYER_LEVEL_UP",
+      "label": "玩家升级事件",
+      "registerParams": [],
+      "callbackParams": [
+        {
+          "name": "player",
+          "type": "Manager.PlayerSystem.Player",
+          "description": "玩家"
+        },
+        {
+          "name": "old_level",
+          "type": "integer",
+          "description": "旧等级"
+        },
+        {
+          "name": "new_level",
+          "type": "integer",
+          "description": "新等级"
+        },
+        {
+          "name": "current_exp",
+          "type": "integer",
+          "description": "当前等级进度经验"
+        },
+        {
+          "name": "required_exp",
+          "type": "integer",
+          "description": "升级所需经验"
+        }
+      ]
+    },
+    {
+      "key": "ANY_PLAYER_EXP_UPDATED",
+      "value": "ANY_PLAYER_EXP_UPDATED",
+      "label": "玩家经验更新事件",
+      "registerParams": [],
+      "callbackParams": [
+        {
+          "name": "player",
+          "type": "Manager.PlayerSystem.Player",
+          "description": "玩家"
+        },
+        {
+          "name": "experience",
+          "type": "integer",
+          "description": "总经验值"
+        },
+        {
+          "name": "level",
+          "type": "integer",
+          "description": "当前等级"
+        },
+        {
+          "name": "current_exp",
+          "type": "integer",
+          "description": "当前等级进度经验"
+        },
+        {
+          "name": "required_exp",
+          "type": "integer",
+          "description": "升级所需经验"
+        },
+        {
+          "name": "progress",
+          "type": "Fixed",
+          "description": "进度百分比（0..1）"
+        }
+      ]
+    },
+    {
+      "key": "ANY_QUEST_ACTIVATED",
+      "value": "ANY_QUEST_ACTIVATED",
+      "label": "任务激活事件",
+      "registerParams": [],
+      "callbackParams": [
+        {
+          "name": "playetr",
+          "type": "Manager.PlayerSystem.Player",
+          "description": "玩家"
+        },
+        {
+          "name": "quest_code",
+          "type": "Enum.QuestCode",
+          "description": "任务代码"
+        }
+      ]
+    },
+    {
+      "key": "ANY_QUEST_PROGRESS_UPDATED",
+      "value": "ANY_QUEST_PROGRESS_UPDATED",
+      "label": "任务进度更新事件",
+      "registerParams": [],
+      "callbackParams": [
+        {
+          "name": "player",
+          "type": "Manager.PlayerSystem.Player",
+          "description": "玩家"
+        },
+        {
+          "name": "quest_code",
+          "type": "Enum.QuestCode",
+          "description": "任务代码"
+        },
+        {
+          "name": "progress",
+          "type": "integer",
+          "description": "当前进度"
+        },
+        {
+          "name": "target",
+          "type": "integer",
+          "description": "目标进度"
+        }
+      ]
+    },
+    {
+      "key": "ANY_QUEST_COMPLETED",
+      "value": "ANY_QUEST_COMPLETED",
+      "label": "任务完成事件",
+      "registerParams": [],
+      "callbackParams": [
+        {
+          "name": "player",
+          "type": "Manager.PlayerSystem.Player",
+          "description": "玩家"
+        },
+        {
+          "name": "quest_code",
+          "type": "Enum.QuestCode",
+          "description": "任务代码"
+        }
+      ]
+    },
+    {
+      "key": "ANY_EMERGENCY_STARTED",
+      "value": "ANY_EMERGENCY_STARTED",
+      "label": "突发事件开始事件",
+      "registerParams": [],
+      "callbackParams": [
+        {
+          "name": "code",
+          "type": "Enum.EmergencyCode",
+          "description": "突发事件代码"
+        },
+        {
+          "name": "duration",
+          "type": "integer",
+          "description": "持续事件（秒）"
+        }
+      ]
+    },
+    {
+      "key": "ANY_EMERGENCY_ENDED",
+      "value": "ANY_EMERGENCY_ENDED",
+      "label": "突发事件结束事件",
+      "registerParams": [],
+      "callbackParams": [
+        {
+          "name": "code",
+          "type": "Enum.EmergencyCode",
+          "description": "突发事件代码"
+        }
+      ]
+    },
+    {
+      "key": "ANY_QUEST_CLAIMED",
+      "value": "ANY_QUEST_CLAIMED",
+      "label": "任务奖励领取事件",
+      "registerParams": [],
+      "callbackParams": [
+        {
+          "name": "player",
+          "type": "Manager.PlayerSystem.Player",
+          "description": "玩家"
+        },
+        {
+          "name": "code",
+          "type": "Enum.QuestCode",
+          "description": "任务代码"
+        }
+      ]
+    },
+    {
+      "key": "NONE",
+      "value": "NONE",
+      "label": "",
+      "registerParams": [],
+      "callbackParams": []
+    },
+    {
+      "key": "ANY_PLAYER_UPDATE_SHELL",
+      "value": "ANY_PLAYER_UPDATE_SHELL",
+      "label": "玩家更新贝壳事件",
+      "registerParams": [],
+      "callbackParams": [
+        {
+          "name": "player",
+          "type": "Manager.PlayerSystem.Player",
+          "description": "玩家"
+        },
+        {
+          "name": "amount",
+          "type": "string",
+          "description": "更新后的贝壳数量"
+        }
+      ]
+    }
+  ]
+}
