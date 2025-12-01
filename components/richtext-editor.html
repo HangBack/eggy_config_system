@@ -1,38 +1,38 @@
-<!-- 富文本编辑器模态框 -->
+<!-- 富文本编辑器模态框 v2 - Markdown 优先 -->
 <div class="modal fade" id="richTextModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">富文本编辑器</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body richtext-body">
-                <!-- 工具栏 - 现代编辑器风格 -->
+                <!-- 工具栏 -->
                 <div class="richtext-toolbar">
                     <!-- 标题预设 -->
                     <div class="toolbar-group">
-                        <button class="toolbar-btn" data-preset="h1" onmousedown="event.preventDefault(); RichTextEditor.applyPreset('h1')" title="标题1 (# )">
+                        <button class="toolbar-btn" data-preset="h1" onmousedown="event.preventDefault(); RichTextEditor.applyPreset('h1')" title="标题1 (# 文本)">
                             <span class="btn-text">H1</span>
                         </button>
-                        <button class="toolbar-btn" data-preset="h2" onmousedown="event.preventDefault(); RichTextEditor.applyPreset('h2')" title="标题2 (## )">
+                        <button class="toolbar-btn" data-preset="h2" onmousedown="event.preventDefault(); RichTextEditor.applyPreset('h2')" title="标题2 (## 文本)">
                             <span class="btn-text">H2</span>
                         </button>
-                        <button class="toolbar-btn" data-preset="h3" onmousedown="event.preventDefault(); RichTextEditor.applyPreset('h3')" title="标题3 (### )">
+                        <button class="toolbar-btn" data-preset="h3" onmousedown="event.preventDefault(); RichTextEditor.applyPreset('h3')" title="标题3 (### 文本)">
                             <span class="btn-text">H3</span>
                         </button>
-                        <button class="toolbar-btn" data-preset="h4" onmousedown="event.preventDefault(); RichTextEditor.applyPreset('h4')" title="标题4 (#### )">
+                        <button class="toolbar-btn" data-preset="h4" onmousedown="event.preventDefault(); RichTextEditor.applyPreset('h4')" title="标题4 (#### 文本)">
                             <span class="btn-text">H4</span>
                         </button>
                     </div>
 
                     <div class="toolbar-divider"></div>
 
-                    <!-- 文本样式预设 -->
+                    <!-- 文本样式 -->
                     <div class="toolbar-group">
                         <button class="toolbar-btn" data-preset="bold" onmousedown="event.preventDefault(); RichTextEditor.applyPreset('bold')" title="加粗 (**文本**)">
                             <span class="btn-text" style="font-weight: bold;">B</span>
                         </button>
-                        <button class="toolbar-btn" data-preset="underline" onmousedown="event.preventDefault(); RichTextEditor.applyPreset('underline')" title="下划线">
+                        <button class="toolbar-btn" data-preset="underline" onmousedown="event.preventDefault(); RichTextEditor.applyPreset('underline')" title="下划线 (__文本__)">
                             <span class="btn-text" style="text-decoration: underline;">U</span>
                         </button>
                         <button class="toolbar-btn" data-preset="strike" onmousedown="event.preventDefault(); RichTextEditor.applyPreset('strike')" title="删除线 (~~文本~~)">
@@ -42,14 +42,11 @@
 
                     <div class="toolbar-divider"></div>
 
-                    <!-- 高级格式按钮 -->
+                    <!-- 颜色和高级格式 -->
                     <div class="toolbar-group">
-                        <input type="color" id="text-color-picker" value="#000000" title="文字颜色">
-                        <button class="toolbar-btn" onclick="RichTextEditor.toggleAdvancedPanel('size')" title="字号">
+                        <input type="color" id="text-color-picker" value="#000000" title="文字颜色 ({c:颜色}文本{/c})">
+                        <button class="toolbar-btn" onclick="RichTextEditor.toggleAdvancedPanel('size')" title="字号 ({s:大小}文本{/s})">
                             <span class="btn-text">字号</span>
-                        </button>
-                        <button class="toolbar-btn" onclick="RichTextEditor.toggleAdvancedPanel('textStyle')" title="文字样式">
-                            <span class="btn-text">样式</span>
                         </button>
                         <button class="toolbar-btn" onclick="RichTextEditor.toggleAdvancedPanel('outline')" title="描边">
                             <span class="btn-text">描边</span>
@@ -63,10 +60,10 @@
 
                     <!-- 列表 -->
                     <div class="toolbar-group">
-                        <button class="toolbar-btn" data-preset="ul" onmousedown="event.preventDefault(); RichTextEditor.applyPreset('ul')" title="无序列表 (- )">
+                        <button class="toolbar-btn" data-preset="ul" onmousedown="event.preventDefault(); RichTextEditor.applyPreset('ul')" title="无序列表 (- 文本)">
                             <span class="btn-text">• 列表</span>
                         </button>
-                        <button class="toolbar-btn" data-preset="ol" onmousedown="event.preventDefault(); RichTextEditor.applyPreset('ol')" title="有序列表 (1. )">
+                        <button class="toolbar-btn" data-preset="ol" onmousedown="event.preventDefault(); RichTextEditor.applyPreset('ol')" title="有序列表 (1. 文本)">
                             <span class="btn-text">1. 列表</span>
                         </button>
                     </div>
@@ -79,65 +76,43 @@
                     </button>
                 </div>
 
-                <!-- 高级格式次级面板 -->
+                <!-- 高级格式面板 -->
                 <div class="advanced-panel" id="advanced-panel" style="display: none;">
                     <!-- 字号面板 -->
                     <div class="panel-content" data-panel="size" style="display: none;">
                         <label>字号：</label>
                         <input type="range" id="size-slider" min="12" max="72" value="16" step="1">
                         <span id="size-value">16</span>
-                    </div>
-
-                    <!-- 文字样式面板 -->
-                    <div class="panel-content" data-panel="textStyle" style="display: none;">
-                        <div style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
-                            <!-- 下划线颜色 -->
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <label>下划线：</label>
-                                <input type="color" id="underline-color-picker" value="#000000">
-                                <button class="btn btn-sm btn-primary" onclick="RichTextEditor.applyAdvanced('underlineColor')">应用</button>
-                            </div>
-                            <!-- 删除线颜色 -->
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <label>删除线：</label>
-                                <input type="color" id="strike-color-picker" value="#ff0000">
-                                <button class="btn btn-sm btn-primary" onclick="RichTextEditor.applyAdvanced('strikeColor')">应用</button>
-                            </div>
-                        </div>
+                        <button class="btn btn-sm btn-primary" onclick="RichTextEditor.applyAdvanced('size')">应用</button>
                     </div>
 
                     <!-- 描边面板 -->
                     <div class="panel-content" data-panel="outline" style="display: none;">
-                        <label>描边颜色：</label>
+                        <label>颜色：</label>
                         <input type="color" id="outline-color-picker" value="#000000">
-                        <label>描边宽度：</label>
-                        <input type="range" id="outline-width-slider" min="0" max="5" value="2" step="0.5">
+                        <label>宽度：</label>
+                        <input type="range" id="outline-width-slider" min="0.5" max="5" value="2" step="0.5">
                         <span id="outline-width-value">2</span>
                         <button class="btn btn-sm btn-primary" onclick="RichTextEditor.applyAdvanced('outline')">应用</button>
                     </div>
 
                     <!-- 特效面板 -->
                     <div class="panel-content" data-panel="effect" style="display: none;">
-                        <div style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
-                            <!-- 发光效果 -->
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <label>发光：</label>
-                                <input type="color" id="glow-color-picker" value="#ffff00">
-                                <label>强度：</label>
-                                <input type="range" id="glow-intensity-slider" min="0" max="3" value="1" step="0.1">
-                                <span id="glow-intensity-value">1.0</span>
-                                <button class="btn btn-sm btn-primary" onclick="RichTextEditor.applyAdvanced('glow')">应用发光</button>
-                            </div>
-                            <!-- 阴影效果 -->
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <label>阴影：</label>
-                                <input type="color" id="shadow-color-picker" value="#000000">
-                                <label>X:</label>
-                                <input type="number" id="shadow-x" value="2" style="width: 50px;">
-                                <label>Y:</label>
-                                <input type="number" id="shadow-y" value="2" style="width: 50px;">
-                                <button class="btn btn-sm btn-primary" onclick="RichTextEditor.applyAdvanced('shadow')">应用阴影</button>
-                            </div>
+                        <div class="effect-row">
+                            <label>发光：</label>
+                            <input type="color" id="glow-color-picker" value="#ffff00">
+                            <input type="range" id="glow-intensity-slider" min="0.1" max="3" value="1" step="0.1">
+                            <span id="glow-intensity-value">1.0</span>
+                            <button class="btn btn-sm btn-primary" onclick="RichTextEditor.applyAdvanced('glow')">应用</button>
+                        </div>
+                        <div class="effect-row">
+                            <label>阴影：</label>
+                            <input type="color" id="shadow-color-picker" value="#000000">
+                            <label>X:</label>
+                            <input type="number" id="shadow-x" value="2" style="width: 50px;">
+                            <label>Y:</label>
+                            <input type="number" id="shadow-y" value="2" style="width: 50px;">
+                            <button class="btn btn-sm btn-primary" onclick="RichTextEditor.applyAdvanced('shadow')">应用</button>
                         </div>
                     </div>
                 </div>
@@ -145,17 +120,30 @@
                 <!-- 模式切换 -->
                 <div class="mode-switcher">
                     <button class="mode-btn active" data-mode="preview" onclick="RichTextEditor.switchMode('preview')">预览模式</button>
-                    <button class="mode-btn" data-mode="code" onclick="RichTextEditor.switchMode('code')">代码模式</button>
+                    <button class="mode-btn" data-mode="code" onclick="RichTextEditor.switchMode('code')">Markdown</button>
                     <button class="mode-btn" data-mode="split" onclick="RichTextEditor.switchMode('split')">分屏模式</button>
+                    <div class="mode-divider"></div>
+                    <label class="bg-color-label">预览背景：</label>
+                    <input type="color" id="preview-bg-color" value="#1a1a2e" title="预览区背景色（仅用于编辑预览，不导出）" onchange="RichTextEditor.setPreviewBackground(this.value)">
                 </div>
 
-                <!-- 编辑区域容器 -->
+                <!-- 语法提示 -->
+                <div class="syntax-hint">
+                    <span><code># 标题</code></span>
+                    <span><code>**加粗**</code></span>
+                    <span><code>__下划线__</code></span>
+                    <span><code>~~删除线~~</code></span>
+                    <span><code>{c:ff0000}颜色{/c}</code></span>
+                    <span><code>{s:24}字号{/s}</code></span>
+                </div>
+
+                <!-- 编辑区域 -->
                 <div class="richtext-container" data-mode="preview">
                     <!-- 预览区（可编辑） -->
                     <div class="richtext-preview" id="richtext-preview" contenteditable="true" spellcheck="false"></div>
 
-                    <!-- 代码编辑区 -->
-                    <textarea class="richtext-editor" id="richtext-editor" spellcheck="false"></textarea>
+                    <!-- Markdown 编辑区 -->
+                    <textarea class="richtext-editor" id="richtext-editor" spellcheck="false" placeholder="使用 Markdown 语法编写..."></textarea>
                 </div>
             </div>
             <div class="modal-footer">

@@ -15,19 +15,21 @@ const RichTextEditor = (function () {
     let currentFieldId = null;
     let currentMode = 'code'; // 默认代码模式
     let onConfirmCallback = null;
+    let onBackgroundChangeCallback = null; // 背景色改变回调
     let segmentMap = {}; // ID → 代码片段映射
     let nextSegmentId = 1;
     let currentSegmentId = null; // 当前光标所在的 segment ID
+    let currentBackgroundColor = '#1a1a2e'; // 默认背景色
 
     // 元素引用
     const elements = {};
 
     // 预设格式方案
     const presets = {
-        h1: { s: '40', o: '000000', O: '2', b: '1' }, // 40px + 黑色描边2px + 加粗标记
-        h2: { s: '32', o: '000000', O: '1.5', b: '1' }, // 32px + 黑色描边1.5px + 加粗标记
+        h1: { s: '40', o: '000000', O: '1', b: '1' }, // 40px + 黑色描边1px + 加粗标记
+        h2: { s: '32', o: '000000', O: '1', b: '1' }, // 32px + 黑色描边1px + 加粗标记
         h3: { s: '24', o: '000000', O: '1', b: '1' }, // 24px + 黑色描边1px + 加粗标记
-        h4: { s: '18', o: '000000', O: '0.5', b: '1' }, // 18px + 黑色描边0.5px + 加粗标记
+        h4: { s: '18', o: '000000', O: '1', b: '1' }, // 18px + 黑色描边1px + 加粗标记
         bold: {}, // 加粗：动态使用文字颜色作为描边
         underline: { u: '000000', u_mark: '1' }, // 黑色下划线 + 下划线标记
         strike: { h: 'ff0000', h_mark: '1' }, // 红色删除线 + 删除线标记
@@ -1551,8 +1553,13 @@ const RichTextEditor = (function () {
 
     /**
      * 打开编辑器
+     * @param {string} fieldId - 字段ID
+     * @param {string} initialValue - 初始值
+     * @param {function} callback - 确认回调
+     * @param {string} backgroundColor - 预览背景色（可选）
+     * @param {function} bgChangeCallback - 背景色改变回调（可选）
      */
-    function open(fieldId, initialValue = '', callback = null) {
+    function open(fieldId, initialValue = '', callback = null, backgroundColor = '#1a1a2e', bgChangeCallback = null) {
         if (!elements.modal || !elements.editor || !elements.preview) {
             console.error('富文本编辑器尚未加载完成');
             return;
@@ -1560,6 +1567,8 @@ const RichTextEditor = (function () {
 
         currentFieldId = fieldId;
         onConfirmCallback = callback;
+        onBackgroundChangeCallback = bgChangeCallback;
+        currentBackgroundColor = backgroundColor || '#1a1a2e';
 
         // 重置 ID 计数器和映射
         nextSegmentId = 1;
@@ -1571,12 +1580,33 @@ const RichTextEditor = (function () {
         // 设置代码编辑器内容
         elements.editor.value = displayValue;
 
+        // 设置背景色
+        const bgColorPicker = document.getElementById('preview-bg-color');
+        if (bgColorPicker) {
+            bgColorPicker.value = currentBackgroundColor;
+        }
+        setPreviewBackground(currentBackgroundColor);
+
         // 默认预览模式
         switchMode('preview');
 
         // 显示模态框
         const modal = new bootstrap.Modal(elements.modal);
         modal.show();
+    }
+
+    /**
+     * 设置预览区背景色
+     */
+    function setPreviewBackground(color) {
+        currentBackgroundColor = color;
+        if (elements.preview) {
+            elements.preview.style.backgroundColor = color;
+        }
+        // 调用背景色改变回调
+        if (onBackgroundChangeCallback) {
+            onBackgroundChangeCallback(currentFieldId, color);
+        }
     }
 
     /**
@@ -3033,6 +3063,7 @@ const RichTextEditor = (function () {
         autoApply,
         confirm,
         toggleAdvancedPanel,
-        applyAdvanced
+        applyAdvanced,
+        setPreviewBackground
     };
 })();

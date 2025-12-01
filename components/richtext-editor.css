@@ -117,6 +117,7 @@
 /* 模式切换 */
 .mode-switcher {
     display: flex;
+    align-items: center;
     gap: 8px;
     padding: 8px 0;
     border-bottom: 1px solid #e0e0e0;
@@ -140,6 +141,30 @@
     background: #0d6efd;
     color: white;
     border-color: #0d6efd;
+}
+
+/* 背景色选择器 */
+.mode-divider {
+    width: 1px;
+    height: 24px;
+    background: #e0e0e0;
+    margin: 0 8px;
+}
+
+.bg-color-label {
+    font-size: 13px;
+    color: #666;
+    margin: 0;
+}
+
+#preview-bg-color {
+    width: 32px;
+    height: 28px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    cursor: pointer;
+    background: none;
+    padding: 2px;
 }
 
 /* 高级格式次级面板 */
@@ -254,7 +279,8 @@
     padding: 20px;
     border: 1px solid #e0e0e0;
     border-radius: 8px;
-    background: #ffffff;
+    background-color: #1a1a2e;
+    color: #ffffff;
     overflow-y: auto;
     line-height: 1.8;
     word-wrap: break-word;
@@ -354,4 +380,58 @@
     .richtext-container[data-mode="split"] {
         flex-direction: column;
     }
+}
+
+/* 语法提示栏 */
+.syntax-hint {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 8px 12px;
+    background: #f0f4f8;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #666;
+}
+
+.syntax-hint span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.syntax-hint code {
+    background: #fff;
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: #0d6efd;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 11px;
+    border: 1px solid #e0e0e0;
+}
+
+/* 特效行样式 */
+.effect-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 8px 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.effect-row:last-child {
+    border-bottom: none;
+}
+
+/* 格式化片段 */
+.rt-segment {
+    display: inline;
+    cursor: text;
+}
+
+/* 占位符样式 */
+.placeholder {
+    color: #adb5bd;
+    font-style: italic;
 }
