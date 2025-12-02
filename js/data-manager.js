@@ -1801,6 +1801,11 @@ async function reloadCurrentData() {
 function previewData() {
     const modal = document.getElementById('preview-modal');
     modal.classList.add('show');
+    
+    // 更新URL参数，添加预览状态
+    if (typeof updateUrlParams === 'function') {
+        updateUrlParams();
+    }
 
     const container = document.getElementById('preview-container');
     const data = collectData();
@@ -1950,6 +1955,11 @@ async function closePreviewModal() {
 
     const modal = document.getElementById('preview-modal');
     modal.classList.remove('show');
+    
+    // 更新URL参数，移除预览状态
+    if (typeof updateUrlParams === 'function') {
+        updateUrlParams();
+    }
 
     // 重置脚本面板状态
     const leftPanel = document.querySelector('.preview-left-panel');

@@ -294,8 +294,9 @@ function parseUrlParams() {
     const enumName = params.get('enum');
     const data = params.get('data');
     const row = params.get('row');
+    const preview = params.get('preview') === 'true';
     
-    return { project, tab, schema, enumName, data, row };
+    return { project, tab, schema, enumName, data, row, preview };
 }
 
 /**
@@ -331,6 +332,11 @@ function updateUrlParams() {
                     params.set('data', dataSelect.value);
                     if (selectedDataRowIndex >= 0) {
                         params.set('row', selectedDataRowIndex);
+                    }
+                    // 检查预览模态框是否打开
+                    const previewModal = document.getElementById('preview-modal');
+                    if (previewModal && previewModal.classList.contains('show')) {
+                        params.set('preview', 'true');
                     }
                 }
                 break;
@@ -370,7 +376,7 @@ function copyCurrentLink() {
  * 根据URL参数恢复状态
  */
 async function restoreStateFromUrl() {
-    const { project, tab, schema, enumName, data, row } = parseUrlParams();
+    const { project, tab, schema, enumName, data, row, preview } = parseUrlParams();
     
     // 设置项目
     if (project) {
@@ -423,6 +429,12 @@ async function restoreStateFromUrl() {
                                 await new Promise(resolve => setTimeout(resolve, 300));
                                 selectDataRow(rowIndex);
                             }
+                        }
+                        
+                        // 如果URL中有preview参数，自动打开预览
+                        if (preview && typeof previewData === 'function') {
+                            await new Promise(resolve => setTimeout(resolve, 200));
+                            previewData();
                         }
                     }
                 }
